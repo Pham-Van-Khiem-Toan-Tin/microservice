@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: auth-service
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/test
+server:
+  port: 8085
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    hostname: localhost
+    prefer-ip-address: true
+    instance-id: ${eureka.instance.hostname}:${server.port}
+jwt:
+  privateKey: 2md90kaOT7/BvajX6NVcPjr3kznZfvIUDnmtAurhoEw=
