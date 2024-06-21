@@ -12,6 +12,7 @@ import javax.crypto.SecretKey;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Date;
+import java.util.Map;
 
 @Service
 public class JwtService {
@@ -23,10 +24,9 @@ public class JwtService {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateToken() {
+    public String generateToken(Map<String, String> claim) {
         return Jwts.builder()
-                .claim("name", "Micah Silverman")
-                .claim("scope", "admins")
+                .claims(claim)
                 .subject("Khiem")
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + 1000*60*30))

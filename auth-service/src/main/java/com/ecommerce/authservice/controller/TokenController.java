@@ -6,19 +6,17 @@ import io.jsonwebtoken.Claims;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
 
 @RestController
-@RequestMapping("/api/token")
+@RequestMapping("/token")
 public class TokenController {
     @Autowired
     JwtService jwtService;
     @GetMapping
     public String test() {
-        String token = jwtService.generateToken();
-        System.out.println(token);
-        return token;
+//        String token = jwtService.generateToken();
+//        System.out.println(token);
+        return "token";
     }
     @PostMapping
     public String test2(@RequestBody TokenForm tokenForm) {
