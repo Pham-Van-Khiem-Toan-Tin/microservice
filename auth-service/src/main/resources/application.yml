@@ -6,6 +6,7 @@ spring:
       uri: mongodb://localhost:27017/test
 server:
   port: 8085
+  forward-headers-strategy: FRAMEWORK
 eureka:
   client:
     serviceUrl:

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <base th:href="@{http://localhost:8085/}" />
     <link rel="stylesheet" th:href="@{/css/index.css}">
 </head>
 <body>
@@ -12,7 +13,7 @@
         <button type="submit">Login</button>
     </form>
 </body>
-<script type="text/javascript" src="http://localhost:8085/js/jquery.js"></script>
-<script type="text/javascript" src="http://localhost:8085/js/login.js">
+<script type="text/javascript" th:src="@{/js/jquery.js}"></script>
+<script type="text/javascript" th:src="@{/js/login.js}">
 </script>
 </html>
