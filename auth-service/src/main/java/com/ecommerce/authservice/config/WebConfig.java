@@ -19,13 +19,17 @@ import org.springframework.security.web.csrf.CsrfFilter;
 public class WebConfig {
     @Autowired
     CustomLoginSuccesshandler customLoginSuccesshandler;
+    @Autowired
+    CustomLoginFailure customLoginFailure;
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests((authorize) -> authorize
-                        .requestMatchers("/register", "/", "/css/**", "/js/**", "/token/**")
+                        .requestMatchers("/register", "/", "/token/**")
+                        .permitAll()
+                        .requestMatchers("/auth/js/**","/auth/css/**")
                         .permitAll()
                         .anyRequest()
                         .authenticated())
@@ -33,6 +37,7 @@ public class WebConfig {
                         .usernameParameter("email")
                         .passwordParameter("password")
                         .successHandler(customLoginSuccesshandler)
+                        .failureHandler(customLoginFailure)
                         .permitAll())
                 .httpBasic(Customizer.withDefaults());
         return http.build();

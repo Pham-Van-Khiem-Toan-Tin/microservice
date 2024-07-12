@@ -21,7 +21,9 @@ public class ApiGatewayApplication {
     @Bean
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
         return builder.routes()
-                .route("auth-service", r -> r.path("/login", "/register", "/css/**", "/js/**", "/gentoken").and().method(HttpMethod.GET, HttpMethod.POST).uri("lb://auth-service"))
+                .route("auth-service", r -> r.path("/login", "/register", "/auth/**", "/auth/gentoken")
+                        .and().method(HttpMethod.GET, HttpMethod.POST)
+                        .uri("lb://auth-service"))
                 .route("order-service", r -> r.path("/order/**").uri("lb://order-service"))
                 .route("auth-service", r -> r.path("/token/**").uri("lb://auth-service"))
                 .build();

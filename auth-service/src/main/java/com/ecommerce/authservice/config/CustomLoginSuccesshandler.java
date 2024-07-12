@@ -32,7 +32,6 @@ public class CustomLoginSuccesshandler implements AuthenticationSuccessHandler {
         Map<String, String> userData = new HashMap<>();
         userData.put("id", userId);
         String accessToken = jwtService.generateToken(userData);
-        Map<String, String> tokenData = new HashMap<>();
         response.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken);
         // You can customize response here if needed
         response.setStatus(HttpStatus.OK.value());
