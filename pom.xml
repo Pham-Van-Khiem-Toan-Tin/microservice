@@ -18,7 +18,7 @@
         <module>product-service</module>
         <module>discovery-service</module>
         <module>api-gateway</module>
-        <module>auth-service</module>
+        <module>identity-service</module>
     </modules>
 
     <properties>

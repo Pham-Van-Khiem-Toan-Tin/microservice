@@ -15,10 +15,6 @@ public class UserApiController {
     public ResponseEntity<String> gentoken() {
         return ResponseEntity.ok("login success");
     }
-    @PostMapping("/login")
-    public ResponseEntity<String> login() {
-        return ResponseEntity.ok("login success");
-    }
     @PostMapping("/register")
     public ResponseEntity<String> register(@ModelAttribute UserEntity user) {
         System.out.println("chay vao day");

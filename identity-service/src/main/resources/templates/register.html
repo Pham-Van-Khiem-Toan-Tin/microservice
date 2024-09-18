@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <link rel="stylesheet" th:href="@{/auth/css/index.css}">
+
 </head>
 <body>
 <form id="register-form" method="post" th:action="@{/register}">
@@ -63,6 +65,7 @@
         <div class="footer"><span>Sign up</span><span>Forgot Password?</span></div>
     </div>
 </form>
+<div th:replace="common :: common"></div>
 </body>
 <script th:src="@{/auth/js/jquery.js}"></script>
 <script th:src="@{/auth/js/login.js}"></script>

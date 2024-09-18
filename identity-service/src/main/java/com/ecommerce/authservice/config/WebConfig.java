@@ -21,24 +21,19 @@ public class WebConfig {
     CustomLoginSuccesshandler customLoginSuccesshandler;
     @Autowired
     CustomLoginFailure customLoginFailure;
+    public static final String[] PUBLIC_ENDPOINTS = {
+            "/auth/register", "/auth/token", "/auth/login", "/auth/logout"
+    };
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests((authorize) -> authorize
-                        .requestMatchers("/register", "/", "/token/**")
-                        .permitAll()
-                        .requestMatchers("/auth/js/**","/auth/css/**")
+                        .requestMatchers(PUBLIC_ENDPOINTS)
                         .permitAll()
                         .anyRequest()
                         .authenticated())
-                .formLogin(login -> login.loginPage("/login")
-                        .usernameParameter("email")
-                        .passwordParameter("password")
-                        .successHandler(customLoginSuccesshandler)
-                        .failureHandler(customLoginFailure)
-                        .permitAll())
                 .httpBasic(Customizer.withDefaults());
         return http.build();
     }
