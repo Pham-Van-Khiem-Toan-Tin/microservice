@@ -1,8 +1,6 @@
 spring:
   application:
     name: api-gateway
-app:
-  api-prefix: /api/v1
 server:
   port: 8082
 eureka:
@@ -20,5 +18,3 @@ logging:
     org.springframework.web.reactive: DEBUG
     reactor.ipc.netty: DEBUG
     reactor.netty: DEBUG
-jwt:
-  privateKey: 2md90kaOT7/BvajX6NVcPjr3kznZfvIUDnmtAurhoEw=
