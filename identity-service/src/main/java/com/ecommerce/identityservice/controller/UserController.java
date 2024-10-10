@@ -5,12 +5,16 @@ import com.ecommerce.identityservice.form.RegisterForm;
 import com.ecommerce.identityservice.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+
 @RestController
-@RequestMapping("/")
+@RequestMapping("/auth")
 public class UserController {
     @Autowired
     UserService userService;
@@ -19,6 +23,7 @@ public class UserController {
         userService.register(registerForm);
         return ResponseEntity.ok("register successfully");
     }
+    @PreAuthorize("hasAuthority('USER_LIST')")
     @GetMapping("/users")
     public ResponseEntity<List<UserDTO>> getAllUser() {
         return ResponseEntity.ok(userService.getAllUser());

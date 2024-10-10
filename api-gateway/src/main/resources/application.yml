@@ -1,6 +1,11 @@
 spring:
   application:
     name: api-gateway
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:8086/realms/spring-microservice-development/protocol/openid-connect/certs
 app:
   api-prefix: /api/v1
 server:

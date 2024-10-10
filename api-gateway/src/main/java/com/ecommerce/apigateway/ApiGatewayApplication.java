@@ -9,6 +9,8 @@ import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 
 @SpringBootApplication
 public class ApiGatewayApplication {
@@ -21,10 +23,11 @@ public class ApiGatewayApplication {
     @Bean
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
         return builder.routes()
-                .route("identity-service", r -> r.path("/login", "/register", "/auth/**", "/auth/gentoken")
+                .route("identity-service", r -> r.path("/register", "/auth/**")
                         .and().method(HttpMethod.GET, HttpMethod.POST)
                         .uri("lb://identity-service"))
                 .route("order-service", r -> r.path("/order/**").uri("lb://order-service"))
                 .build();
     }
+
 }

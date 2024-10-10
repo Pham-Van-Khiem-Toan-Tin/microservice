@@ -4,21 +4,27 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
+
 @Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
 public class WebConfig {
-    @Autowired
-    CustomLoginSuccessHandler customLoginSuccessHandler;
-    @Autowired
-    CustomLoginFailureHandler customLoginFailureHandler;
     public static final String[] PUBLIC_ENDPOINTS = {
-            "/register", "/auth/token", "/login", "/auth/logout"
+            "/register", "/auth/token", "/login", "/logout",
     };
+
+    @Autowired
+    CustomAuthenticationConverter customAuthenticationConverter;
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -29,11 +35,7 @@ public class WebConfig {
                         .permitAll()
                         .anyRequest()
                         .authenticated())
-                .formLogin(login -> login
-                        .usernameParameter("email")
-                        .successHandler(customLoginSuccessHandler)
-                        .failureHandler(customLoginFailureHandler))
-                .httpBasic(Customizer.withDefaults());
+                .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(customAuthenticationConverter)));
         return http.build();
     }
 
