@@ -19,6 +19,7 @@ import java.util.List;
 @Slf4j
 public class AuthenticationFilter implements GlobalFilter {
     ObjectMapper objectMapper;
+    private final String[] publicEndpoint = { "/auth/**" };
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         log.info("Enter authentication filter");
