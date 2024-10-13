@@ -5,7 +5,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: http://localhost:8086/realms/spring-microservice-development/protocol/openid-connect/certs
+          jwk-set-uri: http://localhost:8086/realms/ecobazar/protocol/openid-connect/certs
   data:
     mongodb:
       uri: mongodb://localhost:27017/test
@@ -22,5 +22,5 @@ eureka:
     instance-id: ${eureka.instance.hostname}:${server.port}
 
 jwt:
-  client-id: spring-client-credentials-id
+  client-id: identity-client
   privateKey: 2md90kaOT7/BvajX6NVcPjr3kznZfvIUDnmtAurhoEw=
