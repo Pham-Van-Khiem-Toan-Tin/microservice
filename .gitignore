@@ -20,7 +20,7 @@ target/
 .settings
 .springBeans
 .sts4-cache
-
+mysql_keycloak_data/
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
