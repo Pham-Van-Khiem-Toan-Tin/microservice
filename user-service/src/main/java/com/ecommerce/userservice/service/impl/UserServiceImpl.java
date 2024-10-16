@@ -1,45 +1,37 @@
 package com.ecommerce.userservice.service.impl;
 
-import com.ecommerce.userservice.dto.UserDTO;
-import com.ecommerce.userservice.entity.User;
-import com.ecommerce.userservice.form.LoginForm;
-import com.ecommerce.userservice.form.RegisterForm;
-import com.ecommerce.userservice.repository.UserRepository;
 import com.ecommerce.userservice.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import jakarta.annotation.PostConstruct;
+import org.keycloak.OAuth2Constants;
+import org.keycloak.admin.client.Keycloak;
+import org.keycloak.admin.client.KeycloakBuilder;
+import org.keycloak.representations.idm.UserRepresentation;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class UserServiceImpl implements UserService {
-    @Autowired
-    UserRepository userRepository;
-    @Autowired
-    PasswordEncoder passwordEncoder;
-    @Override
-    public void register(RegisterForm registerForm) {
-       if (userRepository.existsById(registerForm.getEmail())) {
-           throw new RuntimeException("User already exist");
-       }
-        User user = new User();
-        user.setId(registerForm.getEmail());
-        user.setName(registerForm.getName());
-        user.setEmail(registerForm.getEmail());
-        user.setPassword(passwordEncoder.encode(registerForm.getPassword()));
-       userRepository.save(user);
+    @Value("${keycloak.auth-server-url}")
+    private String serverUrl;
+    @Value("${keycloak.realm}")
+    private String realm;
+    @Value("${keycloak.resource}")
+    private String clientId;
+    private Keycloak keycloak;
+
+    public UserServiceImpl() {
+        this.keycloak = KeycloakBuilder.builder()
+                .serverUrl("http://localhost:8086/admin/realms")
+                .realm("ecobazar")
+                .grantType(OAuth2Constants.PASSWORD)
+                .clientId("identity-client")
+                .username("admin@gmail.com")
+                .password("admin")
+                .build();
     }
 
-    @Override
-    public void login(LoginForm loginForm) {
-
-    }
-
-    @Override
-    public List<UserDTO> getAllUser() {
-        List<User> users = userRepository.findAll();
-        return users.stream().map(user -> UserDTO.from(user)).collect(Collectors.toList());
+    public UserRepresentation getUser(String userId) {
+        return keycloak.realm("ecobazar").users().get(userId).toRepresentation();
     }
 }

@@ -20,7 +20,10 @@ eureka:
     hostname: localhost
     prefer-ip-address: true
     instance-id: ${eureka.instance.hostname}:${server.port}
-
+keycloak:
+  auth-server-url: http://localhost:8086/realms/ecobazar
+  realm: ecobazar
+  resource: identity-client
 jwt:
   client-id: identity-client
   privateKey: 2md90kaOT7/BvajX6NVcPjr3kznZfvIUDnmtAurhoEw=

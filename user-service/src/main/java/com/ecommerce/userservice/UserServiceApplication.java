@@ -7,12 +7,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Lazy;
 
 @SpringBootApplication
-public class UserApplication {
+public class UserServiceApplication {
     @Autowired
     @Lazy
     private EurekaClient eurekaClient;
 
     public static void main(String[] args) {
-        SpringApplication.run(UserApplication.class, args);
+        SpringApplication.run(UserServiceApplication.class, args);
     }
 }
