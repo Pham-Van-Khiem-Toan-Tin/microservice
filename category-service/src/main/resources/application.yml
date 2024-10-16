@@ -1,15 +1,23 @@
 spring:
   application:
-    name: api-gateway
+    name: category-service
+  datasource:
+    url: jdbc:mysql://localhost:3306/ecobazar
+    username: root
+    password: 271201
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
   security:
     oauth2:
       resourceserver:
         jwt:
           jwk-set-uri: http://localhost:8086/realms/ecobazar/protocol/openid-connect/certs
-app:
-  api-prefix: /api/v1
 server:
-  port: 8082
+  port: 8087
+  forward-headers-strategy: FRAMEWORK
 eureka:
   client:
     serviceUrl:
@@ -18,12 +26,6 @@ eureka:
     hostname: localhost
     prefer-ip-address: true
     instance-id: ${eureka.instance.hostname}:${server.port}
-logging:
-  level:
-    org.springframework.cloud.gateway: TRACE
-    org.springframework.http.server.reactive: DEBUG
-    org.springframework.web.reactive: DEBUG
-    reactor.ipc.netty: DEBUG
-    reactor.netty: DEBUG
+
 jwt:
-  privateKey: 2md90kaOT7/BvajX6NVcPjr3kznZfvIUDnmtAurhoEw=
+  client-id: identity-client

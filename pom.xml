@@ -18,7 +18,8 @@
         <module>product-service</module>
         <module>discovery-service</module>
         <module>api-gateway</module>
-        <module>identity-service</module>
+        <module>user-service</module>
+        <module>category-service</module>
     </modules>
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
