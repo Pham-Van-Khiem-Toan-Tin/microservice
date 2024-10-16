@@ -2,7 +2,7 @@ version: '3.7'
 services:
   keycloak-mysql:
     container_name: keycloak-mysql
-    image: mysql:5.7
+    image: phamkhiem/ecobazar:mysql-v1.0
     volumes:
       - ./mysql_keycloak_data:/var/lib/mysql
     environment:
@@ -12,7 +12,7 @@ services:
       MYSQL_PASSWORD: password
   keycloak:
     container_name: keycloak
-    image: quay.io/keycloak/keycloak:25.0.6
+    image: phamkhiem/ecobazar:keycloak-v1.0
     command: [ "start-dev", "--import-realm" ]
     environment:
       DB_VENDOR: MYSQL
