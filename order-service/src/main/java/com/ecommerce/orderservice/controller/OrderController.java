@@ -12,14 +12,5 @@ import org.springframework.web.bind.annotation.RestController;
 public class OrderController {
     @Autowired
     MessageProducer messageProducer;
-    @GetMapping( "/api/order")
-    public String getOrder() {
-        System.out.println("chay vao day");
-        return "test";
-    }
-    @GetMapping("/send")
-    public String sendMessage() {
-        messageProducer.sendMessage("message from order");
-        return "messageSend";
-    }
+
 }

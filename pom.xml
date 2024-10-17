@@ -20,6 +20,7 @@
         <module>api-gateway</module>
         <module>user-service</module>
         <module>category-service</module>
+        <module>payment-service</module>
     </modules>
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
