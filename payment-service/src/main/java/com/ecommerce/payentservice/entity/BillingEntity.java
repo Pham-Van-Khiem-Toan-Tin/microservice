@@ -9,19 +9,16 @@ import java.util.Date;
 @Entity
 @Data
 @NoArgsConstructor
-@Table(name = "payment")
-public class PaymentEntity extends BaseEntity {
+@Table(name = "billing")
+public class BillingEntity extends BaseEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    @Column(nullable = false)
-    private Long customerId;
+    private String customerId;
     @Column(nullable = false)
     private String firstName;
     @Column(nullable = false)
     private String lastName;
     @Column
-    private String companyName;
+    private String company;
     @Column(nullable = false)
     private String addressStreet;
     @Column(nullable = false)

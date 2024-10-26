@@ -1,7 +1,8 @@
 package com.ecommerce.userservice.controller;
 
+import com.ecommerce.userservice.dto.BillingDTO;
+import com.ecommerce.userservice.dto.UserDTO;
 import com.ecommerce.userservice.service.impl.UserServiceImpl;
-import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -13,7 +14,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.List;
 
 
 @RestController
@@ -21,17 +21,19 @@ import java.util.List;
 public class UserController {
     @Autowired
     UserServiceImpl userService;
+
     @GetMapping("/profile")
     @PreAuthorize("hasAuthority('VIEW_PROFILE')")
-    public ResponseEntity<UserRepresentation> getUserInfo(@AuthenticationPrincipal Jwt principal, @RequestHeader("Authorization") String token) {
+    public ResponseEntity<UserDTO> getUserInfo(@AuthenticationPrincipal Jwt principal, @RequestHeader("Authorization") String token) throws Exception {
         String userId = principal.getClaim("sub");  // "sub" là userId trong JWT
-        UserRepresentation user = userService.getUser(userId);
+        UserDTO user = userService.getProfile(userId);
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.set(HttpHeaders.AUTHORIZATION, token);
         String url = "http://localhost:8084/payment/profile";
-        HttpEntity<String> entity = new HttpEntity<>(httpHeaders);
-        String payment = restTemplate.exchange(url, HttpMethod.GET, entity, String.class).getBody();
+        HttpEntity<String> entity = new HttpEntity<>(null, httpHeaders);
+        BillingDTO billing = restTemplate.exchange(url, HttpMethod.GET, entity, BillingDTO.class).getBody();
+        user.setBilling(billing);
         return ResponseEntity.ok(user);
     }
 }

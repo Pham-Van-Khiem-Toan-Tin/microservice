@@ -1,15 +1,15 @@
 package com.ecommerce.userservice.service.impl;
 
 import com.ecommerce.userservice.config.KeycloakConfig;
+import com.ecommerce.userservice.dto.UserDTO;
 import com.ecommerce.userservice.service.UserService;
-import jakarta.annotation.PostConstruct;
-import org.keycloak.OAuth2Constants;
-import org.keycloak.admin.client.Keycloak;
-import org.keycloak.admin.client.KeycloakBuilder;
+import org.keycloak.representations.idm.GroupRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 
 @Service
@@ -19,8 +19,33 @@ public class UserServiceImpl implements UserService {
     @Autowired
     KeycloakConfig keycloak;
 
-
-    public UserRepresentation getUser(String userId) {
-        return keycloak.getKeycloakInstance().realm(realm).users().get(userId).toRepresentation();
+    @Override
+    public UserDTO getProfile(String userId) {
+        UserRepresentation userRepresentation = keycloak
+                .getKeycloakInstance()
+                .realm(realm)
+                .users()
+                .get(userId)
+                .toRepresentation();
+        UserDTO userDTO = new UserDTO();
+        userDTO.setFirstName(userRepresentation.getFirstName());
+        userDTO.setLastName(userRepresentation.getLastName());
+        userDTO.setAvatar(userRepresentation.getAttributes().get("avatar").get(0));
+        List<GroupRepresentation> groupRepresentations = keycloak
+                .getKeycloakInstance()
+                .realm(realm)
+                .users()
+                .get(userId)
+                .groups();
+        String group = groupRepresentations.get(0).getName();
+        userDTO.setRole(capitalizeFirstLetter(group));
+        return userDTO;
+    }
+    private String capitalizeFirstLetter(String input) {
+        if (input == null || input.isEmpty()) {
+            return input;
+        }
+        String lowerCase = input.toLowerCase();
+        return lowerCase.substring(0,1).toUpperCase() + lowerCase.substring(1);
     }
 }
