@@ -1,5 +1,7 @@
 package com.ecommerce.userservice.controller;
 
+import com.ecommerce.userservice.dto.BillingDTO;
+import com.ecommerce.userservice.dto.ProfileDTO;
 import com.ecommerce.userservice.service.impl.UserServiceImpl;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,16 +25,17 @@ public class UserController {
     UserServiceImpl userService;
     @GetMapping("/profile")
     @PreAuthorize("hasAuthority('VIEW_PROFILE')")
-    public ResponseEntity<UserRepresentation> getUserInfo(@AuthenticationPrincipal Jwt principal, @RequestHeader("Authorization") String token) {
+    public ResponseEntity<ProfileDTO> getUserInfo(@AuthenticationPrincipal Jwt principal, @RequestHeader("Authorization") String token) {
         String userId = principal.getClaim("sub");  // "sub" là userId trong JWT
-        UserRepresentation user = userService.getUser(userId);
+        ProfileDTO profile = userService.getUser(userId);
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.set(HttpHeaders.AUTHORIZATION, token);
         String url = "http://localhost:8084/payment/profile";
         HttpEntity<String> entity = new HttpEntity<>(httpHeaders);
-        String payment = restTemplate.exchange(url, HttpMethod.GET, entity, String.class).getBody();
-        return ResponseEntity.ok(user);
+        BillingDTO billing = restTemplate.exchange(url, HttpMethod.GET, entity, BillingDTO.class).getBody();
+        profile.setBilling(billing);
+        return ResponseEntity.ok(profile);
     }
 }
 
