@@ -1,6 +1,6 @@
 package com.ecommerce.payentservice.controller;
 
-import com.ecommerce.payentservice.dto.BillingDTO;
+import com.ecommerce.payentservice.dto.PaymentDTO;
 import com.ecommerce.payentservice.service.PaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -15,9 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class PaymentController {
     @Autowired
     PaymentService paymentService;
+
     @GetMapping("/profile")
-    public ResponseEntity<BillingDTO> myPayment(@AuthenticationPrincipal Jwt jwt) {
-        String customerId = jwt.getClaim("sub");
-        return ResponseEntity.ok(paymentService.getProfile(customerId));
+    public ResponseEntity<PaymentDTO> myPayment(@AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt.getClaim("sub");
+        return ResponseEntity.ok(paymentService.getProfile(userId));
+
     }
 }

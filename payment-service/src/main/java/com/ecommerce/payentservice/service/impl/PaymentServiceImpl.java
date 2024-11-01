@@ -1,14 +1,23 @@
 package com.ecommerce.payentservice.service.impl;
 
-import com.ecommerce.payentservice.dto.BillingDTO;
+import com.ecommerce.payentservice.dto.PaymentDTO;
+import com.ecommerce.payentservice.entity.BillingEntity;
+import com.ecommerce.payentservice.repository.PaymentRepository;
 import com.ecommerce.payentservice.service.PaymentService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class PaymentServiceImpl implements PaymentService {
+    @Autowired
+    PaymentRepository paymentRepository;
     @Override
-    public BillingDTO getProfile(String customerId) {
+    public PaymentDTO getProfile(String userId) {
+        PaymentDTO paymentDTO = new PaymentDTO();
+        BillingEntity payment = paymentRepository.findByCustomerId(userId);
+        if (payment != null) {
 
-        return null;
+        }
+        return paymentDTO;
     }
 }

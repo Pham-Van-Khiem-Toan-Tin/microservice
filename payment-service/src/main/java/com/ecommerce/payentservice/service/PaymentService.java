@@ -1,7 +1,8 @@
 package com.ecommerce.payentservice.service;
 
-import com.ecommerce.payentservice.dto.BillingDTO;
+
+import com.ecommerce.payentservice.dto.PaymentDTO;
 
 public interface PaymentService {
-    BillingDTO getProfile(String customerId);
+    PaymentDTO getProfile(String userId);
 }

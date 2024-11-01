@@ -5,12 +5,13 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class ProfileDTO {
+public class UserDTO {
     private String firstName;
     private String lastName;
-    private String avatar;
     private String role;
+    private String avatar;
+    private String phoneNumber;
+    private String email;
     private BillingDTO billing;
     private List<OrderDTO> orderList;
-
 }
