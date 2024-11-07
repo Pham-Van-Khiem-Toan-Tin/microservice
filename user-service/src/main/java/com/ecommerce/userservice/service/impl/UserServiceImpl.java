@@ -30,7 +30,9 @@ public class UserServiceImpl implements UserService {
         UserDTO userDTO = new UserDTO();
         userDTO.setFirstName(userRepresentation.getFirstName());
         userDTO.setLastName(userRepresentation.getLastName());
+        userDTO.setEmail(userRepresentation.getEmail());
         userDTO.setAvatar(userRepresentation.getAttributes().get("avatar").get(0));
+        userDTO.setPhoneNumber(userRepresentation.getAttributes().get("phoneNumber").get(0));
         List<GroupRepresentation> groupRepresentations = keycloak
                 .getKeycloakInstance()
                 .realm(realm)
