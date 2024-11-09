@@ -5,6 +5,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
+          issuer-uri: http://localhost:8086/realms/ecobazar
           jwk-set-uri: http://localhost:8086/realms/ecobazar/protocol/openid-connect/certs
 server:
   port: 8085

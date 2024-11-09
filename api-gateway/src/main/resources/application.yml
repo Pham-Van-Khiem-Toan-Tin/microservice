@@ -4,8 +4,10 @@ spring:
   security:
     oauth2:
       resourceserver:
-        jwt:
-          jwk-set-uri: http://localhost:8086/realms/ecobazar/protocol/openid-connect/certs
+        opaquetoken:
+          client-id: ecobazar-backend
+          introspection-uri: http://localhost:8086/realms/ecobazar/protocol/openid-connect/token/introspect
+          client-secret: viK3MxNqkRTPtd69FFeHM5X3nvhygSSb
 app:
   api-prefix: /api/v1
 server:
