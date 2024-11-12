@@ -24,9 +24,10 @@ public class UserController {
 
     @GetMapping("/profile")
     @PreAuthorize("hasAuthority('VIEW_PROFILE')")
-    public ResponseEntity<UserDTO> getUserInfo(@AuthenticationPrincipal Jwt principal, @RequestHeader("Authorization") String token) throws Exception {
-        String userId = principal.getClaim("sub");  // "sub" là userId trong JWT
-        UserDTO user = userService.getProfile(userId);
+    public ResponseEntity<UserDTO> getUserInfo(@AuthenticationPrincipal Jwt jwt, @RequestHeader("Authorization") String token) throws Exception {
+
+        String userId = jwt.getClaim("sub");  // "sub" là userId trong JWT
+        UserDTO user = userService.getProfile(token,userId);
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.set(HttpHeaders.AUTHORIZATION, token);

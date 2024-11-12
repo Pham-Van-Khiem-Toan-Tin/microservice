@@ -1,12 +1,16 @@
 spring:
   application:
     name: user-service
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://localhost:8086/realms/ecobazar
-          jwk-set-uri: http://localhost:8086/realms/ecobazar/protocol/openid-connect/certs
+  datasource:
+    url: jdbc:mysql://localhost:3306/identity
+    username: root
+    password: 271201
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
 server:
   port: 8085
   forward-headers-strategy: FRAMEWORK
@@ -18,11 +22,5 @@ eureka:
     hostname: localhost
     prefer-ip-address: true
     instance-id: ${eureka.instance.hostname}:${server.port}
-keycloak:
-  auth-server-url: http://127.0.0.1:8086
-  realm: ecobazar
-  resource: identity-client
-  username: admin@gmail.com
-  password: admin
 jwt:
   privateKey: 2md90kaOT7/BvajX6NVcPjr3kznZfvIUDnmtAurhoEw=

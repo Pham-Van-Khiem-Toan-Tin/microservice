@@ -6,5 +6,5 @@ import com.ecommerce.userservice.dto.UserDTO;
 import java.util.List;
 
 public interface UserService {
-    UserDTO getProfile(String userId);
+    UserDTO getProfile(String token, String userId);
 }
