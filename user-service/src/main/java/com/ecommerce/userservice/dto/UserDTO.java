@@ -9,9 +9,9 @@ public class UserDTO {
     private String firstName;
     private String lastName;
     private String role;
-    private String avatar;
-    private String phoneNumber;
     private String email;
+    private String phoneNumber;
+    private String avatar;
     private BillingDTO billing;
     private List<OrderDTO> orderList;
 }
