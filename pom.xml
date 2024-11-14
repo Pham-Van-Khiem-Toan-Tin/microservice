@@ -18,7 +18,7 @@
         <module>product-service</module>
         <module>discovery-service</module>
         <module>api-gateway</module>
-        <module>user-service</module>
+        <module>identity-service</module>
         <module>category-service</module>
         <module>payment-service</module>
     </modules>

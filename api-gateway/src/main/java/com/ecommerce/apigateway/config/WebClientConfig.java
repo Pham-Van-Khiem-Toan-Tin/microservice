@@ -20,7 +20,6 @@ public class WebClientConfig {
                 .builder()
                 .baseUrl(introspectUrl)
                 .build();
-
     }
 
 }
