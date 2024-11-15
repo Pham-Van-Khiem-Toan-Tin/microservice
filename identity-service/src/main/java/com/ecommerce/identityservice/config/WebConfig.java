@@ -20,7 +20,7 @@ public class WebConfig {
             "/identity/auth/introspect",
             "/identity/register",
             "/identity/login",
-            "/identity/user/test"
+            "/identity/user/register"
     };
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {

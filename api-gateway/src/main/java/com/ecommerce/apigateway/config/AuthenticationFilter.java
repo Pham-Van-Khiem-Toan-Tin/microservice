@@ -38,7 +38,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             "/identity/auth/introspect",
             "/identity/register",
             "/identity/login",
-            "/identity/user/test"
+            "/identity/user/register"
     };
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {

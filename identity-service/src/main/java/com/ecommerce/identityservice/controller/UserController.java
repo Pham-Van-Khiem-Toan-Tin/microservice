@@ -2,6 +2,7 @@ package com.ecommerce.identityservice.controller;
 
 import com.ecommerce.identityservice.dto.BillingDTO;
 import com.ecommerce.identityservice.dto.UserDTO;
+import com.ecommerce.identityservice.form.RegisterForm;
 import com.ecommerce.identityservice.service.impl.UserServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
@@ -20,6 +21,13 @@ import org.springframework.web.client.RestTemplate;
 public class UserController {
     @Autowired
     UserServiceImpl userService;
+    @PostMapping("/register")
+    public ResponseEntity<String> register(@RequestBody RegisterForm registerForm) {
+        Boolean result = userService.register(registerForm);
+        if (!result)
+            return ResponseEntity.status(500).body("Không thể đăng kí người dùng. Vui lòng thử lại sau");
+        return ResponseEntity.ok("Đăng kí người dùng thành công");
+    }
     @GetMapping("/test")
     public ResponseEntity<String> test() {
         return ResponseEntity.ok("test");

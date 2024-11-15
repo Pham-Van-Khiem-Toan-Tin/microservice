@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Data
 @NoArgsConstructor
-@Table(name = "user_function_subfunction")
+@Table(name = "role_function_subfunction")
 public class RoleFunctionSubFunctionEntity {
     @EmbeddedId
     private RoleFunctionSubFunctionId id;

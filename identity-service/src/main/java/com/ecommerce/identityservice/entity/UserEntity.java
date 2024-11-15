@@ -13,13 +13,12 @@ import java.util.Set;
 @Table(name = "users")
 public class UserEntity extends BaseEntity {
     @Id
-    private String id;
-    @Column(nullable = false, name = "first_name")
-    private String firstName;
-    @Column(nullable = false, name = "last_name")
-    private String lastName;
-    @Column(nullable = false)
+    @Column(nullable = false, name = "email")
     private String email;
+    @Column(name = "first_name")
+    private String firstName;
+    @Column(name = "last_name")
+    private String lastName;
     @Column(nullable = false)
     private String password;
     @Column(nullable = false, name = "login_fail_count")
