@@ -19,8 +19,8 @@ public class WebConfig {
     private final String[] publicEndpoint = {
             "/identity/auth/introspect",
             "/identity/register",
-            "/identity/login",
-            "/identity/user/register"
+            "/account/login",
+            "/account/register"
     };
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {

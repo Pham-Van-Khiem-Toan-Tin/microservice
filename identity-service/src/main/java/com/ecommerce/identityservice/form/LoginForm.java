@@ -3,9 +3,7 @@ package com.ecommerce.identityservice.form;
 import lombok.Data;
 
 @Data
-public class RegisterForm {
-    private String firstName;
-    private String lastName;
+public class LoginForm {
     private String email;
     private String password;
 }

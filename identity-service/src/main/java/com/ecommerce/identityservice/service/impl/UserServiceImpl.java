@@ -8,6 +8,7 @@ import com.ecommerce.identityservice.form.RegisterForm;
 import com.ecommerce.identityservice.repository.RoleRepository;
 import com.ecommerce.identityservice.repository.UserRepository;
 import com.ecommerce.identityservice.service.UserService;
+import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -23,24 +24,32 @@ public class UserServiceImpl implements UserService {
     PasswordEncoder passwordEncoder;
     @Autowired
     RoleRepository roleRepository;
-
+    @Autowired
+    EntityManager entityManager;
     @Override
     public Boolean register(RegisterForm registerForm) {
-        Boolean existing = userRepository.existsById(registerForm.getEmail());
-        if (existing)
+        try {
+            UserEntity newUser = new UserEntity();
+            newUser.setEmail(registerForm.getEmail());
+            newUser.setFirstName(registerForm.getFirstName());
+            newUser.setLastName(registerForm.getLastName());
+            newUser.setPassword(passwordEncoder.encode(registerForm.getPassword()));
+            newUser.setLoginFailCount(0);
+            newUser.setCreatedAt(LocalDateTime.now());
+            newUser.setBlock(false);
+            RoleEntity defaultRole = entityManager.getReference(RoleEntity.class, "CUSTOMER");
+            newUser.setRole(defaultRole);
+            userRepository.save(newUser);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
             return false;
-        UserEntity newUser = new UserEntity();
-        newUser.setEmail(registerForm.getEmail());
-        newUser.setPassword(passwordEncoder.encode(registerForm.getPassword()));
-        newUser.setLoginFailCount(0);
-        newUser.setCreatedAt(LocalDateTime.now());
-        newUser.setBlock(false);
-        RoleEntity defaultRole = roleRepository.findById("CUSTOMER").orElse(null);
-        if (defaultRole == null)
-            return false;
-        newUser.setRole(defaultRole);
-        userRepository.save(newUser);
-        return true;
+        }
+    }
+
+    @Override
+    public Boolean existUser(String email) {
+        return userRepository.existsById(email);
     }
 
     @Override

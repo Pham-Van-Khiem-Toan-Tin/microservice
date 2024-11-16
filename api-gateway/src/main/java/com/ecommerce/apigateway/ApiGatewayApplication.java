@@ -20,7 +20,7 @@ public class ApiGatewayApplication {
     @Bean
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
         return builder.routes()
-                .route("identity-service", r -> r.path("/identity/**", "/users/**").uri("lb://identity-service"))
+                .route("identity-service", r -> r.path("/auth/**", "/account/**").uri("lb://identity-service"))
                 .route("payment-service", r -> r.path("/payment/**").uri("lb://payment-service"))
                 .route("category-service", r -> r.path("/category/**").uri("lb://category-service"))
                 .route("order-service", r -> r.path("/order/**").uri("lb://order-service"))

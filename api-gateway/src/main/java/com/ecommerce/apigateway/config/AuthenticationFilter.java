@@ -35,10 +35,10 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     IntrospectService introspectService;
     @NonFinal
     private String[]  publicEndpoints = {
-            "/identity/auth/introspect",
+            "/identity/introspect",
             "/identity/register",
-            "/identity/login",
-            "/identity/user/register"
+            "/account/login",
+            "/account/register"
     };
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
