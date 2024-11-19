@@ -2,6 +2,7 @@ package com.ecommerce.identityservice.service.impl;
 
 
 import com.ecommerce.identityservice.dto.CustomException;
+import com.ecommerce.identityservice.dto.IntrospectDTO;
 import com.ecommerce.identityservice.dto.LoginDTO;
 import com.ecommerce.identityservice.dto.UserDTO;
 import com.ecommerce.identityservice.entity.RoleEntity;
@@ -18,6 +19,9 @@ import com.ecommerce.identityservice.service.SessionService;
 import com.ecommerce.identityservice.service.TokenService;
 import com.ecommerce.identityservice.service.UserService;
 import com.ecommerce.identityservice.utils.JwtUtils;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.apache.commons.lang.StringUtils;
@@ -97,12 +101,35 @@ public class UserServiceImpl implements UserService {
         return loginDTO;
     }
 
+    @Override
+    public IntrospectDTO introspect(String token) throws CustomException {
+        IntrospectDTO introspectDTO = new IntrospectDTO();
+        try {
+            SecretKey secretKey = JwtUtils.getSecretKey(accessTokenKey);
+            Claims claims = JwtUtils.claimToken(token, secretKey);
+            String sessionId = claims.get("session", String.class);
+            SessionEntity session = sessionService.findById(sessionId);
+
+        } catch (ExpiredJwtException e) {
+            e.printStackTrace();
+            throw new CustomException(TOKEN_EXPIRED);
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+            throw new CustomException(TOKEN_VALIDATE);
+        } catch (SignatureException e) {
+            e.printStackTrace();
+            throw new CustomException(TOKEN_VALIDATE);
+        }
+        return null;
+    }
+
     public String generateRefreshToken(String userId) {
         SecretKey secretKey = JwtUtils.getSecretKey(refreshTokenKey);
         Map<String, Object> claim = new HashMap<>();
-        long expiration = System.currentTimeMillis() + 90*24*60*60*1000;
+        long expiration = System.currentTimeMillis() + 90 * 24 * 60 * 60 * 1000;
         return JwtUtils.generateToken(userId, claim, expiration, secretKey);
     }
+
     public String generateAccessToken(UserDTO user, String sessionId) {
         SecretKey secretKey = JwtUtils.getSecretKey(accessTokenKey);
         Map<String, Object> claim = new HashMap<>();
@@ -110,7 +137,7 @@ public class UserServiceImpl implements UserService {
         claim.put("functions", user.getFunctions());
         claim.put("subfunctions", user.getSubfunctions());
         claim.put("session", sessionId);
-        long expiration = System.currentTimeMillis() + 30*1000*60;
+        long expiration = System.currentTimeMillis() + 30 * 1000 * 60;
         return JwtUtils.generateToken(user.getEmail(), claim, expiration, secretKey);
     }
 

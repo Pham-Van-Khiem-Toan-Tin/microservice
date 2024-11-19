@@ -33,4 +33,9 @@ public class SessionServiceImpl implements SessionService {
         sessionRepository.save(sessionEntity);
         return sessionId;
     }
+
+    @Override
+    public SessionEntity findById(String sessionId) {
+        return sessionRepository.findById(sessionId).orElse(null);
+    }
 }

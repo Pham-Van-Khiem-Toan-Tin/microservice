@@ -2,6 +2,7 @@ package com.ecommerce.identityservice.controller;
 
 import static com.ecommerce.identityservice.constants.Constants.*;
 
+import com.ecommerce.identityservice.dto.IntrospectDTO;
 import com.ecommerce.identityservice.dto.response.ApiResponse;
 import com.ecommerce.identityservice.dto.CustomException;
 import com.ecommerce.identityservice.dto.LoginDTO;
@@ -35,9 +36,13 @@ public class UserController {
         loginResponse.setRefreshToken(null);
         return new ApiResponse<>(200, loginResponse);
     }
+    @GetMapping("/account/introspect")
+    public ApiResponse<IntrospectDTO> introspect(@RequestBody String token) throws CustomException {
+        return new ApiResponse<>(200, userService.introspect(token));
+    }
+    @GetMapping("/account/basic-profile")
+    public ResponseEntity<String> basicProfile() {
 
-    @GetMapping("/test")
-    public ResponseEntity<String> test() {
         return ResponseEntity.ok("test");
     }
 

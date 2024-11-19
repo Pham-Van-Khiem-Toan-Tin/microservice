@@ -9,6 +9,10 @@ public enum Constants {
     TOKEN_FAIL(410, "Token exprise"),
     //server
     INTERNAL_SERVER(500, "Không thể xử lí yêu cầu.Vui lòng thử lại sau."),
+    //token
+    TOKEN_VALIDATE(401, "Phiên đăng nhập không hợp lệ. Vui lòng thử lại."),
+    TOKEN_EXPIRED(420, "Phiên hết hạn."),
+
     //login
     LOGIN_VALIDATE(500, "Thông tin đăng nhập không hợp lệ"),
     LOGIN_NOT_FOUND(500, "Tài khoản chưa được đăng kí."),

@@ -5,9 +5,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class ProfileDTO {
-    private String firstName;
-    private String lastName;
+public class IntrospectDTO {
     private String email;
     private String role;
     private List<String> functions;

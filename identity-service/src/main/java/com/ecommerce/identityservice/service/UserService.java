@@ -2,6 +2,7 @@ package com.ecommerce.identityservice.service;
 
 
 import com.ecommerce.identityservice.dto.CustomException;
+import com.ecommerce.identityservice.dto.IntrospectDTO;
 import com.ecommerce.identityservice.dto.LoginDTO;
 import com.ecommerce.identityservice.entity.UserEntity;
 import com.ecommerce.identityservice.form.LoginForm;
@@ -12,5 +13,6 @@ import java.util.Optional;
 public interface UserService {
     UserEntity register(RegisterForm registerForm) throws CustomException;
     LoginDTO login(LoginForm loginForm, String ipAddress) throws CustomException;
+    IntrospectDTO introspect(String token) throws  CustomException;
 //    UserDTO getProfile(String token, String userId);
 }
