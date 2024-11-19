@@ -6,35 +6,33 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.Map;
 
-@Service
-public class JwtUtil {
-    @Value("${jwt.privateKey}")
-    private String encryptKey;
 
-    private SecretKey getSecretKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(this.encryptKey);
+public class JwtUtils {
+
+    public static SecretKey getSecretKey(String encryptKey) {
+        byte[] keyBytes = Decoders.BASE64.decode(encryptKey);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateToken(Map<String, Object> claim) {
+    public static String generateToken(String subject,Map<String, Object> claim, long expiration, SecretKey secretKey) {
         return Jwts.builder()
+                .subject(subject)
                 .claims(claim)
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 1000*60*30))
-                .signWith(SignatureAlgorithm.HS256, getSecretKey())
+                .expiration(new Date(expiration))
+                .signWith(SignatureAlgorithm.HS256, secretKey)
                 .compact();
     }
 
-    public boolean validateToken(final String token) {
+    public static boolean validateToken(final String token, SecretKey secretKey) {
         try {
             Jwts.parser()
-                    .verifyWith(getSecretKey())
+                    .verifyWith(secretKey)
                     .build()
                     .parseSignedClaims(token);
             return true;
@@ -44,9 +42,9 @@ public class JwtUtil {
         return false;
     }
 
-    public Claims claimToken(final String token) {
+    public static Claims claimToken(final String token, SecretKey secretKey) {
         return Jwts.parser()
-                .verifyWith(getSecretKey())
+                .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();

@@ -1,45 +1,47 @@
 package com.ecommerce.identityservice.controller;
 
+import static com.ecommerce.identityservice.constants.Constants.*;
+
+import com.ecommerce.identityservice.dto.response.ApiResponse;
+import com.ecommerce.identityservice.dto.CustomException;
+import com.ecommerce.identityservice.dto.LoginDTO;
 import com.ecommerce.identityservice.form.LoginForm;
 import com.ecommerce.identityservice.form.RegisterForm;
 import com.ecommerce.identityservice.service.impl.UserServiceImpl;
-import org.apache.commons.lang.StringUtils;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
-
 
 
 @RestController
 public class UserController {
     @Autowired
     UserServiceImpl userService;
-    @PostMapping("/account/register")
-    public ResponseEntity<String> register(@RequestBody RegisterForm registerForm) {
-        if (StringUtils.isEmpty(registerForm.getEmail()) || StringUtils.isEmpty(registerForm.getPassword())
-                || StringUtils.isEmpty(registerForm.getFirstName()) || StringUtils.isEmpty(registerForm.getLastName()))
-            return ResponseEntity.status(500).body("Dữ liệu không hơp lệ");
-        Boolean existsUser = userService.existUser(registerForm.getEmail());
-        if (existsUser)
-            return ResponseEntity.status(500).body("Email đã tồn tại trong hệ thống");
-        Boolean result = userService.register(registerForm);
-        if (!result)
-            return ResponseEntity.status(500).body("Không thể đăng kí người dùng. Vui lòng thử lại sau");
-        return ResponseEntity.ok("Đăng kí người dùng thành công");
-    }
-    @PostMapping("/account/login")
-    public ResponseEntity<String> login(@RequestBody LoginForm loginForm) {
-        if (StringUtils.isEmpty(loginForm.getEmail()) || StringUtils.isEmpty(loginForm.getPassword()))
-            return ResponseEntity.status(500).body("Thông tin đăng nhập không hợp lệ");
 
-        return null;
+    @PostMapping("/account/register")
+    public ApiResponse<String> register(@RequestBody RegisterForm registerForm) throws Exception {
+        userService.register(registerForm);
+        return new ApiResponse<>(REGISTER_SUCCESS);
     }
+
+    @PostMapping("/account/login")
+    public ApiResponse<LoginDTO> login(@RequestBody LoginForm loginForm, HttpServletRequest request, HttpServletResponse response) throws CustomException {
+        String ipAddress = getClientIP(request);
+        LoginDTO loginResponse = userService.login(loginForm, ipAddress);
+        addTokenToCookie(loginResponse.getRefreshToken(), response);
+        loginResponse.setRefreshToken(null);
+        return new ApiResponse<>(200, loginResponse);
+    }
+
     @GetMapping("/test")
     public ResponseEntity<String> test() {
         return ResponseEntity.ok("test");
     }
-//    @GetMapping("/profile")
+
+    //    @GetMapping("/profile")
 //    @PreAuthorize("hasAuthority('VIEW_PROFILE')")
 //    public ResponseEntity<UserDTO> getUserInfo(@AuthenticationPrincipal Jwt jwt, @RequestHeader("Authorization") String token) throws Exception {
 //
@@ -54,5 +56,27 @@ public class UserController {
 //        user.setBilling(billing);
 //        return ResponseEntity.ok(user);
 //    }
+    private void addTokenToCookie(String refreshToken, HttpServletResponse response) {
+        Cookie refreshTokenCookie = new Cookie("refresh_token", refreshToken);
+        refreshTokenCookie.setHttpOnly(true);
+        refreshTokenCookie.setSecure(true);
+        refreshTokenCookie.setPath("/");
+        refreshTokenCookie.setMaxAge(90 * 24 * 60 * 60);
+        response.addCookie(refreshTokenCookie);
+    }
+    private String getClientIP(HttpServletRequest request) {
+        String ipAddress = request.getHeader("X-Forwarded-For");
+        if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
+            ipAddress = request.getHeader("X-Real-IP");
+        }
+        if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
+            ipAddress = request.getRemoteAddr();
+        }
+        // X-Forwarded-For có thể chứa nhiều địa chỉ IP, lấy địa chỉ đầu tiên.
+        if (ipAddress != null && ipAddress.contains(",")) {
+            ipAddress = ipAddress.split(",")[0].trim();
+        }
+        return ipAddress;
+    }
 }
 
