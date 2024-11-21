@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Data
@@ -12,13 +13,11 @@ import java.time.LocalDateTime;
 @Table(name = "token")
 public class TokenEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
     @Column(name = "refresh_token", nullable = false)
     private String refreshToken;
-    @OneToOne
-    @JoinColumn(name = "session_id", referencedColumnName = "id", unique = true)
-    private SessionEntity session;
+    @OneToMany(mappedBy = "token")
+    private List<SessionEntity> sessions;
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 }

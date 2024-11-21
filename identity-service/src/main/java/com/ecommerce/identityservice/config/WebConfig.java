@@ -24,10 +24,10 @@ import java.util.Arrays;
 @EnableMethodSecurity
 public class WebConfig {
     private final String[] publicEndpoint = {
-            "/identity/auth/introspect",
-            "/identity/register",
-            "/account/login",
-            "/account/register"
+            "/auth/introspect",
+            "/auth/login",
+            "/auth/register",
+            "/auth/token"
     };
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
