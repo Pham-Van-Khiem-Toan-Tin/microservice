@@ -13,6 +13,6 @@ import java.util.Optional;
 public interface UserService {
     UserEntity register(RegisterForm registerForm) throws CustomException;
     LoginDTO login(LoginForm loginForm, String ipAddress) throws CustomException;
-    IntrospectDTO introspect(String token) throws  CustomException;
+    IntrospectDTO introspect(String token, String ipAddress) throws  CustomException;
 //    UserDTO getProfile(String token, String userId);
 }

@@ -6,14 +6,14 @@ import lombok.Getter;
 public enum Constants {
     SUCCESS(200, "Đăng nhập thành công"),
     UNAUTHORIZED(401, "Tài khoản chưa xác thực"),
-    TOKEN_FAIL(410, "Token exprise"),
+    TOKEN_FAIL(410, "Mã xác thực hết hạn."),
     //server
     INTERNAL_SERVER(500, "Không thể xử lí yêu cầu.Vui lòng thử lại sau."),
     //token
     TOKEN_VALIDATE(401, "Phiên đăng nhập không hợp lệ. Vui lòng thử lại."),
     TOKEN_EXPIRED(420, "Phiên hết hạn."),
-
     //login
+    LOGIN_EXPIRED(410, "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại."),
     LOGIN_VALIDATE(500, "Thông tin đăng nhập không hợp lệ"),
     LOGIN_NOT_FOUND(500, "Tài khoản chưa được đăng kí."),
     LOGIN_PASS_NOT_MATCH(500, "Email hoặc mật khẩu không đúng."),

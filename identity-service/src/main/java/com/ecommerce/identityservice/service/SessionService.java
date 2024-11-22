@@ -4,5 +4,5 @@ import com.ecommerce.identityservice.entity.SessionEntity;
 
 public interface SessionService {
     String createSession(String ipAddress, String userId);
-    SessionEntity findById(String sessionId);
+    SessionEntity findSessionActive(String sessionId, boolean active);
 }

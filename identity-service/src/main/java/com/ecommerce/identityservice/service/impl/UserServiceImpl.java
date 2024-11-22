@@ -24,18 +24,15 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.security.SignatureException;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKey;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 import static com.ecommerce.identityservice.constants.Constants.*;
 
@@ -54,6 +51,8 @@ public class UserServiceImpl implements UserService {
     @Autowired
     SessionService sessionService;
     @Autowired
+    SessionRepository sessionRepository;
+    @Autowired
     TokenService tokenService;
     @Autowired
     EntityManager entityManager;
@@ -61,16 +60,15 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserEntity register(RegisterForm registerForm) throws CustomException {
-        if (StringUtils.isEmpty(registerForm.getEmail()) || StringUtils.isEmpty(registerForm.getPassword())
-                || StringUtils.isEmpty(registerForm.getFirstName()) || StringUtils.isEmpty(registerForm.getLastName()))
+        if (StringUtils.hasText(registerForm.getEmail()) || StringUtils.hasText(registerForm.getPassword()))
             throw new CustomException(REGISTER_VALIDATE);
         Boolean existsUser = userRepository.existsById(registerForm.getEmail());
         if (existsUser)
             throw new CustomException(EXISTS_USER);
         UserEntity newUser = new UserEntity();
         newUser.setEmail(registerForm.getEmail());
-        newUser.setFirstName(registerForm.getFirstName());
-        newUser.setLastName(registerForm.getLastName());
+        newUser.setFirstName(Optional.ofNullable(registerForm.getFirstName()).filter(StringUtils::hasText).orElse(null));
+        newUser.setLastName(Optional.ofNullable(registerForm.getLastName()).filter(StringUtils::hasText).orElse(null));
         newUser.setPassword(passwordEncoder.encode(registerForm.getPassword()));
         newUser.setLoginFailCount(0);
         newUser.setCreatedAt(LocalDateTime.now());
@@ -83,7 +81,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public LoginDTO login(LoginForm loginForm, String ipAddress) throws CustomException {
-        if (StringUtils.isEmpty(loginForm.getEmail()) || StringUtils.isEmpty(loginForm.getPassword()))
+        if (StringUtils.hasText(loginForm.getEmail()) || StringUtils.hasText(loginForm.getPassword()))
             throw new CustomException(LOGIN_VALIDATE);
         Map<String, Object> userQuery = userRepository.findUserDetailById(loginForm.getEmail());
         if (userQuery == null || userQuery.isEmpty())
@@ -102,13 +100,25 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public IntrospectDTO introspect(String token) throws CustomException {
+    @Transactional
+    public IntrospectDTO introspect(String token, String ipAddress) throws CustomException {
         IntrospectDTO introspectDTO = new IntrospectDTO();
         try {
             SecretKey secretKey = JwtUtils.getSecretKey(accessTokenKey);
             Claims claims = JwtUtils.claimToken(token, secretKey);
+            String userId = claims.getSubject();
             String sessionId = claims.get("session", String.class);
-            SessionEntity session = sessionService.findById(sessionId);
+            SessionEntity session = sessionService.findSessionActive(sessionId, true);
+            if (session == null)
+                throw new CustomException(LOGIN_EXPIRED);
+            LocalDateTime currentTime = LocalDateTime.now();
+            if (session.getLastActiveAt().plusHours(2).isBefore(currentTime)) {
+                String newSessionId = sessionService.createSession(ipAddress, userId);
+                
+            } else {
+                session.setLastActiveAt(currentTime);
+                sessionRepository.save(session);
+            }
 
         } catch (ExpiredJwtException e) {
             e.printStackTrace();

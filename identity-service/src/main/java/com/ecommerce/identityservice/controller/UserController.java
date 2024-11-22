@@ -37,8 +37,9 @@ public class UserController {
         return new ApiResponse<>(200, loginResponse);
     }
     @GetMapping("/account/introspect")
-    public ApiResponse<IntrospectDTO> introspect(@RequestBody String token) throws CustomException {
-        return new ApiResponse<>(200, userService.introspect(token));
+    public ApiResponse<IntrospectDTO> introspect(@RequestBody String token, HttpServletRequest request) throws CustomException {
+        String ipAddress = getClientIP(request);
+        return new ApiResponse<>(200, userService.introspect(token, ipAddress));
     }
     @GetMapping("/account/basic-profile")
     public ResponseEntity<String> basicProfile() {

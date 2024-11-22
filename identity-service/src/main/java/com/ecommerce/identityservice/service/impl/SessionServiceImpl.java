@@ -35,7 +35,7 @@ public class SessionServiceImpl implements SessionService {
     }
 
     @Override
-    public SessionEntity findById(String sessionId) {
-        return sessionRepository.findById(sessionId).orElse(null);
+    public SessionEntity findSessionActive(String sessionId, boolean active) {
+        return sessionRepository.findByIdAndAndIsActive(sessionId, active);
     }
 }
