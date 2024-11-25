@@ -28,6 +28,7 @@ public class SessionEntity {
     private LocalDateTime createdAt;
     @Column(nullable = false, name = "is_active")
     private Boolean isActive;
-    @OneToOne(mappedBy = "session", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @ManyToOne
+    @JoinColumn(name = "token_id", nullable = false)
     private TokenEntity token;
 }

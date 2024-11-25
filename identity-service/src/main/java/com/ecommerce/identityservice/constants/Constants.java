@@ -13,7 +13,8 @@ public enum Constants {
     TOKEN_VALIDATE(401, "Phiên đăng nhập không hợp lệ. Vui lòng thử lại."),
     TOKEN_EXPIRED(420, "Phiên hết hạn."),
     //login
-    LOGIN_EXPIRED(410, "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại."),
+    LOGIN_BLOCK(410, "Tài khoản của bạn đã bị khoá. Vui lòng liên hệ quản trị viên để được hỗ trợ"),
+    LOGIN_EXPIRED(420, "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại"),
     LOGIN_VALIDATE(500, "Thông tin đăng nhập không hợp lệ"),
     LOGIN_NOT_FOUND(500, "Tài khoản chưa được đăng kí."),
     LOGIN_PASS_NOT_MATCH(500, "Email hoặc mật khẩu không đúng."),

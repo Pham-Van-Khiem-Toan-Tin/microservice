@@ -13,6 +13,7 @@ public class LoginDTO {
     private List<String> subfunctions;
     private String accessToken;
     private String refreshToken;
+    private String sessionId;
     public static LoginDTO from(UserDTO user) {
         LoginDTO loginDTO = new LoginDTO();
         loginDTO.setFirstName(user.getFirstName());
