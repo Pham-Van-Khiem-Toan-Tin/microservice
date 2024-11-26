@@ -19,6 +19,10 @@ public class UserEntity extends BaseEntity {
     private String firstName;
     @Column(nullable = false)
     private String lastName;
+    @Column
+    private String avatar;
+    @Column
+    private String phoneNumber;
     @Column(nullable = false)
     private String password;
     @Column(nullable = false, name = "login_fail_count")

@@ -8,9 +8,5 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/account")
 @RestController
 public class UserController {
-    @PreAuthorize("hasAuthority('VIEW_PROFILE')")
-    @GetMapping("/profile")
-    public String profile() {
-        return "test";
-    }
+
 }
