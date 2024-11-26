@@ -14,7 +14,7 @@ spring:
             allowCredentials: true
 app:
   api-prefix: /api/v1
-  introspect-url: http://localhost:8761/introspect
+  introspect-url: http://localhost:8085
 server:
   port: 8082
 eureka:
@@ -33,4 +33,4 @@ logging:
     reactor.ipc.netty: DEBUG
     reactor.netty: DEBUG
 jwt:
-  privateKey: 2md90kaOT7/BvajX6NVcPjr3kznZfvIUDnmtAurhoEw=
+  privateKey: 2md90kaOT7/BvajX6NVcPjr3kznZfvIUDnmtAurhoAb=

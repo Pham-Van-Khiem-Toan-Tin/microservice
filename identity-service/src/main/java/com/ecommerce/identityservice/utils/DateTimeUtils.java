@@ -17,6 +17,9 @@ public class DateTimeUtils {
         return time.format(formatter);
     }
     public static LocalDateTime convertTimeStampToLocalDateTime(Timestamp timestamp) {
-        return timestamp.toLocalDateTime();
+        LocalDateTime result = null;
+        if (timestamp != null)
+            result = timestamp.toLocalDateTime();
+        return result;
     }
 }

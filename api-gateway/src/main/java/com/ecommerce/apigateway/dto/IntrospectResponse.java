@@ -6,7 +6,8 @@ import java.util.List;
 
 @Data
 public class IntrospectResponse {
-    private String username;
     private String email;
-    private List<String> role;
+    private String role;
+    private List<String> functions;
+    private List<String> subfunctions;
 }

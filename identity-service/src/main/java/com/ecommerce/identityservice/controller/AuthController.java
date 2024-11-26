@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
     @Autowired
     AuthServiceImpl authService;
+
     @PostMapping("/register")
     public ApiResponse<String> register(@RequestBody RegisterForm registerForm) throws Exception {
         authService.register(registerForm);
@@ -41,17 +42,18 @@ public class AuthController {
         loginResponse.setSessionId(null);
         return new ApiResponse<>(200, loginResponse);
     }
+
     @PostMapping("/introspect")
     public ApiResponse<IntrospectDTO> introspect(@RequestBody IntrospectForm introspectForm, HttpServletRequest request, HttpServletResponse response) throws CustomException {
         String ipAddress = getClientIP(request);
-        String sessionId = getCookieValue(request, "session_id");
-        IntrospectDTO introspectDTO = authService.introspect(introspectForm.getToken(), ipAddress, sessionId);
+        IntrospectDTO introspectDTO = authService.introspect(introspectForm.getToken(), ipAddress, introspectForm.getSessionId());
         if (StringUtils.hasText(introspectDTO.getSession())) {
             addTokenToCookie(introspectDTO.getSession(), "session_id", response);
             introspectDTO.setSession(null);
         }
         return new ApiResponse<>(200, introspectDTO);
     }
+
     @GetMapping("/token")
     public ApiResponse<String> renewToken(HttpServletRequest request, HttpServletResponse response) throws CustomException {
         String ipAddress = getClientIP(request);
@@ -64,6 +66,7 @@ public class AuthController {
         }
         return new ApiResponse<>(200, renewTokenDTO.getAccessToken());
     }
+
     @GetMapping("/basic-profile")
     public ResponseEntity<String> basicProfile() {
 
@@ -96,7 +99,8 @@ public class AuthController {
         }
         return null;
     }
-    private void addTokenToCookie(String value,String name, HttpServletResponse response) {
+
+    private void addTokenToCookie(String value, String name, HttpServletResponse response) {
         Cookie cookie = new Cookie(name, value);
         cookie.setHttpOnly(true);
         cookie.setSecure(true);
@@ -104,6 +108,7 @@ public class AuthController {
         cookie.setMaxAge(90 * 24 * 60 * 60);
         response.addCookie(cookie);
     }
+
     private String getClientIP(HttpServletRequest request) {
         String ipAddress = request.getHeader("X-Forwarded-For");
         if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {

@@ -7,4 +7,5 @@ import lombok.Data;
 @Builder
 public class IntrospectForm {
     private String token;
+    private String sessionId;
 }
