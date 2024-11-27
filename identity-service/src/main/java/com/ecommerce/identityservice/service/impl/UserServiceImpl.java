@@ -19,7 +19,16 @@ public class UserServiceImpl implements UserService {
         Map<String, Object> userQuery = userRepository.findUserDetailById(userId);
         if (userQuery == null)
             throw new CustomException(PROFILE_NOT_FOUND);
-        ProfileDTO profileDTO = ProfileDTO.from(userQuery);
+        ProfileDTO profileDTO = ProfileDTO.toProfile(userQuery);
+        return profileDTO;
+    }
+
+    @Override
+    public ProfileDTO getBaseProfile(String userId) throws CustomException {
+        Map<String, Object> userQuery = userRepository.findUserDetailById(userId);
+        if (userQuery == null)
+            throw new CustomException(PROFILE_NOT_FOUND);
+        ProfileDTO profileDTO = ProfileDTO.toProfileBase(userQuery);
         return profileDTO;
     }
 }

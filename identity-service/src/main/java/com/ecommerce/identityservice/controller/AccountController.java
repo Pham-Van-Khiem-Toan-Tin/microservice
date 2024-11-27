@@ -17,6 +17,12 @@ public class AccountController {
     @Autowired
     private UserService userService;
     @PreAuthorize("hasAuthority('VIEW_PROFILE')")
+    @GetMapping("/base")
+    public ApiResponse<ProfileDTO> base() throws CustomException {
+        String userid = SecurityContextHolder.getContext().getAuthentication().getName();
+        return new ApiResponse<>(200, userService.getBaseProfile(userid));
+    }
+    @PreAuthorize("hasAuthority('VIEW_PROFILE')")
     @GetMapping("/profile")
     public ApiResponse<ProfileDTO> profile() throws CustomException {
         String userid = SecurityContextHolder.getContext().getAuthentication().getName();

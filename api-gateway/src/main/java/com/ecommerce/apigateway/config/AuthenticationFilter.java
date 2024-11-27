@@ -21,6 +21,7 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClientException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -64,6 +65,8 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             return unauthenticate(exchange.getResponse());
         String token = authHeader.get(0).replace("Bearer ", "");
         String sessionId = exchange.getRequest().getCookies().get("session_id").get(0).getValue();
+        if (!StringUtils.hasText(token) || !StringUtils.hasText(sessionId))
+            return unauthenticate(exchange.getResponse());
         log.info("Token: {}", token);
         return introspectService.introspect(token, sessionId).flatMap(rs -> {
             if (rs != null) {

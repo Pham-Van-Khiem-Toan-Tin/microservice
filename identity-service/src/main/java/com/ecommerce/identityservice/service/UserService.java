@@ -5,4 +5,5 @@ import com.ecommerce.identityservice.dto.ProfileDTO;
 
 public interface UserService {
     ProfileDTO getProfile(String userId) throws CustomException;
+    ProfileDTO getBaseProfile(String userId) throws CustomException;
 }

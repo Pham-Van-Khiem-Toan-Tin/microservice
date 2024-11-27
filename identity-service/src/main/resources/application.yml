@@ -2,7 +2,7 @@ spring:
   application:
     name: identity-service
   datasource:
-    url: jdbc:mysql://localhost:3306/identity
+    url: jdbc:mysql://localhost:3306/ecobazaridentity
     username: root
     password: 271201
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -23,5 +23,7 @@ eureka:
     instance-id: ${eureka.instance.hostname}:${server.port}
 jwt:
   accessTokenKey: 2md90kaOT7/BvajX6NVcPjr3kznZfvIUDnmtAurhoEw=
+  accessTokenExpired: 30
   refreshTokenKey: 2md90kaOT7/BvajX6NVcPjr3kznZfvIUDnmtAurhoEw=
+  refreshTokenExpired: 90
   privateKey: 2md90kaOT7/BvajX6NVcPjr3kznZfvIUDnmtAurhoAb=

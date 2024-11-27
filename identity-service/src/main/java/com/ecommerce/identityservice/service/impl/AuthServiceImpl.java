@@ -38,8 +38,12 @@ import static com.ecommerce.identityservice.constants.Constants.*;
 public class AuthServiceImpl implements AuthService {
     @Value("${jwt.accessTokenKey}")
     private String accessTokenKey;
+    @Value("${jwt.accessTokenExpired}")
+    private int accessTokenExpired;
     @Value("${jwt.refreshTokenKey}")
     private String refreshTokenKey;
+    @Value("${jwt.refreshTokenExpired}")
+    private int refreshTokenExpired;
     @Autowired
     UserRepository userRepository;
     @Autowired
@@ -88,7 +92,7 @@ public class AuthServiceImpl implements AuthService {
         LocalDateTime unlockTime = user.getUnlockTime();
         LocalDateTime currentTime = LocalDateTime.now();
         if (unlockTime != null && unlockTime.isAfter(currentTime)) {
-            throw new CustomException(410, "Tài khoản đang bị khoá. Vui lòng đăng nhập sau " + DateTimeUtils.convertToTimeBetweenString(currentTime, unlockTime));
+            throw new CustomException(401, "Tài khoản đang bị khoá. Vui lòng đăng nhập sau " + DateTimeUtils.convertToTimeBetweenString(currentTime, unlockTime));
         }
         if (!passwordEncoder.matches(loginForm.getPassword(), user.getPassword())) {
             Integer loginFailCount = user.getLoginFailCount();
@@ -108,12 +112,19 @@ public class AuthServiceImpl implements AuthService {
         String sessionId = UUID.randomUUID().toString();
         String tokenId = tokenService.createToken(refreshToken, sessionId);
         createSession(ipAddress, user.getEmail(), tokenId, sessionId);
-        String accessToken = generateAccessToken(user);
+        String accessToken = generateAccessToken(user, currentTime);
         LoginDTO loginDTO = LoginDTO.from(user);
         loginDTO.setAccessToken(accessToken);
         loginDTO.setRefreshToken(refreshToken);
         loginDTO.setSessionId(sessionId);
         return loginDTO;
+    }
+
+    @Override
+    public void logout(String userId, String sessionId) throws CustomException {
+        int rowUpdate = sessionRepository.updateEndAtAndActiveById(sessionId, userId, LocalDateTime.now(), false);
+        if (rowUpdate == 0)
+            throw new CustomException(LOGOUT_ERROR);
     }
 
     @Override
@@ -179,8 +190,12 @@ public class AuthServiceImpl implements AuthService {
             if (userQuery == null || userQuery.isEmpty())
                 throw new CustomException(LOGIN_EXPIRED);
             UserDTO user = UserDTO.from(userQuery);
-            String accessToken = generateAccessToken(user);
+            String accessToken = generateAccessToken(user, currentTime);
             renewTokenDTO.setAccessToken(accessToken);
+            renewTokenDTO.setExpireIn(currentTime.plusMinutes(accessTokenExpired)
+                    .atZone(ZoneId.of("Asia/Ho_Chi_Minh"))
+                    .toInstant()
+                    .toEpochMilli());
             return renewTokenDTO;
         } catch (ExpiredJwtException e) {
             e.printStackTrace();
@@ -213,18 +228,17 @@ public class AuthServiceImpl implements AuthService {
         SecretKey secretKey = JwtUtils.getSecretKey(refreshTokenKey);
         Map<String, Object> claim = new HashMap<>();
         LocalDateTime currentTime = LocalDateTime.now();
-        long expiration = currentTime.plusDays(90).atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();
+        long expiration = currentTime.plusDays(refreshTokenExpired).atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();
         return JwtUtils.generateToken(userId, claim, expiration, secretKey);
     }
 
-    public String generateAccessToken(UserDTO user) {
+    public String generateAccessToken(UserDTO user, LocalDateTime currentTime) {
         SecretKey secretKey = JwtUtils.getSecretKey(accessTokenKey);
         Map<String, Object> claim = new HashMap<>();
         claim.put("role", user.getRole());
         claim.put("functions", user.getFunctions());
         claim.put("subfunctions", user.getSubfunctions());
-        LocalDateTime currentTime = LocalDateTime.now();
-        long expiration = currentTime.plusMinutes(30).atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();;
+        long expiration = currentTime.plusMinutes(accessTokenExpired).atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();;
         return JwtUtils.generateToken(user.getEmail(), claim, expiration, secretKey);
     }
 

@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,6 +43,14 @@ public class AuthController {
         loginResponse.setSessionId(null);
         return new ApiResponse<>(200, loginResponse);
     }
+    @GetMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) throws CustomException {
+        String userid = SecurityContextHolder.getContext().getAuthentication().getName();
+        String sessionId = getCookieValue(request, "session_id");
+        authService.logout(userid, sessionId);
+        deleteAllCookie(request, response);
+        return ResponseEntity.noContent().build();
+    }
 
     @PostMapping("/introspect")
     public ApiResponse<IntrospectDTO> introspect(@RequestBody IntrospectForm introspectForm, HttpServletRequest request, HttpServletResponse response) throws CustomException {
@@ -67,28 +76,18 @@ public class AuthController {
         return new ApiResponse<>(200, renewTokenDTO.getAccessToken());
     }
 
-    @GetMapping("/basic-profile")
-    public ResponseEntity<String> basicProfile() {
-
-        return ResponseEntity.ok("test");
+    private void deleteAllCookie(HttpServletRequest request, HttpServletResponse response) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                Cookie cookieToDelete = new Cookie(cookie.getName(), null);
+                cookieToDelete.setPath("/");
+                cookieToDelete.setMaxAge(0);
+                response.addCookie(cookieToDelete);
+            }
+        }
     }
-
-    //    @GetMapping("/profile")
-//    @PreAuthorize("hasAuthority('VIEW_PROFILE')")
-//    public ResponseEntity<UserDTO> getUserInfo(@AuthenticationPrincipal Jwt jwt, @RequestHeader("Authorization") String token) throws Exception {
-//
-//        String userId = jwt.getClaim("sub");  // "sub" là userId trong JWT
-//        UserDTO user = authService.getProfile(token,userId);
-//        RestTemplate restTemplate = new RestTemplate();
-//        HttpHeaders httpHeaders = new HttpHeaders();
-//        httpHeaders.set(HttpHeaders.AUTHORIZATION, token);
-//        String url = "http://localhost:8084/payment/profile";
-//        HttpEntity<String> entity = new HttpEntity<>(null, httpHeaders);
-//        BillingDTO billing = restTemplate.exchange(url, HttpMethod.GET, entity, BillingDTO.class).getBody();
-//        user.setBilling(billing);
-//        return ResponseEntity.ok(user);
-//    }
-    public String getCookieValue(HttpServletRequest request, String cookieName) {
+    private String getCookieValue(HttpServletRequest request, String cookieName) {
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
             for (Cookie cookie : cookies) {
