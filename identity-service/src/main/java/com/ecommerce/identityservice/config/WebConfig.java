@@ -26,7 +26,8 @@ public class WebConfig {
             "/auth/introspect",
             "/auth/login",
             "/auth/register",
-            "/auth/token"
+            "/auth/token",
+            "/actuator/health"
     };
     @Autowired
     private CustomJwtDecoder customJwtDecoder;

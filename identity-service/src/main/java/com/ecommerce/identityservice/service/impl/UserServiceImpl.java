@@ -13,47 +13,74 @@ import com.ecommerce.identityservice.mapper.UserMapper;
 import com.ecommerce.identityservice.mapper.UserQueryMapper;
 import com.ecommerce.identityservice.repository.UserRepository;
 import com.ecommerce.identityservice.service.UserService;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.core.SupplierUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.client.circuitbreaker.CircuitBreaker;
+import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
+@Component
 public class UserServiceImpl implements UserService {
     @Autowired
     UserRepository userRepository;
     @Autowired
     RestTemplate restTemplate;
+    @Autowired
+    UserMapper userMapper;
+    @Autowired
+    private CircuitBreakerFactory circuitBreakerFactory;
+    private static final String PAYMENT_SERVICE = "paymentService";
     @Override
     public ProfileDetailDTO getProfile() throws CustomException {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         UserEntity userEntity = userRepository.findByEmail(userId);
         if (userEntity == null)
             throw new CustomException(PROFILE_NOT_FOUND);
-        ProfileDetailDTO profileDetailDTO = UserMapper.INSTANCE.toProfileDetailDTO(userEntity);
-        profileDetailDTO.setRole(userEntity.getRole().getName());
-//        BillingDTO billing = getBillingProfile();
-//        profileDetailDTO.setBilling(billing);
+        ProfileDetailDTO profileDetailDTO = userMapper.toProfileDetailDTO(userEntity);
+        BillingDTO billingDTO = getBillingProfile();
+        profileDetailDTO.setBilling(billingDTO);
         return profileDetailDTO;
     }
 
+    public BillingDTO getBillingProfile() {
+        String token = getAccessToken();
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.add(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+        HttpEntity<String> entity = new HttpEntity<>(httpHeaders);
+        CircuitBreaker circuitBreaker = circuitBreakerFactory.create("paymentService");
+        return circuitBreaker.run(() -> restTemplate.exchange("http://localhost:8084/payment/profile",HttpMethod.GET, entity, BillingDTO.class).getBody(),
+                throwable -> fallback(throwable));
+    }
+    public BillingDTO fallback(Throwable ex) {
+        log.info("Chạy vào fallback, nguyên nhân: {}", ex.getMessage());
+        // Trả về một giá trị mặc định hoặc xử lý fallback logic
+        return new BillingDTO(); // Giá trị mặc định
+    }
     @Override
     public AuthProfileDTO getAuthProfile() throws CustomException {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         Map<String, Object> userQuery = userRepository.findAuthProfile(userId);
         if (userQuery == null)
             throw new CustomException(PROFILE_NOT_FOUND);
-        AuthProfileDTO authProfileDTO = UserQueryMapper.toProfileBaseDTO(userQuery);
+        AuthProfileDTO authProfileDTO = UserQueryMapper.toAuthProfileDTO(userQuery);
         return authProfileDTO;
     }
 
@@ -71,19 +98,6 @@ public class UserServiceImpl implements UserService {
         testDTO.setSubfunctions(subfunctions.stream().toList());
         return testDTO;
     }
-
-    @CircuitBreaker(name = "paymentService", fallbackMethod = "billingProfileFallback")
-    private BillingDTO getBillingProfile() {
-        String token = getAccessToken();
-        HttpHeaders httpHeaders = new HttpHeaders();
-        httpHeaders.add(HttpHeaders.AUTHORIZATION, "Bearer " + token);
-        HttpEntity<String> entity = new HttpEntity<>(httpHeaders);
-        BillingDTO billingDTO = restTemplate.exchange("http://localhost:8084/payment/profile", HttpMethod.GET, entity, BillingDTO.class).getBody();
-        return billingDTO;
-    }
-    public void billingProfileFallback(Throwable throwable) throws CustomException {
-        throw new CustomException(INTERNAL_SERVER);
-    }
     private String getAccessToken() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof Jwt) {
@@ -92,4 +106,6 @@ public class UserServiceImpl implements UserService {
         }
         return null;
     }
+
+
 }

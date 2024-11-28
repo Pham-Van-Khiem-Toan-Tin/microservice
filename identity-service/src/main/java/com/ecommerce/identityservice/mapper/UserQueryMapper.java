@@ -24,7 +24,7 @@ public class UserQueryMapper {
                 .subfunctions(Arrays.stream(String.valueOf(userQuery.get("subfunction_group")).split(",")).toList())
                 .build();
     }
-    public static AuthProfileDTO toProfileBaseDTO(Map<String, Object> userQuery) {
+    public static AuthProfileDTO toAuthProfileDTO(Map<String, Object> userQuery) {
         return AuthProfileDTO.builder()
                 .email((String) userQuery.get("email"))
                 .firstName((String) userQuery.get("first_name"))
