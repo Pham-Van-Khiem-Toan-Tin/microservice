@@ -1,4 +1,4 @@
-package com.ecommerce.identityservice.dto;
+package com.ecommerce.identityservice.dto.exception;
 
 import com.ecommerce.identityservice.constants.Constants;
 import lombok.Getter;

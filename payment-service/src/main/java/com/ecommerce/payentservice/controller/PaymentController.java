@@ -5,6 +5,7 @@ import com.ecommerce.payentservice.service.PaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,8 +18,8 @@ public class PaymentController {
     PaymentService paymentService;
 
     @GetMapping("/profile")
-    public ResponseEntity<PaymentDTO> myPayment(@AuthenticationPrincipal Jwt jwt) {
-        String userId = jwt.getClaim("sub");
+    public ResponseEntity<PaymentDTO> myPayment() {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         return ResponseEntity.ok(paymentService.getProfile(userId));
 
     }

@@ -2,12 +2,14 @@ package com.ecommerce.identityservice.service.impl;
 
 
 import com.ecommerce.identityservice.dto.*;
+import com.ecommerce.identityservice.dto.exception.CustomException;
 import com.ecommerce.identityservice.entity.RoleEntity;
 import com.ecommerce.identityservice.entity.SessionEntity;
 import com.ecommerce.identityservice.entity.TokenEntity;
 import com.ecommerce.identityservice.entity.UserEntity;
 import com.ecommerce.identityservice.form.LoginForm;
 import com.ecommerce.identityservice.form.RegisterForm;
+import com.ecommerce.identityservice.mapper.UserQueryMapper;
 import com.ecommerce.identityservice.repository.RoleRepository;
 import com.ecommerce.identityservice.repository.SessionRepository;
 import com.ecommerce.identityservice.repository.UserRepository;
@@ -27,7 +29,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -83,10 +84,10 @@ public class AuthServiceImpl implements AuthService {
     public LoginDTO login(LoginForm loginForm, String ipAddress) throws CustomException {
         if (!StringUtils.hasText(loginForm.getEmail()) || !StringUtils.hasText(loginForm.getPassword()))
             throw new CustomException(LOGIN_VALIDATE);
-        Map<String, Object> userQuery = userRepository.findUserDetailById(loginForm.getEmail());
+        Map<String, Object> userQuery = userRepository.findAuthProfile(loginForm.getEmail());
         if (userQuery == null || userQuery.isEmpty())
             throw new CustomException(LOGIN_NOT_FOUND);
-        UserDTO user = UserDTO.from(userQuery);
+        UserDTO user = UserQueryMapper.toUserDTO(userQuery);
         if (user.getBlock())
             throw new CustomException(LOGIN_BLOCK);
         LocalDateTime unlockTime = user.getUnlockTime();
@@ -186,10 +187,10 @@ public class AuthServiceImpl implements AuthService {
                 session.setLastActiveAt(LocalDateTime.now());
             }
             sessionRepository.save(session);
-            Map<String, Object> userQuery = userRepository.findUserDetailById(session.getUser().getEmail());
+            Map<String, Object> userQuery = userRepository.findAuthProfile(session.getUser().getEmail());
             if (userQuery == null || userQuery.isEmpty())
                 throw new CustomException(LOGIN_EXPIRED);
-            UserDTO user = UserDTO.from(userQuery);
+            UserDTO user = UserQueryMapper.toUserDTO(userQuery);
             String accessToken = generateAccessToken(user, currentTime);
             renewTokenDTO.setAccessToken(accessToken);
             renewTokenDTO.setExpireIn(currentTime.plusMinutes(accessTokenExpired)
@@ -242,13 +243,6 @@ public class AuthServiceImpl implements AuthService {
         return JwtUtils.generateToken(user.getEmail(), claim, expiration, secretKey);
     }
 
-//    @Override
-//    public UserDTO getProfile(String token, String userId) {
-//
-//        UserDTO userDTO = new UserDTO();
-//
-//        return userDTO;
-//    }
 
     private String capitalizeFirstLetter(String input) {
         if (input == null || input.isEmpty()) {

@@ -5,7 +5,7 @@ import static com.ecommerce.identityservice.constants.Constants.*;
 import com.ecommerce.identityservice.dto.IntrospectDTO;
 import com.ecommerce.identityservice.dto.RenewTokenDTO;
 import com.ecommerce.identityservice.dto.response.ApiResponse;
-import com.ecommerce.identityservice.dto.CustomException;
+import com.ecommerce.identityservice.dto.exception.CustomException;
 import com.ecommerce.identityservice.dto.LoginDTO;
 import com.ecommerce.identityservice.form.IntrospectForm;
 import com.ecommerce.identityservice.form.LoginForm;

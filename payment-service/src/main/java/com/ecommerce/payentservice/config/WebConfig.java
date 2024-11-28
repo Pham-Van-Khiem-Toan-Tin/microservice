@@ -17,7 +17,8 @@ import org.springframework.security.web.SecurityFilterChain;
 public class WebConfig {
     @Autowired
     CustomAuthenticationConverter customAuthenticationConverter;
-
+    @Autowired
+    CustomJwtDecoder customJwtDecoder;
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -26,7 +27,7 @@ public class WebConfig {
                 .authorizeHttpRequests((authorize) -> authorize
                         .anyRequest()
                         .authenticated())
-                .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(customAuthenticationConverter)));
+                .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.decoder(customJwtDecoder).jwtAuthenticationConverter(customAuthenticationConverter)));
         return http.build();
     }
 

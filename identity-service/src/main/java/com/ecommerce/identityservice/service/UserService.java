@@ -1,9 +1,12 @@
 package com.ecommerce.identityservice.service;
 
-import com.ecommerce.identityservice.dto.CustomException;
-import com.ecommerce.identityservice.dto.ProfileDTO;
+import com.ecommerce.identityservice.dto.ProfileDetailDTO;
+import com.ecommerce.identityservice.dto.TestDTO;
+import com.ecommerce.identityservice.dto.exception.CustomException;
+import com.ecommerce.identityservice.dto.AuthProfileDTO;
 
 public interface UserService {
-    ProfileDTO getProfile(String userId) throws CustomException;
-    ProfileDTO getBaseProfile(String userId) throws CustomException;
+    ProfileDetailDTO getProfile() throws CustomException;
+    AuthProfileDTO getAuthProfile() throws CustomException;
+    TestDTO test();
 }

@@ -10,11 +10,6 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          jwk-set-uri: http://localhost:8086/realms/ecobazar/protocol/openid-connect/certs
 server:
   port: 8084
   forward-headers-strategy: FRAMEWORK
@@ -26,5 +21,5 @@ eureka:
     hostname: localhost
     prefer-ip-address: true
     instance-id: ${eureka.instance.hostname}:${server.port}
-keycloak:
-  resource: identity-client
+jwt:
+  privateKey: 2md90kaOT7/BvajX6NVcPjr3kznZfvIUDnmtAurhoAb=

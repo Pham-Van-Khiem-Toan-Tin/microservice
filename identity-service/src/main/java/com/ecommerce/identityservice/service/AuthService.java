@@ -1,7 +1,7 @@
 package com.ecommerce.identityservice.service;
 
 
-import com.ecommerce.identityservice.dto.CustomException;
+import com.ecommerce.identityservice.dto.exception.CustomException;
 import com.ecommerce.identityservice.dto.IntrospectDTO;
 import com.ecommerce.identityservice.dto.LoginDTO;
 import com.ecommerce.identityservice.dto.RenewTokenDTO;

@@ -1,6 +1,5 @@
 package com.ecommerce.payentservice.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
@@ -9,24 +8,28 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Component
 public class CustomAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
-    @Value("${keycloak.resource}")
-    private String clientId;
     @Override
     public AbstractAuthenticationToken convert(Jwt source) {
-        Map<String, Object> resourceAccess = (Map<String, Object>) source.getClaims().get("resource_access");
-        Map<String, Object> clientResource = (Map<String, Object>) resourceAccess.get(clientId);
-        List<String> roles = (List<String>) clientResource.get("roles");
-        Collection<GrantedAuthority> authorities = roles.stream()
-                .map(role -> new SimpleGrantedAuthority(role))
-                .collect(Collectors.toList());
-        return new JwtAuthenticationToken(source, authorities);
+        List<String> functions = source.getClaimAsStringList("functions");
+        List<String> subFunctions = source.getClaimAsStringList("subfunctions");
+        String userId = source.getSubject();
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        if (functions != null) {
+            for (String function : functions) {
+                authorities.add(new SimpleGrantedAuthority(function));
+            }
+        }
+        if (subFunctions != null) {
+            for (String subFunction : subFunctions) {
+                authorities.add(new SimpleGrantedAuthority(subFunction));
+            }
+        }
+        return new JwtAuthenticationToken(source, authorities, userId);
     }
 }
 

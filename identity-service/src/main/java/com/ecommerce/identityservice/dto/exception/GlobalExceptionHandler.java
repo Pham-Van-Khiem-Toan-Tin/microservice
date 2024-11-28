@@ -2,7 +2,6 @@ package com.ecommerce.identityservice.dto.exception;
 
 import com.ecommerce.identityservice.constants.Constants;
 import com.ecommerce.identityservice.dto.response.ApiResponse;
-import com.ecommerce.identityservice.dto.CustomException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
