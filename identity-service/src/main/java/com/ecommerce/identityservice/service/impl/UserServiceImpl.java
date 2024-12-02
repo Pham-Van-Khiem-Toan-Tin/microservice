@@ -40,11 +40,11 @@ import java.util.stream.Collectors;
 @Component
 public class UserServiceImpl implements UserService {
     @Autowired
-    UserRepository userRepository;
+    private UserRepository userRepository;
     @Autowired
     RestTemplate restTemplate;
     @Autowired
-    UserMapper userMapper;
+    private UserMapper userMapper;
     @Autowired
     private CircuitBreakerFactory circuitBreakerFactory;
     private static final String PAYMENT_SERVICE = "paymentService";
@@ -65,14 +65,13 @@ public class UserServiceImpl implements UserService {
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.add(HttpHeaders.AUTHORIZATION, "Bearer " + token);
         HttpEntity<String> entity = new HttpEntity<>(httpHeaders);
-        CircuitBreaker circuitBreaker = circuitBreakerFactory.create("paymentService");
+        CircuitBreaker circuitBreaker = circuitBreakerFactory.create(PAYMENT_SERVICE);
         return circuitBreaker.run(() -> restTemplate.exchange("http://localhost:8084/payment/profile",HttpMethod.GET, entity, BillingDTO.class).getBody(),
                 throwable -> fallback(throwable));
     }
     public BillingDTO fallback(Throwable ex) {
         log.info("Chạy vào fallback, nguyên nhân: {}", ex.getMessage());
-        // Trả về một giá trị mặc định hoặc xử lý fallback logic
-        return new BillingDTO(); // Giá trị mặc định
+        return new BillingDTO();
     }
     @Override
     public AuthProfileDTO getAuthProfile() throws CustomException {
