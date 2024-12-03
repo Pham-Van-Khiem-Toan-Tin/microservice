@@ -26,7 +26,10 @@ public enum Constants {
     REGISTER_VALIDATE(500, "Dữ liệu không hợp lệ"),
     REGISTER_SUCCESS(200, "Đăng kí người dùng thành công"),
     //profile
-    PROFILE_NOT_FOUND(500, "Người dùng không tồn tại");
+    PROFILE_NOT_FOUND(500, "Người dùng không tồn tại"),
+    PROFILE_VALIDATE(500, "Dữ lệu không hợp lệ"),
+    PROFILE_UPDATE_SUCCESS(200, "Cập nhật thng tin cá nhân thành công"),
+    PROFILE_UPDATE_FAIL(500, "Không thể cập nhật thông tin. Vui lòng thử lại sau");
     private int code;
     private String message;
 

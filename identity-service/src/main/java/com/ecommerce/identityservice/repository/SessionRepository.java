@@ -13,6 +13,6 @@ public interface SessionRepository extends JpaRepository<SessionEntity, String> 
     SessionEntity findByIdAndIsActive(String id, boolean isActive);
     @Modifying
     @Transactional
-    @Query(value = "UPDATE sessions SET session_end_at = :endAt, is_active = :isActive WHERE id = :id AND user_id = :usId", nativeQuery = true)
+    @Query(value = "UPDATE session SET session_end_at = :endAt, is_active = :isActive WHERE id = :id AND user_id = :usId", nativeQuery = true)
     int updateEndAtAndActiveById(@Param("id") String id, @Param("usId") String userId, @Param("endAt") LocalDateTime endAt, @Param("isActive") boolean isActive);
 }

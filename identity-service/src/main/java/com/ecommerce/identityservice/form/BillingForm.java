@@ -1,15 +1,9 @@
-package com.ecommerce.payentservice.dto;
+package com.ecommerce.identityservice.form;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class PaymentDTO {
+public class BillingForm {
     private String firstName;
     private String lastName;
     private String address;

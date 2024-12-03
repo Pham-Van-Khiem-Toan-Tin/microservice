@@ -4,35 +4,36 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 
 @Entity
 @Data
 @NoArgsConstructor
 @Table(name = "billing")
-public class BillingEntity extends BaseEntity {
+public class BillingEntity {
     @Id
     private String customerId;
-    @Column(nullable = false)
+    @Column
     private String firstName;
-    @Column(nullable = false)
+    @Column
     private String lastName;
     @Column
     private String company;
-    @Column(nullable = false)
-    private String addressStreet;
-    @Column(nullable = false)
+    @Column
+    private String address;
+    @Column
     private String country;
-    @Column(nullable = false)
+    @Column
     private String states;
-    @Column(nullable = false)
+    @Column
     private String zipCode;
-    @Column(nullable = false)
+    @Column
     private String email;
-    @Column(nullable = false)
+    @Column
     private String phoneNumber;
     @Column(nullable = false)
-    private Date createdAt;
+    private LocalDateTime createdAt;
     @Column
-    private Date updatedAt;
+    private LocalDateTime updatedAt;
 }

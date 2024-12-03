@@ -13,7 +13,7 @@ public class GlobalExceptionHandler {
         return response;
     }
     @ExceptionHandler(Exception.class)
-    public ApiResponse<String> handleGeneralException(Exception ex) {
+    public ApiResponse<String> handleOtherExceptions(Exception ex) {
         ex.printStackTrace();
         return new ApiResponse<>(Constants.INTERNAL_SERVER);
     }
