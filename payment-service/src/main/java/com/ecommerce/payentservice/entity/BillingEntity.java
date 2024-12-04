@@ -14,23 +14,23 @@ import java.util.Date;
 public class BillingEntity {
     @Id
     private String customerId;
-    @Column
+    @Column(nullable = false)
     private String firstName;
-    @Column
+    @Column(nullable = false)
     private String lastName;
     @Column
     private String company;
-    @Column
+    @Column(nullable = false)
     private String address;
-    @Column
+    @Column(nullable = false)
     private String country;
-    @Column
+    @Column(nullable = false)
     private String states;
-    @Column
+    @Column(nullable = false)
     private String zipCode;
-    @Column
+    @Column(nullable = false)
     private String email;
-    @Column
+    @Column(nullable = false)
     private String phoneNumber;
     @Column(nullable = false)
     private LocalDateTime createdAt;
