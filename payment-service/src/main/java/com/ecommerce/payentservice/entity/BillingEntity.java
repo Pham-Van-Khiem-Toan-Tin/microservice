@@ -25,7 +25,7 @@ public class BillingEntity {
     @Column(nullable = false)
     private String country;
     @Column(nullable = false)
-    private String states;
+    private Long states;
     @Column(nullable = false)
     private String zipCode;
     @Column(nullable = false)

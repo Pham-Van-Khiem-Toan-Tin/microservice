@@ -15,7 +15,7 @@ public class PaymentMapper {
                 .country(billing.getCountry())
                 .states(billing.getStates())
                 .zipCode(billing.getZipCode())
-                .companyName(billing.getCompany())
+                .company(billing.getCompany())
                 .phoneNumber(billing.getPhoneNumber())
                 .build();
     }

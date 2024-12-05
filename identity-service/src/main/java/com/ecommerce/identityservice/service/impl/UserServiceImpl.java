@@ -100,9 +100,9 @@ public class UserServiceImpl implements UserService {
                 StringUtils.hasText(form.getLastName()) ||
                 StringUtils.hasText(form.getAddress()) ||
                 StringUtils.hasText(form.getCountry()) ||
-                StringUtils.hasText(form.getStates()) ||
+                form.getStates() != null ||
                 StringUtils.hasText(form.getZipCode()) ||
-                StringUtils.hasText(form.getCompanyName()) ||
+                StringUtils.hasText(form.getCompany()) ||
                 StringUtils.hasText(form.getPhoneNumber());
     }
     public BillingDTO updateBilling(BillingForm form) {
@@ -122,12 +122,13 @@ public class UserServiceImpl implements UserService {
         httpHeaders.add(HttpHeaders.AUTHORIZATION, "Bearer " + token);
         HttpEntity<String> entity = new HttpEntity<>(httpHeaders);
         CircuitBreaker circuitBreaker = circuitBreakerFactory.create(PAYMENT_SERVICE);
+        log.info("chay vao day");
         return circuitBreaker.run(() -> restTemplate.exchange("http://localhost:8084/payment/profile", HttpMethod.GET, entity, BillingDTO.class).getBody(),
                 throwable -> fallback(throwable));
     }
 
     public BillingDTO fallback(Throwable ex) {
-
+        ex.printStackTrace();
         log.info("get billing profile fail: {}", ex.getMessage());
         return new BillingDTO(); // Giá trị mặc định
 
