@@ -8,12 +8,12 @@ spring:
           '[/**]':
             allowedOrigins:
               - "http://localhost:5173"
-              - "http://localhost:8085"
             allowedMethods:
               - "*"
             allowedHeaders:
               - "*"
             allowCredentials: true
+      default-filters: DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
 
 app:
   api-prefix: /api/v1

@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.gateway.route.RouteLocator;
-import org.springframework.cloud.gateway.route.builder.GatewayFilterSpec;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Lazy;
@@ -21,7 +20,7 @@ public class ApiGatewayApplication {
     @Bean
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
         return builder.routes()
-                .route("identity-service", r -> r.path("/auth/**", "/account/**", "/oauth2/**", "/country/**").filters(GatewayFilterSpec::tokenRelay).uri("lb://identity-service"))
+                .route("identity-service", r -> r.path("/auth/**","/test", "/account/**", "/oauth2/**", "/country/**").uri("lb://identity-service"))
                 .route("payment-service", r -> r.path("/payment/**").uri("lb://payment-service"))
                 .route("category-service", r -> r.path("/category/**").uri("lb://category-service"))
                 .route("order-service", r -> r.path("/order/**").uri("lb://order-service"))

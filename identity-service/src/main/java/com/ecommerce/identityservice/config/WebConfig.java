@@ -60,25 +60,13 @@ public class WebConfig {
     CustomUserDetailService customUserDetailService;
     @Autowired
     PasswordEncoder passwordEncoder;
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        CorsConfiguration cors = new CorsConfiguration();
-        cors.addAllowedHeader("*");
-        cors.addAllowedMethod("*");
-        cors.setAllowCredentials(true);
-        cors.addAllowedOrigin("http://localhost:5173");
-        cors.addAllowedOrigin("http://localhost:8082");
-        source.registerCorsConfiguration("/**", cors);
-        return source;
-    }
 
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
         OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
         http.csrf(csrf -> csrf.disable())
-                .cors(cors -> corsConfigurationSource());
+                .cors(Customizer.withDefaults());
         http.getConfigurer(OAuth2AuthorizationServerConfigurer.class)
                 .oidc(Customizer.withDefaults());
         http.oauth2ResourceServer(oath -> oath.jwt(Customizer.withDefaults()));
@@ -97,7 +85,7 @@ public class WebConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> corsConfigurationSource())
+                .cors(Customizer.withDefaults())
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers(publicEndpoint)
                         .permitAll()
