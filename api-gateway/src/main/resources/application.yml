@@ -3,15 +3,18 @@ spring:
     name: api-gateway
   cloud:
     gateway:
-      default-filters:
-        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
       globalcors:
         corsConfigurations:
           '[/**]':
-            allowedOrigins: "http://localhost:5173"
-            allowedMethods: "*"
-            allowedHeaders: "*"
+            allowedOrigins:
+              - "http://localhost:5173"
+              - "http://localhost:8085"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
             allowCredentials: true
+
 app:
   api-prefix: /api/v1
   introspect-url: http://localhost:8085

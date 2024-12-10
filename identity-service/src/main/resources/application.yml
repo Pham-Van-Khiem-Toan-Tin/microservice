@@ -13,27 +13,9 @@ spring:
   data:
     redis:
       timeout: 2000
-  security:
-    oauth2:
-      authorizationserver:
-        client:
-          shop-client:
-            registration:
-              client-id: "shop-client"
-              client-secret: "{noop}secret"
-              client-authentication-methods:
-                - "client_secret_basic"
-              authorization-grant-types:
-                - "authorization_code"
-                - "refresh_token"
-              redirect-uris:
-                - "http://127.0.0.1:8080/login/oauth2/code/shop-client"
-              post-logout-redirect-uris:
-                - "http://127.0.0.1:8080/"
-              scopes:
-                - "openid"
-                - "profile"
-            require-authorization-consent: true
+
+
+
 server:
   port: 8085
   forward-headers-strategy: FRAMEWORK

@@ -1,8 +1,5 @@
 package com.ecommerce.identityservice.service.impl;
 
-import com.ecommerce.identityservice.entity.SessionEntity;
-import com.ecommerce.identityservice.entity.TokenEntity;
-import com.ecommerce.identityservice.entity.UserEntity;
 import com.ecommerce.identityservice.repository.SessionRepository;
 import com.ecommerce.identityservice.service.SessionService;
 import jakarta.persistence.EntityManager;
