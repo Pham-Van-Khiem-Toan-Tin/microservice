@@ -32,6 +32,7 @@ import org.springframework.security.oauth2.server.authorization.config.annotatio
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
+import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
@@ -43,6 +44,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -65,17 +67,6 @@ public class WebConfig {
     PasswordEncoder passwordEncoder;
     @Autowired
     CustomAuthenticationProvider authenticationProvider;
-//    @Bean
-//    UrlBasedCorsConfigurationSource corsConfigurationSource() {
-//        CorsConfiguration corsConfiguration = new CorsConfiguration();
-//        corsConfiguration.setAllowedOrigins(Arrays.asList("http://localhost:5173"));
-//        corsConfiguration.addAllowedMethod("*");
-//        corsConfiguration.setAllowedHeaders(Arrays.asList("GET", "PUT", "POST", "DELETE", "OPTION", "PATCH"));
-//        corsConfiguration.setAllowCredentials(true);
-//        UrlBasedCorsConfigurationSource urlBasedCorsConfigurationSource = new UrlBasedCorsConfigurationSource();
-//        urlBasedCorsConfigurationSource.registerCorsConfiguration("/**", corsConfiguration);
-//        return urlBasedCorsConfigurationSource;
-//    }
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -119,8 +110,14 @@ public class WebConfig {
                 .clientId("client")
                 .clientSecret("$2a$10$nL6kVKFRnkMMgdGhBb7Qde1UZ/9NcaFgSqbbS8lhihfj0JxdhXHW2")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .tokenSettings(TokenSettings.builder()
+                        .accessTokenTimeToLive(Duration.ofHours(2))
+                        .refreshTokenTimeToLive(Duration.ofDays(90))
+                        .reuseRefreshTokens(false)
+                        .build())
                 .redirectUri("http://localhost:5173")
                 .postLogoutRedirectUri("http://localhost:5173")
                 .scope(OidcScopes.OPENID)

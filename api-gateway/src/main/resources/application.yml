@@ -19,6 +19,10 @@ spring:
 app:
   api-prefix: /api/v1
   introspect-url: http://localhost:8085
+  oauth2:
+    shop-client:
+      client-id: client
+      client-secret: secret
 server:
   port: 8082
 eureka:

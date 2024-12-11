@@ -14,10 +14,12 @@ import reactor.core.publisher.Mono;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class IntrospectService {
     IdentityClient identityClient;
-    public Mono<IntrospectResponse> introspect(String token, String sessionId) {
+
+    public Mono<IntrospectResponse> introspect(String token, String clientId, String clientSecret) {
         return identityClient.introspect(IntrospectForm.builder()
                 .token(token)
-                .sessionId(sessionId)
-                .build());
+                .client_id(clientId)
+                .client_secret(clientSecret)
+                .build().toMultiValueMap());
     }
 }

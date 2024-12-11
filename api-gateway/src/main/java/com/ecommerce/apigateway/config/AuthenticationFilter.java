@@ -45,6 +45,10 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     ObjectMapper objectMapper;
     @Autowired
     IntrospectService introspectService;
+    @Value("${app.oauth2.shop-client.client-id}")
+    private String shopClientId;
+    @Value("${app.oauth2.shop-client.client-secret}")
+    private String shopClientSecret;
     @Value("${jwt.privateKey}")
     private String privateKey;
     @NonFinal
@@ -66,11 +70,12 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         if (CollectionUtils.isEmpty(authHeader))
             return unauthenticate(exchange.getResponse());
         String token = authHeader.get(0).replace("Bearer ", "");
-        String sessionId = exchange.getRequest().getCookies().get("session_id").get(0).getValue();
-        if (!StringUtils.hasText(token) || !StringUtils.hasText(sessionId))
+//        String sessionId = exchange.getRequest().getCookies().get("session_id").get(0).getValue();
+        if (!StringUtils.hasText(token))
             return unauthenticate(exchange.getResponse());
         log.info("Token: {}", token);
-        return introspectService.introspect(token, sessionId).flatMap(rs -> {
+        return introspectService.introspect(token, shopClientId, shopClientSecret).flatMap(rs -> {
+            log.info("err: {}", rs == null);
             if (rs != null) {
                 String tokenInternal = generateTokenInternal(rs);
                 exchange.getRequest()
@@ -102,12 +107,12 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     private String generateTokenInternal(IntrospectResponse user) {
         SecretKey secretKey = JwtUtils.getSecretKey(privateKey);
         Map<String, Object> claims = new HashMap<>();
-        claims.put("role", user.getRole());
-        claims.put("functions", user.getFunctions());
-        claims.put("subfunctions", user.getSubfunctions());
+        claims.put("client_id", user.getClientId());
+        claims.put("sub", user.getSub());
+        claims.put("scope", user.getScope());
         LocalDateTime currentTime = LocalDateTime.now();
         long expiration = currentTime.plusMinutes(5).atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();
-        return JwtUtils.generateToken(user.getEmail(), claims, expiration, secretKey);
+        return JwtUtils.generateToken(user.getSub(), claims, expiration, secretKey);
     }
     @Override
     public int getOrder() {
