@@ -52,7 +52,9 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             "/auth/introspect",
             "/auth/token",
             "/auth/login",
-            "/auth/register"
+            "/auth/register",
+            "/oauth2/token",
+            "/test"
     };
 
     @Override

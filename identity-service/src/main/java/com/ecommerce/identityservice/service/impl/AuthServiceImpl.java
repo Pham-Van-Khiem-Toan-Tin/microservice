@@ -17,6 +17,7 @@ import com.ecommerce.identityservice.service.TokenService;
 import com.ecommerce.identityservice.service.AuthService;
 import com.ecommerce.identityservice.utils.DateTimeUtils;
 import com.ecommerce.identityservice.utils.JwtUtils;
+import com.ecommerce.identityservice.utils.ValidateUtils;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.security.SignatureException;
@@ -61,7 +62,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public UserEntity register(RegisterForm registerForm) throws CustomException {
-        if (!StringUtils.isEmpty(registerForm.getEmail()) || !StringUtils.isEmpty(registerForm.getPassword()))
+        if (!ValidateUtils.validateEmail(registerForm.getEmail()) || !ValidateUtils.validatePassword(registerForm.getPassword()))
             throw new CustomException(REGISTER_VALIDATE);
         Boolean existsUser = userRepository.existsById(registerForm.getEmail());
         if (existsUser)
@@ -82,7 +83,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public LoginDTO login(LoginForm loginForm, String ipAddress) throws CustomException {
-        if (!StringUtils.hasText(loginForm.getEmail()) || !StringUtils.hasText(loginForm.getPassword()))
+        if (!ValidateUtils.validateEmail(loginForm.getEmail()) || !ValidateUtils.validatePassword(loginForm.getPassword()))
             throw new CustomException(LOGIN_VALIDATE);
         Map<String, Object> userQuery = userRepository.findAuthProfile(loginForm.getEmail());
         if (userQuery == null || userQuery.isEmpty())

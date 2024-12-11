@@ -10,6 +10,12 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+  data:
+    redis:
+      timeout: 2000
+
+
+
 server:
   port: 8085
   forward-headers-strategy: FRAMEWORK

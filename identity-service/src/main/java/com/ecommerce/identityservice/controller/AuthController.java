@@ -33,16 +33,16 @@ public class AuthController {
         return new ApiResponse<>(REGISTER_SUCCESS);
     }
 
-    @PostMapping("/login")
-    public ApiResponse<LoginDTO> login(@RequestBody LoginForm loginForm, HttpServletRequest request, HttpServletResponse response) throws CustomException {
-        String ipAddress = getClientIP(request);
-        LoginDTO loginResponse = authService.login(loginForm, ipAddress);
-        addTokenToCookie(loginResponse.getRefreshToken(), "refresh_token", response);
-        addTokenToCookie(loginResponse.getSessionId(), "session_id", response);
-        loginResponse.setRefreshToken(null);
-        loginResponse.setSessionId(null);
-        return new ApiResponse<>(200, loginResponse);
-    }
+//    @PostMapping("/login")
+//    public ApiResponse<LoginDTO> login(@RequestBody LoginForm loginForm, HttpServletRequest request, HttpServletResponse response) throws CustomException {
+//        String ipAddress = getClientIP(request);
+//        LoginDTO loginResponse = authService.login(loginForm, ipAddress);
+//        addTokenToCookie(loginResponse.getRefreshToken(), "refresh_token", response);
+//        addTokenToCookie(loginResponse.getSessionId(), "session_id", response);
+//        loginResponse.setRefreshToken(null);
+//        loginResponse.setSessionId(null);
+//        return new ApiResponse<>(200, loginResponse);
+//    }
     @GetMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) throws CustomException {
         String userid = SecurityContextHolder.getContext().getAuthentication().getName();
