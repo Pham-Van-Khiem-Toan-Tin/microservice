@@ -1,6 +1,8 @@
 package com.ecommerce.identityservice.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -9,15 +11,26 @@ import java.util.Set;
 
 @Entity
 @Data
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "functions")
+@Table(name = "functions",
+        uniqueConstraints =
+        @UniqueConstraint(name = "UniqueNameAndClient",
+                columnNames = {"name", "client_id"}))
 public class FunctionEntity {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
+    @Column(nullable = false, name = "normalized_name")
+    private String normalizedName;
     @Column(nullable = false)
     private String name;
     @Column(nullable = false)
     private String description;
+    @ManyToOne
+    @JoinColumn(name = "client_id", nullable = false)
+    private ClientEntity client;
     @ManyToMany(mappedBy = "functions")
     private Set<RoleEntity> roles;
     @OneToMany(mappedBy = "function")

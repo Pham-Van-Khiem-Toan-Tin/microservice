@@ -6,10 +6,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.Map;
 
+@Repository
 public interface UserRepository extends JpaRepository<UserEntity, String> {
     @Query(value = "SELECT u.email, u.password, u.first_name, u.last_name, u.lock_time, u.login_fail_count, u.unlock_time, u.block, r.name AS role, GROUP_CONCAT(DISTINCT rfs.function_id) AS function_group, GROUP_CONCAT(DISTINCT rfs.subfunction_id) AS subfunction_group " +
             "FROM users u " +

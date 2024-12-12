@@ -12,10 +12,8 @@ import java.util.Set;
 @Table(name = "auth_method")
 public class ClientAuthenticationMethodEntity {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
     @Column(nullable = false)
-    private String description;
-    @ManyToMany(mappedBy = "clientAuthenticationMethods")
-    private Set<ClientEntity> clients;
-
+    private String value;
 }

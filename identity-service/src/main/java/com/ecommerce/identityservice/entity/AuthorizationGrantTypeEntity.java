@@ -12,9 +12,8 @@ import java.util.Set;
 @Table(name = "auth_grant_type")
 public class AuthorizationGrantTypeEntity {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
     @Column(nullable = false)
-    private String description;
-    @ManyToMany(mappedBy = "authorizationGrantTypes")
-    private Set<ClientEntity> clients;
+    private String value;
 }

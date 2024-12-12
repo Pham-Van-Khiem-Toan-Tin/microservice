@@ -38,7 +38,7 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
                 newLoginFailCount = loginFailCount + 1;
                 newUnlockTime = currentTime.plusMinutes(newLoginFailCount);
             }
-            userRepository.updateTemporaryLock(userDetails.getEmail(), currentTime, newUnlockTime, newLoginFailCount);
+            userRepository.updateTemporaryLock(userDetails.getUsername(), currentTime, newUnlockTime, newLoginFailCount);
             throw new AuthenticationException("Thông tin email hoặc mật khẩu không đúng. Tài khoản của bạn bị khoá đến " + DateTimeUtils.convertToTimeString(newUnlockTime, "HH:mm:ss dd-MM-yyyy")) {};
         }
         Authentication authenticated = new UsernamePasswordAuthenticationToken(userDetails, password, userDetails.getAuthorities());

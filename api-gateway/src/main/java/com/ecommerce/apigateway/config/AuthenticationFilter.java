@@ -58,7 +58,8 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             "/auth/login",
             "/auth/register",
             "/oauth2/token",
-            "/test"
+            "/test",
+            "/admin/role/create"
     };
 
     @Override

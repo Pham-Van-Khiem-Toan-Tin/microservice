@@ -5,6 +5,7 @@ import org.springframework.util.StringUtils;
 import java.util.regex.Pattern;
 
 public class ValidateUtils {
+
     public static boolean validateEmail(String email) {
         return StringUtils.hasText(email);
 //                && Pattern.compile("^(.+)@(\\\\S+)$")

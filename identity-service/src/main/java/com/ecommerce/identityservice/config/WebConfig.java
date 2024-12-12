@@ -1,13 +1,14 @@
 package com.ecommerce.identityservice.config;
 
+import com.ecommerce.identityservice.repository.ClientRepository;
+import com.ecommerce.identityservice.repository.JpaRegisteredClientRepository;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
-import lombok.extern.slf4j.Slf4j;
-import org.bouncycastle.crypto.engines.RSABlindedEngine;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -25,7 +26,6 @@ import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
-import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
@@ -36,16 +36,12 @@ import org.springframework.security.oauth2.server.authorization.settings.TokenSe
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.UUID;
 
 
@@ -59,7 +55,8 @@ public class WebConfig {
             "/auth/register",
             "/auth/token",
             "/actuator/health",
-            "/test"
+            "/test",
+            "/admin/role/**"
     };
     @Autowired
     CustomUserDetailService customUserDetailService;
@@ -67,6 +64,9 @@ public class WebConfig {
     PasswordEncoder passwordEncoder;
     @Autowired
     CustomAuthenticationProvider authenticationProvider;
+    @Autowired
+    ClientRepository clientRepository;
+
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -100,37 +100,47 @@ public class WebConfig {
                         .anonymous()
                         .anyRequest()
                         .authenticated())
-                .formLogin(Customizer.withDefaults());
+                .formLogin(Customizer.withDefaults())
+                .rememberMe(Customizer.withDefaults());
         return http.build();
     }
+
     @Bean
-    public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate) {
-        RegisteredClient oidcClient = RegisteredClient
-                .withId(UUID.randomUUID().toString())
-                .clientId("client")
-                .clientSecret("$2a$10$nL6kVKFRnkMMgdGhBb7Qde1UZ/9NcaFgSqbbS8lhihfj0JxdhXHW2")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .tokenSettings(TokenSettings.builder()
-                        .accessTokenTimeToLive(Duration.ofHours(2))
-                        .refreshTokenTimeToLive(Duration.ofDays(90))
-                        .reuseRefreshTokens(false)
-                        .build())
-                .redirectUri("http://localhost:5173")
-                .postLogoutRedirectUri("http://localhost:5173")
-                .scope(OidcScopes.OPENID)
-                .scope(OidcScopes.PROFILE)
-                .clientSettings(ClientSettings.builder().requireProofKey(true).build())
-                .build();
-        return new InMemoryRegisteredClientRepository(oidcClient);
+    public RegisteredClientRepository registeredClientRepository() {
+        return new JpaRegisteredClientRepository(clientRepository);
     }
+
+//    @Bean
+//    ApplicationRunner clientRunner(RegisteredClientRepository registeredClientRepository) {
+//        return args -> {
+//            RegisteredClient oidcClient = RegisteredClient
+//                    .withId(UUID.randomUUID().toString())
+//                    .clientId("client")
+//                    .clientSecret("$2a$10$nL6kVKFRnkMMgdGhBb7Qde1UZ/9NcaFgSqbbS8lhihfj0JxdhXHW2")
+//                    .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+//                    .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
+//                    .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+//                    .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+//                    .tokenSettings(TokenSettings.builder()
+//                            .accessTokenTimeToLive(Duration.ofHours(2))
+//                            .refreshTokenTimeToLive(Duration.ofDays(90))
+//                            .reuseRefreshTokens(false)
+//                            .build())
+//                    .redirectUri("http://localhost:5173")
+//                    .postLogoutRedirectUri("http://localhost:5173")
+//                    .scope(OidcScopes.OPENID)
+//                    .scope(OidcScopes.PROFILE)
+//                    .clientSettings(ClientSettings.builder().requireProofKey(true).build())
+//                    .build();
+//            registeredClientRepository.save(oidcClient);
+//        };
+//    }
 
     @Bean
     public AuthorizationServerSettings authorizationServerSettings() {
         return AuthorizationServerSettings.builder().issuer("http://localhost:8085").build();
     }
+
     @Bean
     public JWKSource<SecurityContext> jwkSource() {
         KeyPair keyPair = generateRsaKey();
@@ -160,7 +170,6 @@ public class WebConfig {
     public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) {
         return OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
     }
-
 
 
 }

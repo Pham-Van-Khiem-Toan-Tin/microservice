@@ -33,8 +33,6 @@ public class UserEntity extends BaseEntity {
     private LocalDateTime lockTime;
     @Column(name = "unlock_time")
     private LocalDateTime unlockTime;
-    @OneToMany(mappedBy = "user")
-    private Set<SessionEntity> sessions;
     @ManyToOne
     @JoinColumn(name = "role", nullable = false)
     private RoleEntity role;

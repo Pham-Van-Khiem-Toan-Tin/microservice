@@ -7,43 +7,41 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 
 @Entity
-@Table(name = "oauth2_clients")
+@Table(name = "`client`")
 @NoArgsConstructor
 @Data
+@Builder
+@AllArgsConstructor
 public class ClientEntity {
     @Id
     private String id;
-    @Column(name = "client_id", nullable = false, unique = true)
     private String clientId;
-    @Column(name = "client_name", nullable = false)
-    private String clientName;
-    @Column(name = "client_secret", nullable = false)
+    private Instant clientIdIssuedAt;
     private String clientSecret;
-    @Column(name = "client_secret_expires_at")
     private Instant clientSecretExpiresAt;
-    @Column(name = "redirect_uris")
-    @Convert(converter = StringToSetConverter.class)
-    private Set<String> redirectUris;
-    @Column(name = "post_logout_redirect_uris")
-    @Convert(converter = StringToSetConverter.class)
-    private Set<String> postLogoutRedirectUris;
-    @Column(name = "scopes")
-    @Convert(converter = StringToSetConverter.class)
-    private Set<String> scopes;
-    @ManyToMany
-    @JoinTable(
-            name = "client_auth_method",
-            joinColumns = @JoinColumn(name = "client_id"),
-            inverseJoinColumns = @JoinColumn(name = "auth_method_id"))
-    private Set<ClientAuthenticationMethodEntity> clientAuthenticationMethods;
-    @ManyToMany
-    @JoinTable(
-            name = "client_auth_grant_type",
-            joinColumns = @JoinColumn(name = "client_id"),
-            inverseJoinColumns = @JoinColumn(name = "aut_grant_type_id"))
-    private Set<AuthorizationGrantTypeEntity> authorizationGrantTypes;
-
+    private String clientName;
+    @Column(length = 1000)
+    private String clientAuthenticationMethods;
+    @Column(length = 1000)
+    private String authorizationGrantTypes;
+    @Column(length = 1000)
+    private String redirectUris;
+    @Column(length = 1000)
+    private String postLogoutRedirectUris;
+    @Column(length = 1000)
+    private String scopes;
+    @Column(length = 2000)
+    private String clientSettings;
+    @Column(length = 2000)
+    private String tokenSettings;
+    @OneToMany(mappedBy = "client")
+    private List<RoleEntity> roles;
+    @OneToMany(mappedBy = "client")
+    private List<FunctionEntity> functions;
+    @OneToMany(mappedBy = "client")
+    private List<SubFunctionEntity> subFunctions;
 }
