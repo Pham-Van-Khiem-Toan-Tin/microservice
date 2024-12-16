@@ -26,8 +26,8 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
         String email = authentication.getName();
         String password = authentication.getCredentials().toString();
         CustomUserDetail userDetails = (CustomUserDetail) userDetailService.loadUserByUsername(email);
+        Integer loginFailCount = userDetails.getLoginFailCount();
         if (!passwordEncoder.matches(password, userDetails.getPassword())) {
-            Integer loginFailCount = userDetails.getLoginFailCount();
             LocalDateTime newUnlockTime;
             LocalDateTime currentTime = LocalDateTime.now();
             Integer newLoginFailCount;
@@ -41,6 +41,8 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
             userRepository.updateTemporaryLock(userDetails.getUsername(), currentTime, newUnlockTime, newLoginFailCount);
             throw new AuthenticationException("Thông tin email hoặc mật khẩu không đúng. Tài khoản của bạn bị khoá đến " + DateTimeUtils.convertToTimeString(newUnlockTime, "HH:mm:ss dd-MM-yyyy")) {};
         }
+        if (loginFailCount > 0)
+            userRepository.updateTemporaryLock(userDetails.getUsername(), null, null, 0);
         Authentication authenticated = new UsernamePasswordAuthenticationToken(userDetails, password, userDetails.getAuthorities());
         return authenticated;
     }

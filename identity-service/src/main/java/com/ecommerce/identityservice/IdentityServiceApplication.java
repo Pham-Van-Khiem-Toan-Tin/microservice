@@ -9,6 +9,8 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.TimeZone;
+
 @SpringBootApplication
 @EnableAspectJAutoProxy
 public class IdentityServiceApplication {
@@ -17,6 +19,7 @@ public class IdentityServiceApplication {
     private EurekaClient eurekaClient;
 
     public static void main(String[] args) {
+        TimeZone.setDefault(TimeZone.getTimeZone("GMT+07:00"));
         SpringApplication.run(IdentityServiceApplication.class, args);
     }
     @Bean

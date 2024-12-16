@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface RoleRepository extends JpaRepository<RoleEntity, String> {
-    @Query("select count(r) > 0 from RoleEntity r where r.name = :name and r.client.clientId = :clientId")
-    boolean existsByNameAndClientId(@Param("name") String name, @Param("clientId") String clientId);
+    @Query("select count(r) > 0 from RoleEntity r where r.roleId = :id and r.client.clientId = :clientId")
+    boolean existsByNameAndClientId(@Param("id") String id, @Param("clientId") String clientId);
 
 }

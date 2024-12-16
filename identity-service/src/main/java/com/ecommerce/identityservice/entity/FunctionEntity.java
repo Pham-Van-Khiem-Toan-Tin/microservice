@@ -17,15 +17,15 @@ import java.util.Set;
 @Table(name = "functions",
         uniqueConstraints =
         @UniqueConstraint(name = "UniqueNameAndClient",
-                columnNames = {"name", "client_id"}))
+                columnNames = {"function_id", "client_id"}))
 public class FunctionEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
-    @Column(nullable = false, name = "normalized_name")
-    private String normalizedName;
-    @Column(nullable = false)
-    private String name;
+    @Column(nullable = false, name = "function_id")
+    private String functionId;
+    @Column(nullable = false, name = "function_name")
+    private String functionName;
     @Column(nullable = false)
     private String description;
     @ManyToOne

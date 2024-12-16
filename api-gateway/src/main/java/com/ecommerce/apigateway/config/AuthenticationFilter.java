@@ -22,9 +22,7 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
-import org.springframework.web.reactive.function.client.WebClientException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
-import org.springframework.web.reactive.function.server.ServerResponse;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
@@ -38,8 +36,8 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-@Slf4j
 @RequiredArgsConstructor
+@Slf4j
 public class AuthenticationFilter implements GlobalFilter, Ordered {
     @Autowired
     ObjectMapper objectMapper;
@@ -58,8 +56,9 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             "/auth/login",
             "/auth/register",
             "/oauth2/token",
-            "/test",
-            "/admin/role/create"
+            "/admin/function/create",
+            "/admin/role/create",
+            "/admin/subfunction/create"
     };
 
     @Override
@@ -77,7 +76,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         log.info("Token: {}", token);
         return introspectService.introspect(token, shopClientId, shopClientSecret).flatMap(rs -> {
             log.info("err: {}", rs == null);
-            if (rs != null) {
+            if (rs.getActive()) {
                 String tokenInternal = generateTokenInternal(rs);
                 exchange.getRequest()
                         .mutate()
@@ -109,8 +108,8 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         SecretKey secretKey = JwtUtils.getSecretKey(privateKey);
         Map<String, Object> claims = new HashMap<>();
         claims.put("client_id", user.getClientId());
-        claims.put("sub", user.getSub());
         claims.put("scope", user.getScope());
+        claims.put("roles", user.getRoles());
         LocalDateTime currentTime = LocalDateTime.now();
         long expiration = currentTime.plusMinutes(5).atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();
         return JwtUtils.generateToken(user.getSub(), claims, expiration, secretKey);

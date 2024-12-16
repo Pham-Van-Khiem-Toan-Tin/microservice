@@ -13,6 +13,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
@@ -21,14 +23,13 @@ import org.springframework.web.client.RestTemplate;
 @Slf4j
 public class AccountController {
     @Autowired
-    private UserService userService;
-    @Autowired
-    RestTemplate restTemplate;
+    UserService userService;
     @Autowired
     CircuitBreakerRegistry circuitBreakerRegistry;
     @PreAuthorize("hasAuthority('VIEW_PROFILE')")
     @GetMapping("/base")
     public ApiResponse<AuthProfileDTO> base() throws CustomException {
+
         return new ApiResponse<>(200, userService.getAuthProfile());
     }
     @PreAuthorize("hasAuthority('VIEW_PROFILE')")

@@ -15,32 +15,32 @@ import java.util.Set;
 @Table(name = "roles",
         uniqueConstraints =
         @UniqueConstraint(name = "UniqueNameAndClient",
-                columnNames = {"name", "client_id"}))
+                columnNames = {"role_id", "client_id"}))
 @Builder
 @AllArgsConstructor
 public class RoleEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
-    @Column(nullable = false, name = "normalized_name")
-    private String normalizedName;
-    @Column(nullable = false)
-    private String name;
+    @Column(nullable = false, name = "role_id")
+    private String roleId;
+    @Column(nullable = false, name = "role_name")
+    private String roleName;
     @Column(nullable = false)
     private String description;
     @Column(nullable = false, name = "order_value")
     private int orderValue;
-    @OneToMany(mappedBy = "role")
-    private Set<UserEntity> users;
+    @OneToMany(mappedBy = "role", fetch = FetchType.EAGER)
+    private List<UserRole> users;
     @ManyToMany
     @JoinTable(
             name = "role_functions",
             joinColumns = @JoinColumn(name = "role_id"),
             inverseJoinColumns = @JoinColumn(name = "function_id"))
-    private Set<FunctionEntity> functions;
+    private List<FunctionEntity> functions;
     @ManyToOne
     @JoinColumn(name = "client_id", nullable = false)
     private ClientEntity client;
-    @OneToMany(mappedBy = "role")
+    @OneToMany(mappedBy = "role", fetch = FetchType.EAGER)
     private List<RoleFunctionSubFunctionEntity> roleFunctionSubFunction;
 }

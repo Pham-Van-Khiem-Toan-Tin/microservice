@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Set;
 
 @Data
 @Builder
@@ -12,6 +13,6 @@ public class AuthProfileDTO {
     private String lastName;
     private String email;
     private String role;
-    private List<String> functions;
-    private List<String> subfunctions;
+    private Set<String> functions;
+    private Set<String> subfunctions;
 }

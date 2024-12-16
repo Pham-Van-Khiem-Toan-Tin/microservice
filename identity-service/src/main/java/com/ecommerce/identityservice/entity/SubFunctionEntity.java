@@ -1,6 +1,8 @@
 package com.ecommerce.identityservice.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -8,19 +10,21 @@ import java.util.List;
 
 @Entity
 @Data
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "subfunctions",
         uniqueConstraints =
         @UniqueConstraint(name = "UniqueNameAndClient",
-                columnNames = {"name", "client_id"}))
+                columnNames = {"subfunction_id", "client_id"}))
 public class SubFunctionEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
-    @Column(nullable = false, name = "normalized_name")
-    private String normalizedName;
-    @Column(nullable = false)
-    private String name;
+    @Column(nullable = false, name = "subfunction_id")
+    private String subfunctionId;
+    @Column(nullable = false, name = "subfucntion_name")
+    private String subFunctionName;
     @Column(nullable = false)
     private String description;
     @ManyToOne

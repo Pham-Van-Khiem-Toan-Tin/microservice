@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -33,8 +34,7 @@ public class UserEntity extends BaseEntity {
     private LocalDateTime lockTime;
     @Column(name = "unlock_time")
     private LocalDateTime unlockTime;
-    @ManyToOne
-    @JoinColumn(name = "role", nullable = false)
-    private RoleEntity role;
+    @OneToMany(mappedBy = "user", fetch = FetchType.EAGER)
+    private List<UserRole> roles;
 
 }
