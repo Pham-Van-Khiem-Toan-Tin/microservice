@@ -110,31 +110,31 @@ public class WebConfig {
         return new JpaRegisteredClientRepository(clientRepository);
     }
 
-//    @Bean
-//    ApplicationRunner clientRunner(RegisteredClientRepository registeredClientRepository) {
-//        return args -> {
-//            RegisteredClient oidcClient = RegisteredClient
-//                    .withId(UUID.randomUUID().toString())
-//                    .clientId("client")
-//                    .clientSecret("$2a$10$nL6kVKFRnkMMgdGhBb7Qde1UZ/9NcaFgSqbbS8lhihfj0JxdhXHW2")
-//                    .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-//                    .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
-//                    .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-//                    .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-//                    .tokenSettings(TokenSettings.builder()
-//                            .accessTokenTimeToLive(Duration.ofHours(2))
-//                            .refreshTokenTimeToLive(Duration.ofDays(90))
-//                            .reuseRefreshTokens(false)
-//                            .build())
-//                    .redirectUri("http://localhost:5173")
-//                    .postLogoutRedirectUri("http://localhost:5173")
-//                    .scope(OidcScopes.OPENID)
-//                    .scope(OidcScopes.PROFILE)
-//                    .clientSettings(ClientSettings.builder().requireProofKey(true).build())
-//                    .build();
-//            registeredClientRepository.save(oidcClient);
-//        };
-//    }
+    @Bean
+    ApplicationRunner clientRunner(RegisteredClientRepository registeredClientRepository) {
+        return args -> {
+            RegisteredClient oidcClient = RegisteredClient
+                    .withId(UUID.randomUUID().toString())
+                    .clientId("client")
+                    .clientSecret("$2a$10$nL6kVKFRnkMMgdGhBb7Qde1UZ/9NcaFgSqbbS8lhihfj0JxdhXHW2")
+                    .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                    .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
+                    .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                    .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                    .tokenSettings(TokenSettings.builder()
+                            .accessTokenTimeToLive(Duration.ofHours(2))
+                            .refreshTokenTimeToLive(Duration.ofDays(90))
+                            .reuseRefreshTokens(false)
+                            .build())
+                    .redirectUri("http://localhost:5173")
+                    .postLogoutRedirectUri("http://localhost:5173")
+                    .scope(OidcScopes.OPENID)
+                    .scope(OidcScopes.PROFILE)
+                    .clientSettings(ClientSettings.builder().requireProofKey(true).build())
+                    .build();
+            registeredClientRepository.save(oidcClient);
+        };
+    }
 
     @Bean
     public AuthorizationServerSettings authorizationServerSettings() {

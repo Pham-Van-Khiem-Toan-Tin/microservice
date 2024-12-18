@@ -153,7 +153,7 @@ public class UserServiceImpl implements UserService {
         Set<String> functions = functionSubFunctionEntityList.stream().map(item -> item.getFunction().getId()).collect(Collectors.toSet());
         Set<String> subfunctions = functionSubFunctionEntityList.stream().map(item -> item.getSubFunction().getId()).collect(Collectors.toSet());
         testDTO.setEmail(user.getEmail());
-        testDTO.setRole(user.getRole().getName());
+        testDTO.setRole(user.getRole().getRoleName());
         testDTO.setFunctions(functions.stream().toList());
         testDTO.setSubfunctions(subfunctions.stream().toList());
         return testDTO;

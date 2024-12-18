@@ -7,6 +7,7 @@ import lombok.Data;
 @Builder
 public class AuthoritiesForm {
     private String clientId;
+    private String id;
     private String name;
     private String description;
 }

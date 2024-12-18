@@ -16,7 +16,7 @@ public class UserMapper {
                 .firstName(userEntity.getFirstName())
                 .lastName(userEntity.getLastName())
                 .avatar(userEntity.getAvatar())
-                .role(userEntity.getRole().getName())
+                .role(userEntity.getRole().getRoleName())
                 .build();
     }
     public ProfileDetailDTO toProfileDetailDTO(UserEntity userEntity) {

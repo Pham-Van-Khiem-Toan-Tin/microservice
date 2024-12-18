@@ -14,9 +14,9 @@ public class RoleMapper {
             return null;
         return RoleEntity.builder()
                 .id(UUID.randomUUID().toString())
-                .name(form.getName())
+                .roleName(form.getName())
                 .description(form.getDescription())
-                .normalizedName(form.getName().toUpperCase())
+                .roleId(form.getId())
                 .build();
     }
     public FunctionEntity toFunctionEntity(AuthoritiesForm form) {

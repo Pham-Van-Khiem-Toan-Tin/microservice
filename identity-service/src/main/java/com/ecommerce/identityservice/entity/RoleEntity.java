@@ -15,17 +15,17 @@ import java.util.Set;
 @Table(name = "roles",
         uniqueConstraints =
         @UniqueConstraint(name = "UniqueNameAndClient",
-                columnNames = {"name", "client_id"}))
+                columnNames = {"role_id", "client_id"}))
 @Builder
 @AllArgsConstructor
 public class RoleEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
-    @Column(nullable = false, name = "normalized_name")
-    private String normalizedName;
-    @Column(nullable = false)
-    private String name;
+    @Column(nullable = false, name = "role_id")
+    private String roleId;
+    @Column(nullable = false, name = "role_name")
+    private String roleName;
     @Column(nullable = false)
     private String description;
     @Column(nullable = false, name = "order_value")
