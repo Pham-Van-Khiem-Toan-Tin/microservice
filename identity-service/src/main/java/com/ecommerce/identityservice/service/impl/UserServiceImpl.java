@@ -2,14 +2,17 @@ package com.ecommerce.identityservice.service.impl;
 
 import static com.ecommerce.identityservice.constants.Constants.*;
 
+import com.ecommerce.identityservice.config.CustomAuthenticationDetail;
+import com.ecommerce.identityservice.config.CustomUserDetail;
 import com.ecommerce.identityservice.dto.*;
 import com.ecommerce.identityservice.dto.exception.CustomException;
+import com.ecommerce.identityservice.entity.FunctionEntity;
+import com.ecommerce.identityservice.entity.RoleEntity;
 import com.ecommerce.identityservice.entity.RoleFunctionSubFunctionEntity;
 import com.ecommerce.identityservice.entity.UserEntity;
 import com.ecommerce.identityservice.form.BillingForm;
 import com.ecommerce.identityservice.form.UpdateProfileForm;
 import com.ecommerce.identityservice.mapper.UserMapper;
-import com.ecommerce.identityservice.mapper.UserQueryMapper;
 import com.ecommerce.identityservice.repository.UserRepository;
 import com.ecommerce.identityservice.service.UserService;
 import jakarta.transaction.Transactional;
@@ -21,6 +24,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
@@ -28,9 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,11 +51,15 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public ProfileDTO getProfile() throws CustomException {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getName();
         UserEntity userEntity = userRepository.findByEmail(userId);
         if (userEntity == null)
             throw new CustomException(PROFILE_NOT_FOUND);
         ProfileDTO profileDTO = userMapper.toProfileDTO(userEntity);
+        CustomAuthenticationDetail detail = (CustomAuthenticationDetail) authentication.getDetails();
+        RoleEntity role = userEntity.getRoles().stream().filter(item -> item.getRole().getClient().getClientId().equals(detail.getClientId())).collect(Collectors.toList()).get(0).getRole();
+        profileDTO.setRole(role.getRoleName());
         BillingDTO billingDTO = getBillingProfile();
         profileDTO.setBilling(billingDTO);
         return profileDTO;
@@ -122,7 +128,6 @@ public class UserServiceImpl implements UserService {
         httpHeaders.add(HttpHeaders.AUTHORIZATION, "Bearer " + token);
         HttpEntity<String> entity = new HttpEntity<>(httpHeaders);
         CircuitBreaker circuitBreaker = circuitBreakerFactory.create(PAYMENT_SERVICE);
-        log.info("chay vao day");
         return circuitBreaker.run(() -> restTemplate.exchange("http://localhost:8084/payment/profile", HttpMethod.GET, entity, BillingDTO.class).getBody(),
                 throwable -> fallback(throwable));
     }
@@ -136,11 +141,24 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public AuthProfileDTO getAuthProfile() throws CustomException {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        Map<String, Object> userQuery = userRepository.findAuthProfile(userId);
-        if (userQuery == null)
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getName();
+        UserEntity user = userRepository.findByEmail(userId);
+        if (user == null)
             throw new CustomException(PROFILE_NOT_FOUND);
-        AuthProfileDTO authProfileDTO = UserQueryMapper.toAuthProfileDTO(userQuery);
+        AuthProfileDTO authProfileDTO = UserMapper.toAuthProfileDTO(user);
+        CustomAuthenticationDetail detail = (CustomAuthenticationDetail) authentication.getDetails();
+        RoleEntity role = user.getRoles().stream().filter(item -> item.getRole().getClient().getClientId().equals(detail.getClientId())).collect(Collectors.toList()).get(0).getRole();
+        authProfileDTO.setRole(role.getRoleId());
+        List<RoleFunctionSubFunctionEntity> functionEntities = role.getRoleFunctionSubFunction();
+        Set<String> functions = new HashSet<>();
+        Set<String> subFunctions = new HashSet<>();
+        functionEntities.stream().forEach(item -> {
+            functions.add(item.getFunction().getFunctionId());
+            subFunctions.add(item.getSubFunction().getSubfunctionId());
+        });
+        authProfileDTO.setFunctions(functions);
+        authProfileDTO.setSubfunctions(subFunctions);
         return authProfileDTO;
     }
 
@@ -149,23 +167,29 @@ public class UserServiceImpl implements UserService {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         UserEntity user = userRepository.findByEmail(userId);
         TestDTO testDTO = new TestDTO();
-        List<RoleFunctionSubFunctionEntity> functionSubFunctionEntityList = user.getRole().getRoleFunctionSubFunction();
+<<<<<<< HEAD
+        List<RoleFunctionSubFunctionEntity> functionSubFunctionEntityList = user.getRoles().getU.getRoleFunctionSubFunction();
         Set<String> functions = functionSubFunctionEntityList.stream().map(item -> item.getFunction().getId()).collect(Collectors.toSet());
         Set<String> subfunctions = functionSubFunctionEntityList.stream().map(item -> item.getSubFunction().getId()).collect(Collectors.toSet());
         testDTO.setEmail(user.getEmail());
         testDTO.setRole(user.getRole().getRoleName());
         testDTO.setFunctions(functions.stream().toList());
         testDTO.setSubfunctions(subfunctions.stream().toList());
+=======
+//        List<RoleFunctionSubFunctionEntity> functionSubFunctionEntityList = user.getRole().getRoleFunctionSubFunction();
+//        Set<String> functions = functionSubFunctionEntityList.stream().map(item -> item.getFunction().getId()).collect(Collectors.toSet());
+//        Set<String> subfunctions = functionSubFunctionEntityList.stream().map(item -> item.getSubFunction().getId()).collect(Collectors.toSet());
+//        testDTO.setEmail(user.getEmail());
+////        testDTO.setRole(user.getRole().getRoleName());
+//        testDTO.setFunctions(functions.stream().toList());
+//        testDTO.setSubfunctions(subfunctions.stream().toList());
+>>>>>>> 6317cbd15dcd0028f61508e8b7d93d6341069de8
         return testDTO;
     }
 
     private String getAccessToken() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof Jwt) {
-            Jwt jwt = (Jwt) principal;
-            return jwt.getTokenValue();
-        }
-        return null;
+        CustomAuthenticationDetail detail = (CustomAuthenticationDetail) SecurityContextHolder.getContext().getAuthentication().getDetails();
+        return detail.getToken();
     }
 
 

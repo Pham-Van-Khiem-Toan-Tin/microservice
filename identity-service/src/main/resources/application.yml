@@ -13,6 +13,9 @@ spring:
   data:
     redis:
       timeout: 2000
+  jackson:
+    time-zone: Asia/Ho_Chi_Minh
+
 server:
   port: 8085
   forward-headers-strategy: FRAMEWORK
@@ -49,8 +52,4 @@ resilience4j:
         slidingWindowSize: 10
         slidingWindowType: COUNT_BASED
 jwt:
-  accessTokenKey: 2md90kaOT7/BvajX6NVcPjr3kznZfvIUDnmtAurhoEw=
-  accessTokenExpired: 30
-  refreshTokenKey: 2md90kaOT7/BvajX6NVcPjr3kznZfvIUDnmtAurhoEw=
-  refreshTokenExpired: 90
   privateKey: 2md90kaOT7/BvajX6NVcPjr3kznZfvIUDnmtAurhoAb=

@@ -30,17 +30,17 @@ public class RoleEntity {
     private String description;
     @Column(nullable = false, name = "order_value")
     private int orderValue;
-    @OneToMany(mappedBy = "role")
-    private Set<UserEntity> users;
+    @OneToMany(mappedBy = "role", fetch = FetchType.EAGER)
+    private List<UserRole> users;
     @ManyToMany
     @JoinTable(
             name = "role_functions",
             joinColumns = @JoinColumn(name = "role_id"),
             inverseJoinColumns = @JoinColumn(name = "function_id"))
-    private Set<FunctionEntity> functions;
+    private List<FunctionEntity> functions;
     @ManyToOne
     @JoinColumn(name = "client_id", nullable = false)
     private ClientEntity client;
-    @OneToMany(mappedBy = "role")
+    @OneToMany(mappedBy = "role", fetch = FetchType.EAGER)
     private List<RoleFunctionSubFunctionEntity> roleFunctionSubFunction;
 }

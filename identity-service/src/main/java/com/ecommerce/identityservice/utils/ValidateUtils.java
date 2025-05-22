@@ -2,6 +2,7 @@ package com.ecommerce.identityservice.utils;
 
 import org.springframework.util.StringUtils;
 
+import java.lang.reflect.Field;
 import java.util.regex.Pattern;
 
 public class ValidateUtils {

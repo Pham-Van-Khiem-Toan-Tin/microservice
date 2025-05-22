@@ -24,7 +24,7 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
     Map<String, Object> findAuthProfile(@Param("e") String email);
     @Modifying
     @Transactional
-    @Query(value = "update users as u set u.lock_time = :lt, u.unlock_time = :ut, u.login_fail_count = :lgc where u.email = :em", nativeQuery = true)
+    @Query(value = "update UserEntity u set u.lockTime = :lt, u.unlockTime = :ut, u.loginFailCount = :lgc where u.email = :em")
     int updateTemporaryLock(@Param("em") String id, @Param("lt") LocalDateTime lockTime, @Param("ut") LocalDateTime unlockTime, @Param("lgc") Integer loginFailCount);
 
     UserEntity findByEmail(String email);

@@ -2,7 +2,9 @@ package com.ecommerce.identityservice.mapper;
 
 import com.ecommerce.identityservice.entity.FunctionEntity;
 import com.ecommerce.identityservice.entity.RoleEntity;
+import com.ecommerce.identityservice.entity.SubFunctionEntity;
 import com.ecommerce.identityservice.form.AuthoritiesForm;
+import com.ecommerce.identityservice.form.AuthoritiesWithParentForm;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
@@ -24,9 +26,19 @@ public class RoleMapper {
             return null;
         return FunctionEntity.builder()
                 .id(UUID.randomUUID().toString())
-                .name(form.getName())
+                .functionName(form.getName())
                 .description(form.getDescription())
-                .normalizedName(form.getName().toUpperCase())
+                .functionId(form.getId())
+                .build();
+    }
+    public SubFunctionEntity toSubFunctionEntity(AuthoritiesWithParentForm form) {
+        if (form == null)
+            return null;
+        return SubFunctionEntity.builder()
+                .id(UUID.randomUUID().toString())
+                .subfunctionId(form.getId())
+                .subFunctionName(form.getName())
+                .description(form.getDescription())
                 .build();
     }
 }

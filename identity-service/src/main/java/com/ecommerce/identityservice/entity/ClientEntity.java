@@ -44,4 +44,6 @@ public class ClientEntity {
     private List<FunctionEntity> functions;
     @OneToMany(mappedBy = "client")
     private List<SubFunctionEntity> subFunctions;
+    @OneToMany(mappedBy = "client")
+    private Set<UserRole> userRoles;
 }

@@ -27,14 +27,6 @@ import static com.ecommerce.identityservice.constants.Constants.*;
 
 @Service
 public class AuthServiceImpl implements AuthService {
-    @Value("${jwt.accessTokenKey}")
-    private String accessTokenKey;
-    @Value("${jwt.accessTokenExpired}")
-    private int accessTokenExpired;
-    @Value("${jwt.refreshTokenKey}")
-    private String refreshTokenKey;
-    @Value("${jwt.refreshTokenExpired}")
-    private int refreshTokenExpired;
     @Autowired
     UserRepository userRepository;
     @Autowired
@@ -61,7 +53,7 @@ public class AuthServiceImpl implements AuthService {
         newUser.setCreatedAt(LocalDateTime.now());
         newUser.setBlock(false);
         RoleEntity defaultRole = entityManager.getReference(RoleEntity.class, "CUSTOMER");
-        newUser.setRole(defaultRole);
+//        newUser.setRole(defaultRole);
         return userRepository.save(newUser);
     }
 
@@ -76,23 +68,7 @@ public class AuthServiceImpl implements AuthService {
 
 
 
-    public String generateRefreshToken(String userId) {
-        SecretKey secretKey = JwtUtils.getSecretKey(refreshTokenKey);
-        Map<String, Object> claim = new HashMap<>();
-        LocalDateTime currentTime = LocalDateTime.now();
-        long expiration = currentTime.plusDays(refreshTokenExpired).atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();
-        return JwtUtils.generateToken(userId, claim, expiration, secretKey);
-    }
 
-    public String generateAccessToken(UserDTO user, LocalDateTime currentTime) {
-        SecretKey secretKey = JwtUtils.getSecretKey(accessTokenKey);
-        Map<String, Object> claim = new HashMap<>();
-        claim.put("role", user.getRole());
-        claim.put("functions", user.getFunctions());
-        claim.put("subfunctions", user.getSubfunctions());
-        long expiration = currentTime.plusMinutes(accessTokenExpired).atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();;
-        return JwtUtils.generateToken(user.getEmail(), claim, expiration, secretKey);
-    }
 
 
     private String capitalizeFirstLetter(String input) {

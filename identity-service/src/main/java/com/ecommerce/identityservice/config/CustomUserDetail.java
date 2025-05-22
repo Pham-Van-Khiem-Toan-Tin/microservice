@@ -28,6 +28,8 @@ public class CustomUserDetail implements UserDetails {
 
     @JsonProperty("password")
     private String password;
+    @JsonProperty("client_id")
+    private String clientId;
 
     @JsonProperty("loginFailCount")
     private int loginFailCount;
@@ -41,7 +43,7 @@ public class CustomUserDetail implements UserDetails {
     @JsonProperty("authorities")
     private Collection<? extends GrantedAuthority> authorities;
     @JsonProperty("roles")
-    private Map<String, List<String>> roles;
+    private Map<String, Set<String>> roles;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -58,11 +60,11 @@ public class CustomUserDetail implements UserDetails {
         return this.email;
     }
 
-    public Map<String, List<String>> getRoles() {
+    public Map<String, Set<String>> getRoles() {
         return roles;
     }
 
-    public void setRoles(Map<String, List<String>> roles) {
+    public void setRoles(Map<String, Set<String>> roles) {
         this.roles = roles;
     }
 
