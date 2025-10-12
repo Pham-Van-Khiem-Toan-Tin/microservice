@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.NoArgsConstructor;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.List;
+
 @Document("variations")
 @Builder
 @AllArgsConstructor
@@ -12,4 +14,5 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class VariationEntity {
     private String name;
     private String categoryId;
+    private List<String> options;
 }
