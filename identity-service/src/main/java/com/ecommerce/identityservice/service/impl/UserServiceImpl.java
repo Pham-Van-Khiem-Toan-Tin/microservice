@@ -6,10 +6,7 @@ import com.ecommerce.identityservice.config.CustomAuthenticationDetail;
 import com.ecommerce.identityservice.config.CustomUserDetail;
 import com.ecommerce.identityservice.dto.*;
 import com.ecommerce.identityservice.dto.exception.CustomException;
-import com.ecommerce.identityservice.entity.FunctionEntity;
-import com.ecommerce.identityservice.entity.RoleEntity;
-import com.ecommerce.identityservice.entity.RoleFunctionSubFunctionEntity;
-import com.ecommerce.identityservice.entity.UserEntity;
+import com.ecommerce.identityservice.entity.*;
 import com.ecommerce.identityservice.form.BillingForm;
 import com.ecommerce.identityservice.form.UpdateProfileForm;
 import com.ecommerce.identityservice.mapper.UserMapper;
@@ -167,23 +164,15 @@ public class UserServiceImpl implements UserService {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         UserEntity user = userRepository.findByEmail(userId);
         TestDTO testDTO = new TestDTO();
-<<<<<<< HEAD
-        List<RoleFunctionSubFunctionEntity> functionSubFunctionEntityList = user.getRoles().getU.getRoleFunctionSubFunction();
+        List<UserRole> userRoles = user.getRoles().stream().flatMap(item -> item.getRole().getFunctions());
+        List<RoleFunctionSubFunctionEntity> functionSubFunctionEntityList = userRoles.stream().
         Set<String> functions = functionSubFunctionEntityList.stream().map(item -> item.getFunction().getId()).collect(Collectors.toSet());
         Set<String> subfunctions = functionSubFunctionEntityList.stream().map(item -> item.getSubFunction().getId()).collect(Collectors.toSet());
         testDTO.setEmail(user.getEmail());
         testDTO.setRole(user.getRole().getRoleName());
         testDTO.setFunctions(functions.stream().toList());
         testDTO.setSubfunctions(subfunctions.stream().toList());
-=======
-//        List<RoleFunctionSubFunctionEntity> functionSubFunctionEntityList = user.getRole().getRoleFunctionSubFunction();
-//        Set<String> functions = functionSubFunctionEntityList.stream().map(item -> item.getFunction().getId()).collect(Collectors.toSet());
-//        Set<String> subfunctions = functionSubFunctionEntityList.stream().map(item -> item.getSubFunction().getId()).collect(Collectors.toSet());
-//        testDTO.setEmail(user.getEmail());
-////        testDTO.setRole(user.getRole().getRoleName());
-//        testDTO.setFunctions(functions.stream().toList());
-//        testDTO.setSubfunctions(subfunctions.stream().toList());
->>>>>>> 6317cbd15dcd0028f61508e8b7d93d6341069de8
+
         return testDTO;
     }
 
