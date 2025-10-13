@@ -5,6 +5,8 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.core.Authentication;
@@ -27,6 +29,7 @@ public class BeanConfig {
         return new BCryptPasswordEncoder();
     }
 
+<<<<<<< HEAD
     @Bean
     public DelegatingOAuth2TokenGenerator delegatingOAuth2TokenGenerator() {
         JWKSource<SecurityContext> jwkSource = jwkSource();
@@ -37,6 +40,8 @@ public class BeanConfig {
         DelegatingOAuth2TokenGenerator tokenGenerator = new DelegatingOAuth2TokenGenerator(jwtGenerator, refreshTokenGenerator);
         return tokenGenerator;
     }
+=======
+>>>>>>> f4c53d4c7e1e88145e85d67db2d6d92b05d46a59
     @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() {
         return (context) -> {

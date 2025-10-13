@@ -9,16 +9,18 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+#    show-sql: true
   data:
     redis:
       timeout: 2000
   jackson:
     time-zone: Asia/Ho_Chi_Minh
-
 server:
   port: 8085
   forward-headers-strategy: FRAMEWORK
+  servlet:
+    session:
+      timeout: 5m
 eureka:
   client:
     serviceUrl:
