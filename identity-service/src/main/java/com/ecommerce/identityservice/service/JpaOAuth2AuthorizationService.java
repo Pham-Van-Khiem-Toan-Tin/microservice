@@ -1,10 +1,11 @@
-package com.ecommerce.identityservice.service.impl;
+package com.ecommerce.identityservice.service;
 
 import com.ecommerce.identityservice.entity.AuthorizationEntity;
-import com.ecommerce.identityservice.repository.AuthorizationRepository;
+import com.ecommerce.identityservice.reppository.AuthorizationRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.tomcat.util.http.parser.Authorization;
 import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.oauth2.core.*;
@@ -45,6 +46,7 @@ public class JpaOAuth2AuthorizationService implements OAuth2AuthorizationService
         this.objectMapper.registerModules(securityModules);
         this.objectMapper.registerModule(new OAuth2AuthorizationServerJackson2Module());
     }
+
     @Override
     public void save(OAuth2Authorization authorization) {
         Assert.notNull(authorization, "authorization cannot be null");
@@ -55,7 +57,6 @@ public class JpaOAuth2AuthorizationService implements OAuth2AuthorizationService
     public void remove(OAuth2Authorization authorization) {
         Assert.notNull(authorization, "authorization cannot be null");
         this.authorizationRepository.deleteById(authorization.getId());
-
     }
 
     @Override
@@ -91,9 +92,7 @@ public class JpaOAuth2AuthorizationService implements OAuth2AuthorizationService
 
         return result.map(this::toObject).orElse(null);
     }
-    private static boolean isComplete(OAuth2Authorization authorization) {
-        return authorization.getAccessToken() != null;
-    }
+
     private OAuth2Authorization toObject(AuthorizationEntity entity) {
         RegisteredClient registeredClient = this.registeredClientRepository.findById(entity.getRegisteredClientId());
         if (registeredClient == null) {

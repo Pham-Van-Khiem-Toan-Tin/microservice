@@ -1,4 +1,4 @@
-package com.ecommerce.identityservice.repository;
+package com.ecommerce.identityservice.reppository;
 
 import com.ecommerce.identityservice.entity.ClientEntity;
 import org.springframework.data.jpa.repository.JpaRepository;

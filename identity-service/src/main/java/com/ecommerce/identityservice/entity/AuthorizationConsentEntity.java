@@ -1,12 +1,10 @@
 package com.ecommerce.identityservice.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
 
 import java.io.Serializable;
 import java.util.Objects;
 
-@Data
 @Entity
 @Table(name = "`authorizationConsent`")
 @IdClass(AuthorizationConsentEntity.AuthorizationConsentId.class)
