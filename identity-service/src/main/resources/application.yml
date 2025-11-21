@@ -2,23 +2,25 @@ spring:
   application:
     name: identity-service
   datasource:
-    url: jdbc:mysql://localhost:3306/identity
+    url: jdbc:mysql://localhost:3306/ecobazaridentity
     username: root
     password: 271201
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+#    show-sql: true
   data:
     redis:
       timeout: 2000
   jackson:
     time-zone: Asia/Ho_Chi_Minh
-
 server:
   port: 8085
   forward-headers-strategy: FRAMEWORK
+  servlet:
+    session:
+      timeout: 5m
 eureka:
   client:
     serviceUrl:
