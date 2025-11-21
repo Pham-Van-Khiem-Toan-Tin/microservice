@@ -2,18 +2,33 @@ package com.ecommerce.authservice.controller;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
 public class AuthController {
+    @Autowired
+    PasswordEncoder passwordEncoder;
     private static final String IDP_AUTHORIZE_URL = "http://127.0.0.1:8085/oauth2/authorize";
     private static final String CLIENT_ID = "oidc-client";
     private static final String REDIRECT_URI = "http://127.0.0.1:8082/auth/callback";
@@ -37,8 +52,25 @@ public class AuthController {
         // Trả về 302 Location cho browser → browser tự đi tới IdP
         response.sendRedirect(url);
     }
+
     @GetMapping("/callback")
-    public String callback() {
+    public String callback(@RequestParam("code") String code, @RequestParam("state") String state) {
+        String tokenEndpoint = "http://127.0.0.1:8085/oauth2/token";
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("grant_type", "authorization_code");
+        form.add("code", code);
+        form.add("redirect_uri", "http://127.0.0.1:8082/auth/callback"); // phải trùng với redirect_uri đã đăng ký
+//        form.add("client_id", "oidc-client");
+//        form.add("client_secret", passwordEncoder.encode("secret"));
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        headers.setBasicAuth("oidc-client","secret");
+        RestTemplate restTemplate = new RestTemplate();
+        HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(form, headers);
+        ResponseEntity<Map> tokenResponse =
+                restTemplate.postForEntity(tokenEndpoint, entity, Map.class);
+        System.out.println("Status: " + tokenResponse.getStatusCode());
+        System.out.println("Body: " + tokenResponse.getBody());
         return "login success";
     }
 }

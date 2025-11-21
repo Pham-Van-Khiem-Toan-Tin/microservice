@@ -34,6 +34,9 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -49,12 +52,13 @@ public class WebConfig {
     @Bean
     @Order(1)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
-        OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = new OAuth2AuthorizationServerConfigurer();
-        http.securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
-                .with(authorizationServerConfigurer, (authorizationServer) ->
-                        authorizationServer.oidc(Customizer.withDefaults()))
-                .authorizeHttpRequests(authorizeRequests -> authorizeRequests.anyRequest().authenticated())
-                .rememberMe(Customizer.withDefaults())
+        OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
+
+        http
+                .getConfigurer(OAuth2AuthorizationServerConfigurer.class)
+                .oidc(Customizer.withDefaults());
+        http
+                .cors(Customizer.withDefaults())
                 .exceptionHandling(exception -> exception
                         .defaultAuthenticationEntryPointFor(
                                 new LoginUrlAuthenticationEntryPoint("/login"),
@@ -64,12 +68,18 @@ public class WebConfig {
     }
     @Bean
     @Order(2)
-    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
-        http.authorizeHttpRequests(authorizeRequests -> authorizeRequests
-                        .requestMatchers("/oauth2/token", "/oauth2/authorize")
-                        .anonymous()
+    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http, UserDetailsService userDetailsService) throws Exception {
+        http
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(authorizeRequests -> authorizeRequests
                 .anyRequest().authenticated())
-                .formLogin(Customizer.withDefaults());
+                .cors(Customizer.withDefaults())
+                .formLogin(Customizer.withDefaults())
+                .rememberMe(rm -> rm
+                        .tokenValiditySeconds(60 * 60 * 24 * 30)  // 30 ngày
+                        .key("chuoi-bi-mat-nao-do")
+                        .userDetailsService(userDetailsService)// RẤT QUAN TRỌNG: cố định, không random
+                );
         return http.build();
     }
     @Bean
@@ -86,7 +96,17 @@ public class WebConfig {
 
         return new InMemoryUserDetailsManager(userDetails);
     }
-
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        CorsConfiguration config = new CorsConfiguration();
+        config.addAllowedHeader("*");
+        config.addAllowedMethod("*");
+        config.addAllowedOrigin("*");
+        config.setAllowCredentials(true);
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
     @Bean
     public JpaRegisteredClientRepository jpaRegisteredClientRepository(PasswordEncoder passwordEncoder) {
         String clientId = "oidc-client";
@@ -103,7 +123,7 @@ public class WebConfig {
                     .postLogoutRedirectUri("http://127.0.0.1:8082/auth/login")
                     .scope(OidcScopes.OPENID)
                     .scope(OidcScopes.PROFILE)
-                    .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
+                    .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
                     .build();
             jpaRegisteredClientRepository.save(oidcClient);
         }
