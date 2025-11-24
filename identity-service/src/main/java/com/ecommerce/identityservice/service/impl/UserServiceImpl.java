@@ -2,8 +2,6 @@ package com.ecommerce.identityservice.service.impl;
 
 import static com.ecommerce.identityservice.constants.Constants.*;
 
-import com.ecommerce.identityservice.config.CustomAuthenticationDetail;
-import com.ecommerce.identityservice.config.CustomUserDetail;
 import com.ecommerce.identityservice.dto.*;
 import com.ecommerce.identityservice.dto.exception.CustomException;
 import com.ecommerce.identityservice.entity.*;
@@ -23,7 +21,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
