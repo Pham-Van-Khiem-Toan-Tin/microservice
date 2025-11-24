@@ -1,6 +1,7 @@
-package com.ecommerce.identityservice.repository;
+package com.ecommerce.identityservice.reppository;
 
 import com.ecommerce.identityservice.entity.AuthorizationEntity;
+import org.apache.tomcat.util.http.parser.Authorization;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

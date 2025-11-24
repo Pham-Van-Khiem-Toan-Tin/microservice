@@ -1,7 +1,7 @@
-package com.ecommerce.identityservice.service.impl;
+package com.ecommerce.identityservice.service;
 
 import com.ecommerce.identityservice.entity.AuthorizationConsentEntity;
-import com.ecommerce.identityservice.repository.AuthorizationConsentRepository;
+import com.ecommerce.identityservice.reppository.AuthorizationConsentRepository;
 import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

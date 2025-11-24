@@ -1,21 +1,16 @@
 package com.ecommerce.identityservice.entity;
 
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.Set;
 
 @Entity
-@Table(name = "`client`")
-@NoArgsConstructor
+@Table(name = "client")
 @Data
-@Builder
-@AllArgsConstructor
 public class ClientEntity {
     @Id
     private String id;
@@ -38,12 +33,4 @@ public class ClientEntity {
     private String clientSettings;
     @Column(length = 2000)
     private String tokenSettings;
-    @OneToMany(mappedBy = "client")
-    private List<RoleEntity> roles;
-    @OneToMany(mappedBy = "client")
-    private List<FunctionEntity> functions;
-    @OneToMany(mappedBy = "client")
-    private List<SubFunctionEntity> subFunctions;
-    @OneToMany(mappedBy = "client")
-    private Set<UserRole> userRoles;
 }

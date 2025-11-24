@@ -1,4 +1,4 @@
-package com.ecommerce.identityservice.repository;
+package com.ecommerce.identityservice.reppository;
 
 import com.ecommerce.identityservice.entity.ClientEntity;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+@Component
 public class JpaRegisteredClientRepository implements RegisteredClientRepository {
     private final ClientRepository clientRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -28,6 +29,7 @@ public class JpaRegisteredClientRepository implements RegisteredClientRepository
     public JpaRegisteredClientRepository(ClientRepository clientRepository) {
         Assert.notNull(clientRepository, "clientRepository cannot be null");
         this.clientRepository = clientRepository;
+
         ClassLoader classLoader = JpaRegisteredClientRepository.class.getClassLoader();
         List<Module> securityModules = SecurityJackson2Modules.getModules(classLoader);
         this.objectMapper.registerModules(securityModules);
@@ -42,7 +44,7 @@ public class JpaRegisteredClientRepository implements RegisteredClientRepository
 
     @Override
     public RegisteredClient findById(String id) {
-        Assert.notNull(id, "id cannot be null");
+        Assert.hasText(id, "id cannot be empty");
         return this.clientRepository.findById(id).map(this::toObject).orElse(null);
     }
 
@@ -51,6 +53,7 @@ public class JpaRegisteredClientRepository implements RegisteredClientRepository
         Assert.hasText(clientId, "clientId cannot be empty");
         return this.clientRepository.findByClientId(clientId).map(this::toObject).orElse(null);
     }
+
     private RegisteredClient toObject(ClientEntity client) {
         Set<String> clientAuthenticationMethods = StringUtils.commaDelimitedListToSet(
                 client.getClientAuthenticationMethods());
@@ -140,7 +143,7 @@ public class JpaRegisteredClientRepository implements RegisteredClientRepository
         } else if (AuthorizationGrantType.REFRESH_TOKEN.getValue().equals(authorizationGrantType)) {
             return AuthorizationGrantType.REFRESH_TOKEN;
         }
-        return new AuthorizationGrantType(authorizationGrantType);
+        return new AuthorizationGrantType(authorizationGrantType);              // Custom authorization grant type
     }
 
     private static ClientAuthenticationMethod resolveClientAuthenticationMethod(String clientAuthenticationMethod) {
@@ -151,6 +154,6 @@ public class JpaRegisteredClientRepository implements RegisteredClientRepository
         } else if (ClientAuthenticationMethod.NONE.getValue().equals(clientAuthenticationMethod)) {
             return ClientAuthenticationMethod.NONE;
         }
-        return new ClientAuthenticationMethod(clientAuthenticationMethod);
+        return new ClientAuthenticationMethod(clientAuthenticationMethod);      // Custom client authentication method
     }
 }

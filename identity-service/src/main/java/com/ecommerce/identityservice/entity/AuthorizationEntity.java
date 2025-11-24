@@ -2,14 +2,12 @@ package com.ecommerce.identityservice.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 
-@Data
-@NoArgsConstructor
 @Entity
-@Table(name = "`authorization`")
+@Table(name = "authorization")
+@Data
 public class AuthorizationEntity {
     @Id
     @Column
