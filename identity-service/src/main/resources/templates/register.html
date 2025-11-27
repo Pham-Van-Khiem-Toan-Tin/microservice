@@ -1,10 +1,78 @@
 <!DOCTYPE html>
-<html lang="en">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Register</title>
+    <th:block th:replace="fragments/head :: head-common"></th:block>
+    <link rel="stylesheet" th:href="@{/css/register.css}">
 </head>
 <body>
+<div class="form">
+    <div class="form_container">
+        <div class="title_container">
+            <p class="title">Login to your Account</p>
+            <span class="subtitle">Get started with our app, just create an account and enjoy the experience.</span>
+        </div>
+
+        <form th:action="@{/register}" th:object="${user}" method="post" id="registerForm" novalidate>
+
+            <div class="input_container">
+                <label class="input_label">Email</label>
+                <i class="fa-regular fa-envelope"></i>
+                <input placeholder="name@mail.com" title="Inpit title" name="input-name" type="text" class="input_field" id="email_field">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Full name</label>
+                <input type="text" class="form-control"
+                       th:field="*{fullName}" placeholder="Your name" required>
+                <div class="invalid-feedback">Please enter your name.</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control"
+                       th:field="*{email}" placeholder="name@example.com" required>
+                <div class="invalid-feedback">Please enter a valid email.</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Password</label>
+                <input type="password" class="form-control"
+                       th:field="*{password}" id="password"
+                       placeholder="••••••••" minlength="6" required>
+                <div class="invalid-feedback">Password must be at least 6 characters.</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Confirm password</label>
+                <input type="password" class="form-control"
+                       id="confirmPassword" placeholder="••••••••" required>
+                <div class="invalid-feedback" id="confirmFeedback">
+                    Passwords do not match.
+                </div>
+            </div>
+
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="agree" required>
+                <label class="form-check-label" for="agree">
+                    I agree to the terms & conditions
+                </label>
+                <div class="invalid-feedback">You must agree before registering.</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100" id="btnSubmit">
+                Create account
+            </button>
+
+            <div class="text-center mt-3">
+                Already have an account?
+                <a th:href="@{/login}">Login</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<th:block th:replace="fragments/scripts :: scripts-common"></th:block>
+
 
 </body>
 </html>

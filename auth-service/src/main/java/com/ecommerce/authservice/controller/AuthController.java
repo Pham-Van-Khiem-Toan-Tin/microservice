@@ -1,5 +1,6 @@
 package com.ecommerce.authservice.controller;
 
+import com.ecommerce.authservice.dto.response.TokenResponse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,18 +60,18 @@ public class AuthController {
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("grant_type", "authorization_code");
         form.add("code", code);
-        form.add("redirect_uri", "http://127.0.0.1:8082/auth/callback"); // phải trùng với redirect_uri đã đăng ký
-//        form.add("client_id", "oidc-client");
-//        form.add("client_secret", passwordEncoder.encode("secret"));
+        form.add("redirect_uri", "http://127.0.0.1:8082/auth/callback");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
         headers.setBasicAuth("oidc-client","secret");
         RestTemplate restTemplate = new RestTemplate();
         HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(form, headers);
-        ResponseEntity<Map> tokenResponse =
-                restTemplate.postForEntity(tokenEndpoint, entity, Map.class);
+        ResponseEntity<TokenResponse> tokenResponse =
+                restTemplate.postForEntity(tokenEndpoint, entity, TokenResponse.class);
         System.out.println("Status: " + tokenResponse.getStatusCode());
-        System.out.println("Body: " + tokenResponse.getBody());
+
+        assert tokenResponse.getBody() != null;
+        System.out.println("Body: " + tokenResponse.getBody().getAccessToken());
         return "login success";
     }
 }

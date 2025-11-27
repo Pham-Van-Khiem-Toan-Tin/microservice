@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+*, :after, :before {
+    margin: 0;
+    padding: 0;
+    font-family: "Inter", sans-serif;
+}
+.form {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    width: 100%;
+}
+.form_container {
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    padding: 50px 40px 20px 40px;
+    background-color: #ffffff;
+    box-shadow: 0px 106px 42px rgba(0, 0, 0, 0.01),
+    0px 59px 36px rgba(0, 0, 0, 0.05), 0px 26px 26px rgba(0, 0, 0, 0.09),
+    0px 7px 15px rgba(0, 0, 0, 0.1), 0px 0px 0px rgba(0, 0, 0, 0.1);
+    border-radius: 11px;
+    font-family: "Inter", sans-serif;
+}
+
+.form_container .title_container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+.form_container .title_container .title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #212121;
+}
+
+.form_container .title_container .subtitle {
+    font-size: 0.725rem;
+    max-width: 80%;
+    text-align: center;
+    line-height: 1.1rem;
+    color: #8B8E98
+}
