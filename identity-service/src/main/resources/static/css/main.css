@@ -1,0 +1,178 @@
+@import 'variables.css';
+
+/* Bootstrap Overrides */
+body {
+    font-family: var(--font-primary);
+    -webkit-font-smoothing: antialiased;
+    background-color: var(--c-white);
+    color: #1a1a1a;
+}
+
+/* Typography */
+h1 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #0f172a;
+}
+
+p.lead {
+    color: #64748b;
+    font-size: 1.1rem;
+    font-weight: 400;
+}
+
+/* --- Toggles / Tabs --- */
+.nav-segment {
+    background-color: #f8fafc;
+    border-radius: var(--br-md);
+    padding: 0.25rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.nav-segment .btn {
+    flex: 1;
+    border: none;
+    font-weight: 500;
+    color: #64748b;
+    background-color: transparent;
+    border-radius: 6px; /* Slightly tighter than container */
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.nav-segment .btn.active {
+    background-color: var(--c-black);
+    color: var(--c-accent); /* Orange Text */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.nav-segment .btn:hover:not(.active) {
+    background-color: #e2e8f0;
+    color: #0f172a;
+}
+
+/* --- Premium Inputs --- */
+.input-group {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px; /* Rounded Rect, not pill */
+    background-color: var(--c-white);
+    transition: all 0.2s ease;
+    overflow: hidden;
+}
+
+/* Focus State */
+.input-group:focus-within {
+    border-color: #cbd5e1; /* Subtle darken */
+    box-shadow: 0 0 0 4px rgba(241, 245, 249, 1); /* Large soft ring match mockup */
+}
+
+/* Icon */
+.input-group-text {
+    background-color: transparent;
+    border: none;
+    color: #94a3b8; /* Light gray icon */
+    padding-left: 1rem;
+}
+
+/* Input Field */
+.form-control {
+    border: none;
+    padding-left: 0.75rem;
+    color: #0f172a;
+    font-weight: 400;
+}
+
+.form-control::placeholder {
+    color: #cbd5e1;
+    font-weight: 400;
+}
+
+.form-control:focus {
+    box-shadow: none;
+    background-color: transparent;
+}
+
+/* Labels */
+.form-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.5rem;
+    text-transform: none; /* Reset uppercase */
+    letter-spacing: normal;
+}
+
+/* Primary Button - Orange */
+.btn-primary {
+    background-color: var(--c-accent); /* Orange */
+    border-color: var(--c-accent);
+    color: var(--c-white);
+    font-weight: 600;
+    font-size: 1rem;
+    padding-block: 0.75rem;
+    border-radius: 8px;
+    letter-spacing: 0.01em;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+    background-color: #e03400 !important; /* Darker Orange */
+    border-color: #e03400 !important;
+    color: var(--c-white) !important;
+}
+
+/* Links */
+a {
+    transition: color 0.2s;
+    text-decoration: none;
+}
+.text-orange { color: var(--c-accent) !important; }
+.text-orange:hover { text-decoration: underline; }
+
+/* Checkbox */
+.form-check-input:checked {
+    background-color: var(--c-accent);
+    border-color: var(--c-accent);
+}
+
+/* Footer text */
+.footer-link {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-inline: 0.5rem;
+}
+.footer-link:hover { color: var(--c-accent); }
+
+/*!* Custom Validation Styles for Input Groups *!*/
+.input-group.is-invalid {
+    border-color: #dc3545 !important;
+}
+
+.input-group.is-invalid:focus-within {
+    box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.25);
+    border-color: #dc3545 !important;
+}
+
+/* Remove default Bootstrap validation styling from the inner input */
+.input-group .form-control.is-invalid {
+    border: none !important;
+    background-image: none !important; /* Remove specific icon */
+    box-shadow: none !important;
+    /* Do NOT set padding-right to 0, it might collapse text area if box-sizing is border-box */
+}
+
+/* Ensure the icon inside group doesn't change color weirdly, or do we want it red? */
+.input-group.is-invalid .input-group-text {
+    color: #dc3545;
+}
+
+/* Validation Message Style */
+.invalid-feedback {
+    font-size: 0.8125rem;
+    margin-top: 0.25rem;
+}

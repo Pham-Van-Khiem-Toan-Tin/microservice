@@ -1,0 +1,22 @@
+.hero-bg {
+    background-image: url("/images/hero-register.avif");
+    background-size: cover;
+    background-position: center;
+}
+
+/* Custom Helper for full height split */
+.min-vh-100 { min-height: 100vh; }
+.object-fit-cover { object-fit: cover; }
+
+.verify-icon {
+    font-size: 3rem;
+    color: var(--c-accent);
+    margin-bottom: 1.5rem;
+}
+
+.otp-input {
+    letter-spacing: 0.5em;
+    font-size: 1.25rem;
+    text-align: center;
+    font-weight: 600;
+}

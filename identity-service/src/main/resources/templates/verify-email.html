@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register</title>
+    <th:block th:replace="fragments/head :: head-common"></th:block>
+    <link rel="stylesheet" th:href="@{/css/page/verify-email.css}">
+</head>
+<body>
+<div class="container-fluid p-0">
+    <div class="row g-0 min-vh-100">
+        <!-- Left: Form -->
+        <div class="col-lg-6 d-flex flex-column justify-content-center p-5">
+            <main class="mx-auto w-100 text-center" style="max-width: 420px;">
+
+                <div class="verify-icon">
+                    <i class="fas fa-envelope-open-text"></i>
+                </div>
+
+                <header class="mb-4">
+                    <h1 class="mb-2">Verify your email</h1>
+                    <p class="text-secondary">We've sent a 6-digit code to your email address. Please enter it below.</p>
+                </header>
+
+                <form action="#" method="POST">
+                    <div class="mb-4">
+                        <label for="code" class="form-label text-start w-100">Verification Code</label>
+                        <input type="text" id="code" class="form-control otp-input" placeholder="000000" maxlength="6" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 mb-4 py-2">Verify Account</button>
+
+                    <div class="text-center">
+                        <p class="small text-secondary">Didn't receive the code? <a href="#" class="text-orange fw-bold">Resend Code</a></p>
+                    </div>
+                </form>
+
+            </main>
+        </div>
+
+        <!-- Right: Visual -->
+        <div class="col-lg-6 d-none d-lg-block p-0 position-relative demo-bg">
+            <div class="position-absolute bottom-0 start-0 w-100 p-5 text-white" style="background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);">
+                <h2>Almost There!</h2>
+                <p class="lead text-white-50">Secure your account to start trading.</p>
+            </div>
+        </div>
+    </div>
+</div>
+<th:block th:replace="fragments/scripts :: scripts-common"></th:block>
+<script th:src="@{/js/page/verify-email.js}"></script>
+</body>
+</html>

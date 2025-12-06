@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Terms of Service</title>
+    <th:block th:replace="fragments/head :: head-common"></th:block>
+    <link rel="stylesheet" th:href="@{/css/page/legal.css}">
+</head>
+<body>
+<div class="container py-5" style="max-width: 800px;">
+    <header class="mb-5 border-bottom pb-4">
+        <a th:href="@{/register}" class="text-decoration-none d-inline-flex align-items-center gap-2 text-secondary mb-3">
+            <i class="fas fa-arrow-left"></i> Back to Register
+        </a>
+        <h1 class="fw-bold">Terms of Service</h1>
+        <p class="text-secondary">Last updated: December 6, 2025</p>
+    </header>
+
+    <div class="content">
+        <h3 class="fw-bold mb-3">1. Authorization</h3>
+        <p class="mb-4">By accessing and placing an order with GearMarket, you confirm that you are in agreement with and bound by the terms of service contained in the Terms & Conditions outlined below. These terms apply to the entire website and any email or other type of communication between you and GearMarket.</p>
+
+        <h3 class="fw-bold mb-3">2. Intellectual Property</h3>
+        <p class="mb-4">The website and its original content, features, and functionality are owned by GearMarket and are protected by international copyright, trademark, patent, trade secret, and other intellectual property or proprietary rights laws.</p>
+
+        <h3 class="fw-bold mb-3">3. Termination</h3>
+        <p class="mb-4">We may terminate or suspend access to our Service immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms.</p>
+    </div>
+
+    <footer class="mt-5 pt-4 border-top text-center text-secondary small">
+        &copy; 2024 GearMarket Inc. All rights reserved.
+    </footer>
+</div>
+</body>
+</html>

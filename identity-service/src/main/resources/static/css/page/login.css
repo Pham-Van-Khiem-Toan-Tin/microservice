@@ -1,0 +1,15 @@
+/* Login Page Specific Styles */
+.login-header {
+    margin-bottom: 3rem;
+}
+.forgot-password {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+.hero-bg {
+    background-image: url('/images/hero-register.avif');
+    background-size: cover;
+    background-position: center;
+}
+.min-vh-100 { min-height: 100vh; }
+.object-fit-cover { object-fit: cover; }

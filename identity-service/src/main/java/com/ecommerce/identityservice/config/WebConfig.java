@@ -70,13 +70,15 @@ public class WebConfig {
     @Order(2)
     public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http, UserDetailsService userDetailsService) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
-                        .requestMatchers("/register", "/css/**", "/js/**", "/fontawesome/**", "/images/**", "/webjars/**")
+                        .requestMatchers("/register", "/terms", "/privacy", "/login", "forgot-password", "new-password",
+                                "/css/**", "/js/**", "/images/**", "/fontawesome/**", "/images/**", "/webjars/**")
                         .permitAll()
                         .anyRequest().authenticated())
                 .cors(Customizer.withDefaults())
-                .formLogin(Customizer.withDefaults())
+                .formLogin(login -> {
+                    login.loginPage("/login");
+                })
                 .rememberMe(rm -> rm
                         .tokenValiditySeconds(60 * 60 * 24 * 30)  // 30 ngày
                         .key("chuoi-bi-mat-nao-do")
@@ -91,7 +93,7 @@ public class WebConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         UserDetails userDetails = User.builder()
-                .username("user")
+                .username("phamkhiemhust2001@gmail.com")
                 .password(passwordEncoder().encode("password"))
                 .roles("USER")
                 .build();

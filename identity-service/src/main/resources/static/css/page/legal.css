@@ -1,0 +1,8 @@
+.legal-content h3 {
+    margin-top: 2rem;
+    color: var(--c-black);
+}
+.legal-content p {
+    color: #4b5563;
+    line-height: 1.7;
+}

@@ -1,78 +1,102 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="en-US">
 <head>
+    <meta charset="UTF-8">
     <title>Register</title>
     <th:block th:replace="fragments/head :: head-common"></th:block>
-    <link rel="stylesheet" th:href="@{/css/register.css}">
+    <link rel="stylesheet" th:href="@{/css/page/register.css}">
 </head>
 <body>
-<div class="form">
-    <div class="form_container">
-        <div class="title_container">
-            <p class="title">Login to your Account</p>
-            <span class="subtitle">Get started with our app, just create an account and enjoy the experience.</span>
+<div class="container-fluid p-0">
+    <div class="row g-0 min-vh-100">
+        <!-- Left: Form -->
+        <div class="col-lg-6 d-flex flex-column justify-content-center p-5">
+            <main class="mx-auto w-100" style="max-width: 520px;">
+
+                <header class="mb-5">
+                    <h1 class="mb-2">Join as a Customer</h1>
+                    <p class="lead">Create an account to track orders and save favorites.</p>
+                </header>
+
+
+                <form th:action="@{/register}" th:object="${registerForm}" method="POST" id="registerForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="firstName" class="form-label">First Name</label>
+                            <div class="input-group">
+                                <input th:field="*{firstName}" name="firstName" type="text" id="firstName" class="form-control" placeholder="Jane" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="lastName" class="form-label">Last Name</label>
+                            <div class="input-group">
+                                <input th:field="*{lastName}" type="text" name="lastName" id="lastName" class="form-control" placeholder="Doe" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email Address</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-regular fa-envelope"></i></span>
+                            <input th:field="*{email}" type="email" id="email" class="form-control" placeholder="jane@example.com" required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-light fa-lock"></i></span>
+                                <input th:field="*{password}" type="password" id="password" class="form-control" placeholder="••••••••" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="confirmPassword" class="form-label">Confirm Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-light fa-lock"></i></span>
+                                <input th:field="*{confirmPassword}" type="password" name="confirmPassword" id="confirmPassword" class="form-control" placeholder="••••••••" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4 form-check">
+                        <input type="checkbox" class="form-check-input" name="terms" id="terms" required>
+                        <label for="terms" class="form-check-label text-secondary small">I agree to the <a th:href="@{/terms}" class="text-orange">Terms of Service</a> and <a th:href="@{/privacy}" class="text-orange">Privacy Policy</a></label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 mb-4 d-flex justify-content-center align-items-center px-4">
+                        <span class="fw-bold">Create Account</span>
+                    </button>
+
+                    <div class="text-center mb-5">
+                        <p class="small text-secondary">Already have an account? <a th:href="@{/login}" class="text-orange fw-bold">Log in</a></p>
+                    </div>
+                </form>
+
+                <footer class="text-center mt-auto pt-4 border-top">
+                    <p class="small text-secondary mb-2">&copy; 2024 GearMarket Inc. All rights reserved.</p>
+                    <div>
+                        <a th:href="@{/terms}" class="footer-link">Privacy Policy</a>
+                        <span class="text-secondary">•</span>
+                        <a th:href="@{/privacy}" class="footer-link">Terms of Service</a>
+                    </div>
+                </footer>
+            </main>
         </div>
 
-        <form th:action="@{/register}" th:object="${user}" method="post" id="registerForm" novalidate>
-
-            <div class="input_container">
-                <label class="input_label">Email</label>
-                <i class="fa-regular fa-envelope"></i>
-                <input placeholder="name@mail.com" title="Inpit title" name="input-name" type="text" class="input_field" id="email_field">
+        <!-- Right: Visual -->
+        <div class="col-lg-6 d-none d-lg-block p-0 position-relative hero-bg">
+            <div class="position-absolute bottom-0 start-0 w-100 p-5 text-white" style="background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);">
+                <h2>Build Your Dream Rig</h2>
+                <p class="lead text-white-50">Access thousands of premium components from top brands.</p>
             </div>
-            <div class="mb-3">
-                <label class="form-label">Full name</label>
-                <input type="text" class="form-control"
-                       th:field="*{fullName}" placeholder="Your name" required>
-                <div class="invalid-feedback">Please enter your name.</div>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Email</label>
-                <input type="email" class="form-control"
-                       th:field="*{email}" placeholder="name@example.com" required>
-                <div class="invalid-feedback">Please enter a valid email.</div>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Password</label>
-                <input type="password" class="form-control"
-                       th:field="*{password}" id="password"
-                       placeholder="••••••••" minlength="6" required>
-                <div class="invalid-feedback">Password must be at least 6 characters.</div>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Confirm password</label>
-                <input type="password" class="form-control"
-                       id="confirmPassword" placeholder="••••••••" required>
-                <div class="invalid-feedback" id="confirmFeedback">
-                    Passwords do not match.
-                </div>
-            </div>
-
-            <div class="form-check mb-3">
-                <input class="form-check-input" type="checkbox" id="agree" required>
-                <label class="form-check-label" for="agree">
-                    I agree to the terms & conditions
-                </label>
-                <div class="invalid-feedback">You must agree before registering.</div>
-            </div>
-
-            <button type="submit" class="btn btn-primary w-100" id="btnSubmit">
-                Create account
-            </button>
-
-            <div class="text-center mt-3">
-                Already have an account?
-                <a th:href="@{/login}">Login</a>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 
 <th:block th:replace="fragments/scripts :: scripts-common"></th:block>
-
+<script th:src="@{/js/page/register.js}"></script>
 
 </body>
 </html>

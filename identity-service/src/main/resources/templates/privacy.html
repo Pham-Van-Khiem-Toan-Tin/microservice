@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Privacy Policy | GearMarket</title>
+    <th:block th:replace="fragments/head :: head-common"></th:block>
+    <link rel="stylesheet" th:href="@{/css/page/legal.css}">
+</head>
+<body>
+<div class="container py-5" style="max-width: 800px;">
+    <header class="mb-5 border-bottom pb-4">
+        <a th:href="@{/register}" class="text-decoration-none d-inline-flex align-items-center gap-2 text-secondary mb-3">
+            <i class="fas fa-arrow-left"></i> Back to Register
+        </a>
+        <h1 class="fw-bold">Privacy Policy</h1>
+        <p class="text-secondary">Last updated: December 6, 2025</p>
+    </header>
+
+    <div class="content">
+        <h3 class="fw-bold mb-3">1. Information We Collect</h3>
+        <p class="mb-4">We collect information from you when you register on our site, place an order, subscribe to our newsletter or fill out a form. Name / Email address / Mailing address / Phone number / Credit card information.</p>
+
+        <h3 class="fw-bold mb-3">2. How We Use Information</h3>
+        <p class="mb-4">Any of the information we collect from you may be used in one of the following ways: To personalize your experience, to improve our website, to improve customer service, to process transactions.</p>
+
+        <h3 class="fw-bold mb-3">3. Data Protection</h3>
+        <p class="mb-4">We implement a variety of security measures to maintain the safety of your personal information when you place an order or enter, submit, or access your personal information.</p>
+    </div>
+
+    <footer class="mt-5 pt-4 border-top text-center text-secondary small">
+        &copy; 2024 GearMarket Inc. All rights reserved.
+    </footer>
+</div>
+</body>
+</html>
