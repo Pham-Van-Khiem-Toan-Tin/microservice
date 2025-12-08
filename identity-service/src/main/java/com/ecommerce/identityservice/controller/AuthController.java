@@ -2,6 +2,11 @@ package com.ecommerce.identityservice.controller;
 
 import com.ecommerce.identityservice.dto.request.RegisterForm;
 import com.ecommerce.identityservice.dto.request.UserForm;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
+import org.springframework.security.web.savedrequest.SavedRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,7 +21,10 @@ public class AuthController {
         return "register";
     }
     @GetMapping("/login")
-    public String login(Model model) {
+    public String login(Model model, HttpServletRequest request, HttpServletResponse response) {
+        HttpSessionRequestCache cache = new HttpSessionRequestCache();
+        SavedRequest saved = cache.getRequest(request, response);
+        System.out.println(saved);
         return "login";
     }
     @GetMapping("/terms")
@@ -35,8 +43,8 @@ public class AuthController {
     public String newPassword() {
         return "new-password";
     }
-//    @PostMapping("/register")
-//    public String register(@ModelAttribute("user") UserForm userForm) {
-//        return "register";
-//    }
+    @PostMapping("/register")
+    public ResponseEntity<String> register(@ModelAttribute("user") UserForm userForm) {
+        return ResponseEntity.ok("success");
+    }
 }

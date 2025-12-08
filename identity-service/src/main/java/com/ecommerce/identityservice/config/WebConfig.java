@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -34,6 +35,7 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -52,32 +54,49 @@ public class WebConfig {
     @Bean
     @Order(1)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
-        OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
+        OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
+                new OAuth2AuthorizationServerConfigurer();
+
+        RequestMatcher endpointsMatcher = authorizationServerConfigurer.getEndpointsMatcher();
 
         http
-                .getConfigurer(OAuth2AuthorizationServerConfigurer.class)
-                .oidc(Customizer.withDefaults());
-        http
+                // CHỈ chain này match các endpoint OAuth2/OIDC
+                .securityMatcher(endpointsMatcher)
+
+                // mọi request thuộc matcher này phải auth
+                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+
+                // CSRF ignore cho token/introspect/revoke...
+                .csrf(csrf -> csrf.ignoringRequestMatchers(endpointsMatcher))
+
+                // APPLY đúng instance configurer này
+                .with(authorizationServerConfigurer, authServer ->
+                        authServer.oidc(Customizer.withDefaults())
+                )
+
                 .cors(Customizer.withDefaults())
-                .exceptionHandling(exception -> exception
+                .exceptionHandling(ex -> ex
                         .defaultAuthenticationEntryPointFor(
                                 new LoginUrlAuthenticationEntryPoint("/login"),
                                 new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
-                        ));
+                        )
+                );
+
         return http.build();
     }
     @Bean
     @Order(2)
     public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http, UserDetailsService userDetailsService) throws Exception {
         http
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
-                        .requestMatchers("/register", "/terms", "/privacy", "/login", "forgot-password", "new-password",
+                        .requestMatchers("/register", "/terms", "/privacy", "/login", "forgot-password", "new-password", "/role/**",
                                 "/css/**", "/js/**", "/images/**", "/fontawesome/**", "/images/**", "/webjars/**")
                         .permitAll()
                         .anyRequest().authenticated())
                 .cors(Customizer.withDefaults())
                 .formLogin(login -> {
-                    login.loginPage("/login");
+                    login.loginPage("/login").defaultSuccessUrl("/role/test");
                 })
                 .rememberMe(rm -> rm
                         .tokenValiditySeconds(60 * 60 * 24 * 30)  // 30 ngày
