@@ -10,10 +10,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Data
 @Entity
@@ -38,9 +36,13 @@ public class UserEntity implements UserDetails {
     private String secureAvatarUrl;
     @Column(name = "avatar_url")
     private String avatarUrl;
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "role_id", nullable = false)
-    private RoleEntity role;
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "user_roles",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private Set<RoleEntity> roles = new HashSet<>();
     @Column(nullable = false)
     private int status;
     @Column(nullable = false, name = "created_at")
@@ -54,7 +56,7 @@ public class UserEntity implements UserDetails {
     private List<UserEntity> updatedUsers = new ArrayList<>();
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singleton(new SimpleGrantedAuthority(this.role.getId()));
+        return this.roles.stream().map(r -> new SimpleGrantedAuthority(r.getId())).collect(Collectors.toSet());
     }
 
     @Override
