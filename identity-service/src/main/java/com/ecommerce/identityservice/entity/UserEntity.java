@@ -76,5 +76,6 @@ public class UserEntity implements Serializable {
 //    @JsonIgnore
     public String getFullName() {
         return firstName + " " + lastName;
+
     }
 }
