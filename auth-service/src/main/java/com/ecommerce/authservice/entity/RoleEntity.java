@@ -1,9 +1,7 @@
 package com.ecommerce.authservice.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -14,6 +12,9 @@ import java.util.Set;
 @Table(name = "roles")
 @Getter
 @Setter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class RoleEntity {
     @Id
     private String id;
