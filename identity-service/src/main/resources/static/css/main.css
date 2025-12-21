@@ -176,3 +176,28 @@ a {
     font-size: 0.8125rem;
     margin-top: 0.25rem;
 }
+
+.custom-notification{
+    border-radius: 12px;
+    padding: 12px 12px;
+    margin-bottom: 10px;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(0,0,0,.15);
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all .2s ease;
+}
+.custom-notification.show{
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Background theo type */
+.custom-notification.success{ background: #16a34a; } /* green */
+.custom-notification.info{    background: #2563eb; } /* blue */
+.custom-notification.warning{ background: #d97706; } /* orange */
+.custom-notification.error{   background: #dc2626; } /* red */
+
+.notification-content{ font-size: 14px; line-height: 1.35; }
+.notification-close{ opacity: .9; }
+.notification-close:hover{ opacity: 1; }

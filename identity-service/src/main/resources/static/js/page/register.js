@@ -1,3 +1,5 @@
+let api = new ApiClient();
+
 $(document).ready(function() {
     $('#registerForm').validate({
 
@@ -56,12 +58,35 @@ $(document).ready(function() {
             $(element).valid();   // blur ra ngoài cũng check
         },
         submitHandler: function(form) {
-            console.log('Register Valid');
-            const $btn = $(form).find('button[type="submit"]');
-            $btn.prop('disabled', true).text('Creating Account...');
-            if (!$("#registerForm").valid()) {
-                e.preventDefault();
+            const $form = $(this);
+
+            const payload = {
+                email: $.trim($("#email").val()),
+                firstName: $.trim($("#firstName").val()),
+                lastName: $.trim($("#lastName").val()),
+                password: $("#password").val(),
+                confirmPassword: $("#confirmPassword").val()
             }
+
+            api.post("/register", payload, {
+                form: $form,
+                timeout: 5000,
+                onSuccess: function (data) {
+                    Notification.success("Trang đang được chuyển hướng", 1500)
+
+                    const email = encodeURIComponent(payload.email);
+                    setTimeout(function () {
+                        window.location.href = "/verify-email?e=" + email;
+                    }, 1500)
+                },
+                onError: function () {
+                    const res = xhr.responseJSON;
+                    console.log(res)
+                    Notification.error(res.messages, 1500)
+                    api.enableForm($(form))
+                }
+            })
         }
     });
+
 });

@@ -4,6 +4,7 @@ import com.ecommerce.identityservice.dto.request.RoleForm;
 import com.ecommerce.identityservice.entity.RoleEntity;
 import com.ecommerce.identityservice.service.RoleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,7 +23,7 @@ public class RoleController {
         return "success";
     }
     @GetMapping("/test")
-    public String test() {
-        return "success";
+    public ResponseEntity<String> test() {
+        return ResponseEntity.ok("success");
     }
 }

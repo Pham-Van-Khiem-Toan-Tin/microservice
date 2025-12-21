@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Register</title>
+    <title>Verify Email</title>
     <th:block th:replace="fragments/head :: head-common"></th:block>
     <link rel="stylesheet" th:href="@{/css/page/verify-email.css}">
 </head>
@@ -22,10 +22,10 @@
                     <p class="text-secondary">We've sent a 6-digit code to your email address. Please enter it below.</p>
                 </header>
 
-                <form action="#" method="POST">
+                <form th:action="@{/verify-email}" id="verifyForm" method="POST">
                     <div class="mb-4">
-                        <label for="code" class="form-label text-start w-100">Verification Code</label>
-                        <input type="text" id="code" class="form-control otp-input" placeholder="000000" maxlength="6" required>
+                        <label for="otp" class="form-label text-start w-100">Verification Code</label>
+                        <input type="text" id="otp" class="form-control otp-input" placeholder="000000" maxlength="6" required>
                     </div>
 
                     <button type="submit" class="btn btn-primary w-100 mb-4 py-2">Verify Account</button>

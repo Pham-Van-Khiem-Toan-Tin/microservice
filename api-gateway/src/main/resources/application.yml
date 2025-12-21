@@ -15,7 +15,14 @@ spring:
             allowCredentials: true
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
-
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8085
+  session:
+    redis:
+      namespace: spring:session:bff
 app:
   api-prefix: /api/v1
   introspect-url: http://localhost:8085

@@ -1,106 +1,119 @@
 class ApiClient {
-    constructor() {
-        this.csrfToken = $("meta[name='_csrf']").attr("content");
-        this.csrfHeader = $("meta[name='_csrf_header']").attr("content");
+    constructor(options = {}) {
+        this.baseUrl = options.baseUrl || "";
+        this.defaultTimeout = options.timeout || 15000;
+        this.defaultHeaders = options.headers || {};
+        this.globalBeforeSend = options.beforeSend || null;
+        this.globalAfterSend = options.afterSend || null;
     }
 
-    /**
-     * CORE ENGINE: Chỉ lo việc gửi và xử lý kết quả/lỗi chung
-     * Không quan tâm data là json hay query param (do hàm gọi quyết định)
-     */
-    _coreRequest(settings) {
-        const _this = this;
+    disableForm($form) {
+        if (!$form || !$form.length) return;
+        $form.find("input, select, textarea, button").prop("disabled", true);
+        $form.addClass("form-disabled");
+        $form.find(".form-overlay").removeClass("d-none");
+    }
 
-        return new Promise((resolve, reject) => {
-            $.ajax({
-                ...settings,
-                beforeSend: function(xhr) {
-                    // Luôn check CSRF cho các method không an toàn (POST, PUT, DELETE)
-                    if (settings.type !== 'GET' && _this.csrfHeader && _this.csrfToken) {
-                        xhr.setRequestHeader(_this.csrfHeader, _this.csrfToken);
-                    }
-                    if (settings.loading) App.showLoading(true);
-                },
-                success: function(res) {
-                    if (settings.showSuccess) Notify.success(settings.successMsg);
-                    resolve(res);
-                },
-                error: function(xhr) {
-                    if (settings.showError) _this._handleError(xhr);
-                    reject(xhr);
-                },
-                complete: function() {
-                    if (settings.loading) App.showLoading(false);
-                }
-            });
+    enableForm($form) {
+        if (!$form || !$form.length) return;
+        $form.find("input, select, textarea, button").prop("disabled", false);
+        $form.removeClass("form-disabled");
+        $form.find(".form-overlay").addClass("d-none");
+    }
+
+    _fullUrl(url) {
+        if (/^https?:\/\//i.test(url)) return url;
+        return `${this.baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
+    }
+
+    _normalizeError(xhr) {
+        const res = xhr.responseJSON;
+        return {
+            status: xhr.status,
+            message:
+                res?.messages ||
+                res?.message ||
+                xhr.statusText ||
+                "Có lỗi xảy ra",
+            raw: res
+        };
+    }
+
+    request({
+                url,
+                method = "GET",
+                data,
+                form,
+                headers,
+                timeout,
+
+                showError = true,
+                showSuccess,
+
+                // callbacks
+                beforeSend,
+                afterSend,
+                onSuccess,
+                onError,
+            }) {
+        const isFormData = (typeof FormData !== "undefined") && (data instanceof FormData);
+        const $form = form ? $(form) : null;
+
+        $.ajax({
+            url: this._fullUrl(url),
+            type: method,
+            timeout: timeout ?? this.defaultTimeout,
+            headers: { ...this.defaultHeaders, ...(headers || {}) },
+
+            contentType: isFormData ? false : "application/json; charset=utf-8",
+            processData: !isFormData,
+            data:
+                data === undefined
+                    ? undefined
+                    : (isFormData ? data : JSON.stringify(data)),
+
+            beforeSend: (xhr, settings) => {
+                this.globalBeforeSend && this.globalBeforeSend(xhr, settings);
+                if ($form && $form.length) this.disableForm($form);
+                beforeSend && beforeSend(xhr, settings);
+            },
+
+            success: (res) => {
+                if (showSuccess) Notification.success(showSuccess, 1500);
+                onSuccess && onSuccess(res);
+            },
+
+            error: (xhr) => {
+                const err = this._normalizeError(xhr);
+                if (showError) Notification.error(err.message, 1500);
+                onError && onError(err, xhr);
+            },
+
+            complete: () => {
+                if ($form && $form.length) this.enableForm($form);
+                afterSend && afterSend();
+                this.globalAfterSend && this.globalAfterSend();
+            }
         });
     }
 
-    // --- CÁC METHOD RIÊNG BIỆT (Xử lý option đặc thù) ---
-
-    /**
-     * GET: Đặc thù là data chuyển thành Query String, cache có thể bật
-     */
-    get(url, params = {}, options = {}) {
-        // 1. Cấu hình đặc thù cho GET
-        const defaults = {
-            url: url,
-            type: 'GET',
-            data: params,      // jQuery tự chuyển object -> ?id=1&name=A
-            cache: false,      // Thường API không nên cache
-            loading: true,     // GET thường cần loading
-            showSuccess: false // GET lấy về xem, ít khi thông báo "Thành công"
-        };
-
-        // 2. Trộn options người dùng (nếu muốn override)
-        const finalSettings = $.extend(true, {}, defaults, options);
-
-        // 3. Gọi engine
-        return this._coreRequest(finalSettings);
+    get(url, options = {}) {
+        this.request({ url, method: "GET", ...options });
     }
 
-    /**
-     * POST: Đặc thù là data phải stringify, contentType json, luôn check CSRF
-     */
-    post(url, data = {}, options = {}) {
-        // 1. Cấu hình đặc thù cho POST
-        const defaults = {
-            url: url,
-            type: 'POST',
-            data: JSON.stringify(data), // POST JSON thì phải stringify
-            contentType: 'application/json; charset=utf-8',
-            dataType: 'json',
-            loading: true,
-            showSuccess: true,          // POST thường là thêm mới -> Nên báo thành công
-            successMsg: "Dữ liệu đã được lưu!"
-        };
-
-        // Nếu người dùng muốn upload file (contentType: false), ta không stringify data
-        if (options.contentType === false) {
-            defaults.data = data; // Giữ nguyên FormData
-        }
-
-        const finalSettings = $.extend(true, {}, defaults, options);
-
-        return this._coreRequest(finalSettings);
+    post(url, data, options = {}) {
+        this.request({ url, method: "POST", data, ...options });
     }
 
-    /**
-     * DELETE: Đặc thù là ít khi gửi body, cảnh báo quan trọng
-     */
+    put(url, data, options = {}) {
+        this.request({ url, method: "PUT", data, ...options });
+    }
+
+    patch(url, data, options = {}) {
+        this.request({ url, method: "PATCH", data, ...options });
+    }
+
     delete(url, options = {}) {
-        const defaults = {
-            url: url,
-            type: 'DELETE',
-            loading: true,
-            showSuccess: true,
-            successMsg: "Xóa thành công!"
-        };
-
-        const finalSettings = $.extend(true, {}, defaults, options);
-        return this._coreRequest(finalSettings);
+        this.request({ url, method: "DELETE", ...options });
     }
-
-    // _handleError giữ nguyên như cũ...
-    _handleError(xhr) { /* ... */ }
 }

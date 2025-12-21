@@ -1,9 +1,17 @@
 <div xmlns:th="http://www.thymeleaf.org" th:fragment="toast">
-    <div class="toast">
-        <div class="toast-header">
-            <button type="button" class="text-light">
+    <div id="toast-container"
+         class="position-fixed top-0 end-0 p-3"
+         style="z-index:1080; width: 360px; max-width: 100%;">
 
-            </button>
+        <!-- template: JS sẽ clone node này -->
+        <div id="toast-template" class="custom-notification d-none" data-toast-template="true">
+            <div class="d-flex justify-content-end mb-1">
+                <button type="button" class="notification-close btn btn-link p-0 text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="notification-content"></div>
         </div>
     </div>
 </div>

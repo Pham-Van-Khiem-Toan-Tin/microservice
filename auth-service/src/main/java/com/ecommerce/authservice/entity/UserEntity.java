@@ -2,21 +2,20 @@ package com.ecommerce.authservice.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.util.UUID;
 
 @Entity
 @Table(name = "users")
 @Data
 public class UserEntity {
     @Id
-    private  String id;
-
-    @Column(nullable = false, length = 100)
-    private String username;
-    @Column(nullable = false, length = 100)
-    private String email;
-    @Column(nullable = false)
-    private int status;
-    @ManyToOne(fetch = FetchType.LAZY)
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(length = 16)
+    private UUID id;
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", referencedColumnName = "id", nullable = false)
     private RoleEntity role;
 }

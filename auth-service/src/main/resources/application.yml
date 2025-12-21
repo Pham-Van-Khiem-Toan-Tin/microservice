@@ -10,8 +10,44 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8085
+      client:
+        registration:
+          admin-idp: # <--- Registration ID 1
+            provider: my-identity-provider
+            client-id: admin-client
+            client-secret: secret
+            authorization-grant-type: authorization_code
+            redirect-uri: "http://localhost:8082/auth/login/oauth2/code/admin-idp"
+            scope: openid, profile, write
+          user-idp: # <--- Registration ID 2
+            provider: my-identity-provider
+            client-id: user-client
+            client-secret: secret
+            authorization-grant-type: authorization_code
+            redirect-uri: "http://localhost:8082/auth/login/oauth2/code/user-idp"
+            scope: openid, profile
+        provider:
+          my-identity-provider:
+            issuer-uri: http://localhost:8085
+  session:
+    redis:
+      namespace: spring:session:bff
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: DEBUG
+    org.springframework.web: DEBUG
 server:
   port: 8088
+  servlet:
+    session:
+      cookie:
+        name: BFF_SESSION
 eureka:
   client:
     serviceUrl:

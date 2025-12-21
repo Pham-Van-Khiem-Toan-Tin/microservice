@@ -1,37 +1,27 @@
 package com.ecommerce.apigateway.config;
 
-import com.ecommerce.apigateway.client.IdentityClient;
-import io.netty.channel.ChannelOption;
-import org.springframework.beans.factory.annotation.Value;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.reactive.ReactorClientHttpConnector;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.support.WebClientAdapter;
-import org.springframework.web.service.invoker.HttpServiceProxyFactory;
-import reactor.core.publisher.Mono;
-import reactor.netty.http.client.HttpClient;
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
+
 
 @Configuration
+@EnableWebFluxSecurity
 public class WebClientConfig {
-    @Value("${app.introspect-url}")
-    private String introspectUrl;
+    @Bean
+    public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
+        // Tắt hết các lớp bảo vệ mặc định để Request trôi xuống được Filter của bạn
+        http
+                .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
+                .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
+                .authorizeExchange(auth -> auth
+                        .anyExchange().permitAll() // Cho phép mọi thứ đi qua lớp vỏ này
+                );
 
-    @Bean
-    WebClient webClient() {
-        HttpClient httpClient = HttpClient.create()
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 3000);
-        return WebClient
-                .builder()
-                .clientConnector(new ReactorClientHttpConnector(httpClient))
-                .baseUrl(introspectUrl)
-                .build();
-    }
-    @Bean
-    IdentityClient identityClient(WebClient webClient) {
-        HttpServiceProxyFactory httpServiceProxyFactory = HttpServiceProxyFactory
-                .builderFor(WebClientAdapter.create(webClient))
-                .build();
-        return httpServiceProxyFactory.createClient(IdentityClient.class);
+        return http.build();
     }
 }

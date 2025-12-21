@@ -1,11 +1,13 @@
 package com.ecommerce.identityservice.entity;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,7 +17,8 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RoleEntity {
+public class RoleEntity implements Serializable {
+//    private static final long serialVersionUID = 1L;
     @Id
     private String id;
     @Column(nullable = false, unique = true)
@@ -24,7 +27,4 @@ public class RoleEntity {
     private int position;
     @Column(nullable = false)
     private String description;
-
-    @OneToMany(mappedBy = "role")
-    private List<UserEntity> users = new ArrayList<>();
 }

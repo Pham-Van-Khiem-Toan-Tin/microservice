@@ -19,18 +19,18 @@
                 </header>
 
 
-                <form th:action="@{/register}" th:object="${registerForm}" method="POST" id="registerForm">
+                <form th:action="@{/register}" method="POST" id="registerForm">
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="firstName" class="form-label">First Name</label>
                             <div class="input-group">
-                                <input th:field="*{firstName}" name="firstName" type="text" id="firstName" class="form-control" placeholder="Jane" required>
+                                <input name="firstName" type="text" id="firstName" class="form-control" placeholder="Jane" required>
                             </div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="lastName" class="form-label">Last Name</label>
                             <div class="input-group">
-                                <input th:field="*{lastName}" type="text" name="lastName" id="lastName" class="form-control" placeholder="Doe" required>
+                                <input type="text" name="lastName" id="lastName" class="form-control" placeholder="Doe" required>
                             </div>
                         </div>
                     </div>
@@ -39,7 +39,7 @@
                         <label for="email" class="form-label">Email Address</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="fa-regular fa-envelope"></i></span>
-                            <input th:field="*{email}" type="email" id="email" class="form-control" placeholder="jane@example.com" required>
+                            <input type="email" id="email" class="form-control" placeholder="jane@example.com" required>
                         </div>
                     </div>
 
@@ -48,14 +48,20 @@
                             <label for="password" class="form-label">Password</label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="fa-light fa-lock"></i></span>
-                                <input th:field="*{password}" type="password" id="password" class="form-control" placeholder="••••••••" required>
+                                <input type="password" id="password" class="form-control" placeholder="••••••••" required>
+                                <button class="btn border-0 text-secondary toggle-password" type="button" style="background: transparent;">
+                                    <i class="fa-thin fa-eye-slash"></i>
+                                </button>
                             </div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="confirmPassword" class="form-label">Confirm Password</label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="fa-light fa-lock"></i></span>
-                                <input th:field="*{confirmPassword}" type="password" name="confirmPassword" id="confirmPassword" class="form-control" placeholder="••••••••" required>
+                                <input type="password" name="confirmPassword" id="confirmPassword" class="form-control" placeholder="••••••••" required>
+                                <button class="btn border-0 text-secondary toggle-password" type="button" style="background: transparent;">
+                                    <i class="fa-thin fa-eye-slash"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -94,6 +100,7 @@
         </div>
     </div>
 </div>
+<th:block th:replace="fragments/toast :: toast"></th:block>
 
 <th:block th:replace="fragments/scripts :: scripts-common"></th:block>
 <script th:src="@{/js/page/register.js}"></script>

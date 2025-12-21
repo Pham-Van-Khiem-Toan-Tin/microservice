@@ -1,19 +1,22 @@
 package com.ecommerce.identityservice.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.io.Serializable;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 @Data
 @Entity
@@ -21,16 +24,27 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserEntity implements UserDetails {
+public class UserEntity implements Serializable {
+//    private static final long serialVersionUID = 1L;
     @Id
-    private String id;
+    @GeneratedValue
+    @UuidGenerator
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(length = 16)
+    private UUID id;
     @Column(nullable = false, name = "first_name")
     private String firstName;
     @Column(nullable = false, name = "last_name")
     private String lastName;
     @Column(nullable = false)
     private String email;
-    @Column(nullable = false)
+    @Column(nullable = false, name = "verify_email")
+    private Boolean verifyEmail;
+    @Column(name = "otp_email")
+    private String otpEmail;
+    @Column(name = "otp_email_exprie")
+    private Instant otpEmailExpiration;
+    @Column(nullable = false, name = "password")
     private String password;
     @Column(name = "public_avatar_id")
     private String publicAvatarId;
@@ -38,34 +52,29 @@ public class UserEntity implements UserDetails {
     private String secureAvatarUrl;
     @Column(name = "avatar_url")
     private String avatarUrl;
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "role_id", nullable = false)
-    private RoleEntity role;
+//    @JsonIgnore
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "users_roles",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private Set<RoleEntity> roles = new HashSet<>();
     @Column(nullable = false)
     private int status;
     @Column(nullable = false, name = "created_at")
     private Instant createdAt;
     @Column(nullable = false, name = "updated_at")
     private Instant updatedAt;
+//    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "updated_by")
     private UserEntity updatedBy;
+//    @JsonIgnore
     @OneToMany(mappedBy = "updatedBy", fetch = FetchType.LAZY)
     private List<UserEntity> updatedUsers = new ArrayList<>();
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singleton(new SimpleGrantedAuthority(this.role.getId()));
+//    @JsonIgnore
+    public String getFullName() {
+        return firstName + " " + lastName;
     }
-
-    @Override
-    public String getUsername() {
-        return this.firstName + " " + this.lastName;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-
-        return this.status == 1;
-    }
-
 }

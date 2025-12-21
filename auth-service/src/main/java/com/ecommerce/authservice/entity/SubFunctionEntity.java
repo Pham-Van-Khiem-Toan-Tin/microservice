@@ -2,13 +2,16 @@ package com.ecommerce.authservice.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.HashSet;
 import java.util.Set;
 
 @Entity
 @Table(name = "subFunctions")
-@Data
+@Getter
+@Setter
 public class SubFunctionEntity {
     @Id
     private String id;

@@ -1,6 +1,7 @@
 package com.ecommerce.identityservice;
 
 import com.netflix.discovery.EurekaClient;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -17,14 +18,13 @@ public class IdentityServiceApplication {
     @Autowired
     @Lazy
     private EurekaClient eurekaClient;
-
+    @PostConstruct
+    public void init() {
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
+    }
     public static void main(String[] args) {
-        TimeZone.setDefault(TimeZone.getTimeZone("GMT+07:00"));
         SpringApplication.run(IdentityServiceApplication.class, args);
     }
-    @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
+
 
 }

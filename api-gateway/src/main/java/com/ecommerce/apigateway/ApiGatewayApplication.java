@@ -2,10 +2,12 @@ package com.ecommerce.apigateway;
 
 import com.netflix.discovery.EurekaClient;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Lazy;
 
@@ -22,7 +24,7 @@ public class ApiGatewayApplication {
         return builder.routes()
                 .route("auth-service", r -> r
                         .path("/auth/**")
-                        .filters(f -> f.stripPrefix(1))
+                        .filters(f -> f.stripPrefix(1).preserveHostHeader())
                         .uri("lb://auth-service"))
                 .route("identity-service", r -> r
                         .path("/idp/**")
