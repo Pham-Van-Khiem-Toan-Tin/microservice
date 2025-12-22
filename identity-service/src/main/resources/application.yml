@@ -40,7 +40,7 @@ server:
     session:
       cookie:
         name: IDP_SESSION
-      timeout: 10m
+      timeout: 2h
 eureka:
   client:
     serviceUrl:

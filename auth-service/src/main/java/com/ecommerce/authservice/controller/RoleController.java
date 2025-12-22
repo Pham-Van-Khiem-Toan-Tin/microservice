@@ -2,7 +2,7 @@ package com.ecommerce.authservice.controller;
 
 import com.ecommerce.authservice.dto.request.RoleForm;
 import com.ecommerce.authservice.dto.response.RoleDTO;
-import com.ecommerce.authservice.entity.RoleEntity;
+
 import com.ecommerce.authservice.service.RoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -11,8 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Set;
+
 
 @RequestMapping("/roles")
 @RestController

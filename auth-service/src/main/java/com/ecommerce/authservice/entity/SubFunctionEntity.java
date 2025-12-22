@@ -21,7 +21,7 @@ public class SubFunctionEntity {
     private String description;
     @Column(nullable = false)
     private int sortOrder;
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "function_id", nullable = false)
     private FunctionEntity function;
     @ManyToMany(mappedBy = "subFunctions")

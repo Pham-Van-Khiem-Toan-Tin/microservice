@@ -20,6 +20,6 @@ public class FunctionEntity {
     private String description;
     @Column(nullable = false)
     private int sortOrder;
-    @OneToMany(mappedBy = "function")
+    @OneToMany(mappedBy = "function", fetch = FetchType.LAZY)
     private Set<SubFunctionEntity> subFunctions = new HashSet<>();
 }

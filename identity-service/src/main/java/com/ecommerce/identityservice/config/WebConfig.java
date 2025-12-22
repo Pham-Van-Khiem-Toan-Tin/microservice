@@ -2,6 +2,7 @@ package com.ecommerce.identityservice.config;
 
 import com.ecommerce.identityservice.reppository.ClientRepository;
 import com.ecommerce.identityservice.reppository.JpaRegisteredClientRepository;
+import com.ecommerce.identityservice.service.impl.CustomUserDetailService;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
@@ -12,12 +13,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -60,6 +65,8 @@ public class WebConfig {
     ClientRepository clientRepository;
     @Autowired
     private IdpLoginSuccessHandler idpLoginSuccessHandler;
+    @Autowired
+    private CustomUserDetailService userDetailsService;
     @Bean
     @Order(1)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -106,7 +113,7 @@ public class WebConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
                         .requestMatchers("/register", "/terms", "/privacy", "/login", "/verify-email", "forgot-password", "new-password", "/role/**",
-                                "/css/**", "/js/**", "/images/**", "/fontawesome/**", "/images/**", "/webjars/**", "/favicon.ico")
+                                "/css/**", "/js/**", "/images/**", "/fontawesome/**", "/images/**", "/webjars/**", "/favicon.ico", "/.well-known/appspecific/com.chrome.devtools.json")
                         .permitAll()
                         .anyRequest().authenticated())
                 .cors(Customizer.withDefaults())
@@ -118,8 +125,22 @@ public class WebConfig {
                         .rememberMeParameter("remember-me")
                         .tokenValiditySeconds(60 * 60 * 24 * 30)  // 30 ngày
                         .key("chuoi-bi-mat-nao-do")
+                        .userDetailsService(userDetailsService)
                 );
         return http.build();
+    }
+    @Bean
+    public AuthenticationManager authenticationManager(
+            UserDetailsService userDetailsService,
+            PasswordEncoder passwordEncoder) {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder);
+
+        // ==> QUAN TRỌNG: Đừng xóa password vội để còn dùng nó tạo RememberMe Cookie
+        provider.setForcePrincipalAsString(false);
+
+        return new ProviderManager(provider);
     }
     private Consumer<OAuth2AuthorizationCodeRequestAuthenticationContext> validateClientAccess() {
         return ctx -> {

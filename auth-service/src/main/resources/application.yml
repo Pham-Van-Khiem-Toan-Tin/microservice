@@ -37,6 +37,7 @@ spring:
   session:
     redis:
       namespace: spring:session:bff
+    timeout: 2h
 logging:
   level:
     org.springframework.security: DEBUG
