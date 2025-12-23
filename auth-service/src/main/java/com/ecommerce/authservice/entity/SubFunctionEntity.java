@@ -22,7 +22,7 @@ public class SubFunctionEntity {
     @Column(nullable = false)
     private int sortOrder;
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "function_id", nullable = false)
+    @JoinColumn(name = "function_id")
     private FunctionEntity function;
     @ManyToMany(mappedBy = "subFunctions")
     private Set<RoleEntity> roles = new HashSet<>();

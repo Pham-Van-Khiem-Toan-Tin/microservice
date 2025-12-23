@@ -7,10 +7,11 @@ import com.ecommerce.authservice.entity.RoleEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 public interface RoleService {
-    Page<RoleDTO> search(String keyword, Pageable pageable);
+    Page<RoleDTO> search(String keyword, List<String> fields, String sort, int page, int size);
     RoleEntity createRole(RoleForm roleForm);
 }

@@ -10,9 +10,9 @@ public class RoleDTO {
     private String id;
     private String name;
     private String description;
-    private Long quantityPermission;
+    private long quantityPermission;
 
-    public RoleDTO(String id, String name, String description, Long quantityPermission) {
+    public RoleDTO(String id, String name, String description, long quantityPermission) {
         this.id = id;
         this.name = name;
         this.description = description;

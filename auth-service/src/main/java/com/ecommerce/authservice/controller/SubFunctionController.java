@@ -1,9 +1,8 @@
 package com.ecommerce.authservice.controller;
 
-import com.ecommerce.authservice.dto.response.AllFunctionDTO;
 import com.ecommerce.authservice.dto.response.FunctionDTO;
-import com.ecommerce.authservice.entity.FunctionEntity;
-import com.ecommerce.authservice.service.FunctionService;
+import com.ecommerce.authservice.dto.response.SubFunctionDTO;
+import com.ecommerce.authservice.service.SubFunctionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -17,24 +16,24 @@ import java.util.List;
 import java.util.Set;
 
 @RestController
-@RequestMapping("/functions")
-public class FunctionController {
+@RequestMapping("/subfunctions")
+public class SubFunctionController {
     @Autowired
-    private FunctionService functionService;
-    @PreAuthorize("hasAuthority('VIEW_FUNCTION_LIST')")
-    @GetMapping("/all")
-    public Set<AllFunctionDTO> getAllFunctions() {
-        return functionService.findAllFunction();
+    private SubFunctionService subFunctionService;
+    @PreAuthorize("hasAuthority('VIEW_SUBFUNCTION_LIST')")
+    @GetMapping("/unlink")
+    public Set<SubFunctionDTO> getAllSubFunctions() {
+        return subFunctionService.getUnlinkedSubFunctions();
     }
-    @PreAuthorize("hasAuthority('VIEW_FUNCTION_LIST')")
+    @PreAuthorize("hasAuthority('VIEW_SUBFUNCTION_LIST')")
     @GetMapping
-    public Page<FunctionDTO> getAll(
+    public Page<SubFunctionDTO> getAll(
             @RequestParam(defaultValue = "") String keyword,
             @RequestParam(required = false, name = "fields") List<String> fields,
             @RequestParam(defaultValue = "id:asc") String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        return functionService.search(keyword, fields, sort, page, size);
+        return subFunctionService.search(keyword, fields, sort, page, size);
     }
 }

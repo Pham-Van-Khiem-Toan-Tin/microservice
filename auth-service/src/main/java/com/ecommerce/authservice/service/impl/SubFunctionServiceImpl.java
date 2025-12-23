@@ -1,13 +1,10 @@
 package com.ecommerce.authservice.service.impl;
 
-import com.ecommerce.authservice.dto.request.RoleForm;
-import com.ecommerce.authservice.dto.response.RoleDTO;
-import com.ecommerce.authservice.entity.FunctionEntity;
-import com.ecommerce.authservice.entity.RoleEntity;
-import com.ecommerce.authservice.repository.RoleRepository;
-import com.ecommerce.authservice.service.RoleService;
-import com.ecommerce.authservice.specs.FunctionSpecification;
-import com.ecommerce.authservice.specs.RoleSpecification;
+import com.ecommerce.authservice.dto.response.SubFunctionDTO;
+import com.ecommerce.authservice.entity.SubFunctionEntity;
+import com.ecommerce.authservice.repository.SubFunctionRepository;
+import com.ecommerce.authservice.service.SubFunctionService;
+import com.ecommerce.authservice.specs.SubFunctionSpecification;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -15,31 +12,52 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
-
+import java.util.stream.Collectors;
 
 @Service
-public class RoleServiceImpl implements RoleService {
+public class SubFunctionServiceImpl implements SubFunctionService {
     @Autowired
-    RoleRepository roleRepository;
+    SubFunctionRepository subFunctionRepository;
 
     @Override
-    public Page<RoleDTO> search(String keyword, List<String> fields, String sort, int page, int size) {
-        List<String> safeFields = normalizeFields(fields);
-        Specification<RoleEntity> spec =
-                RoleSpecification.keywordLike(keyword, safeFields);
-        Pageable pageable = PageRequest.of(
-                Math.max(0, page),
-                clampSize(size),
-                parseSort(sort)
-        );
-        return roleRepository.search(spec, pageable);
+    public Set<SubFunctionDTO> getUnlinkedSubFunctions() {
+        Set<SubFunctionEntity> subFunctions = new HashSet<>(subFunctionRepository.findByFunctionIsNull());
+        return subFunctions.stream().map(sf -> SubFunctionDTO.builder()
+                .id(sf.getId())
+                .name(sf.getName())
+                .description(sf.getDescription())
+                .sortOrder(sf.getSortOrder())
+                .build()
+        ).collect(Collectors.toSet());
     }
+
+    @Override
+    public Page<SubFunctionDTO> search(String keyword, List<String> fields, String sort, int page, int size) {
+        List<String> safeFields = normalizeFields(fields);
+
+        // ✅ build spec
+        Specification<SubFunctionEntity> spec =
+                SubFunctionSpecification.keywordLike(keyword, safeFields);
+
+        // ✅ build pageable (0-based page)
+        Pageable pageable =
+                PageRequest.of(Math.max(0, page), clampSize(size), parseSort(sort));
+
+        // ✅ use pageable here
+        return subFunctionRepository.findAll(spec, pageable)
+                .map(sf -> SubFunctionDTO.builder()
+                        .id(sf.getId())
+                        .name(sf.getName())
+                        .description(sf.getDescription())
+                        .sortOrder(sf.getSortOrder())
+                        .build());
+    }
+
     private static final Set<String> ALLOWED_SEARCH_FIELDS = Set.of("id", "name");
     private int clampSize(int size) {
         if (size <= 0) return 10;
@@ -57,7 +75,7 @@ public class RoleServiceImpl implements RoleService {
     }
 
     private Sort parseSort(String sort) {
-        if (!StringUtils.hasText(sort)) {
+        if (sort == null || sort.isBlank()) {
             return Sort.by(Sort.Direction.DESC, "id");
         }
 
@@ -73,23 +91,5 @@ public class RoleServiceImpl implements RoleService {
         if (!allowed.contains(field)) field = "id";
 
         return Sort.by(direction, field);
-    }
-    @Override
-    public RoleEntity createRole(RoleForm roleForm) {
-        if (!StringUtils.hasText(roleForm.getName())
-                || !StringUtils.hasText(roleForm.getDescription())
-                || !StringUtils.hasText(roleForm.getId())
-        ) {
-            throw new RuntimeException("Dữ liệu không hợp lệ");
-        }
-        boolean existed = roleRepository.existsById(roleForm.getId());
-        if (!existed) {
-            throw new RuntimeException("Quyền hạn đã tồn tại");
-        }
-        return roleRepository.save(RoleEntity.builder()
-                .id(roleForm.getId())
-                .name(roleForm.getName())
-                .description(roleForm.getDescription())
-                .build());
     }
 }
