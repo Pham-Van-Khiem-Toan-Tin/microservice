@@ -36,7 +36,7 @@ public class IdpLoginSuccessHandler implements AuthenticationSuccessHandler {
             return;
         }
         Set<String> roles = AuthorityUtils.authorityListToSet(authentication.getAuthorities());
-        if (roles.contains("SUPER_ADMIN")) {
+        if (roles.contains("SUPER_ADMIN") || roles.contains("ADMIN") || roles.contains("EMPLOYEE")) {
             // Nếu là Admin -> Đẩy sang luồng khởi tạo Admin của BFF
             // BFF sẽ tạo State -> Redirect lại IdP (Silent) -> Về trang Admin Dashboard
             redirectStrategy.sendRedirect(request, response, ADMIN_INIT_URL);
