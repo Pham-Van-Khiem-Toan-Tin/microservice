@@ -19,8 +19,8 @@ import java.util.Set;
 
 @Component
 public class IdpLoginSuccessHandler implements AuthenticationSuccessHandler {
-    private static final String ADMIN_INIT_URL = "http://127.0.0.1:8082/auth/login/oauth2/code/user-idp";
-    private static final String CUSTOMER_INIT_URL = "http://127.0.0.1:8082/auth/login/oauth2/code/admin-idp";
+    private static final String ADMIN_INIT_URL = "http://localhost:8082/auth/oauth2/authorization/admin-idp";
+    private static final String CUSTOMER_INIT_URL = "http://localhost:8082/auth/oauth2/authorization/user-idp";
 
     // Mặc định Spring dùng cái này để lưu request trước khi bị đá sang trang login
     private final RequestCache requestCache = new HttpSessionRequestCache();

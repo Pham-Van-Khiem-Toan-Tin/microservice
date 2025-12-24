@@ -38,7 +38,7 @@ public class CustomUserDetail implements UserDetails, Serializable {
 
         // Map roles sang Collection ngay tại đây
         this.authorities = user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName()))
+                .map(role -> new SimpleGrantedAuthority(role.getId()))
                 .collect(Collectors.toSet());
     }
     @JsonIgnore

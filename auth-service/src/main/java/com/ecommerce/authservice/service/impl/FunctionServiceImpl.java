@@ -56,6 +56,13 @@ public class FunctionServiceImpl implements FunctionService {
         );
         return functionRepository.search(spec, pageable);
     }
+    @Override
+    public Set<FunctionDTO> findAllFunctionsOptions() {
+        return functionRepository.findAll().stream().map(sf -> FunctionDTO.builder()
+                .id(sf.getId())
+                .name(sf.getName())
+                .build()).collect(Collectors.toSet());
+    }
     private static final Set<String> ALLOWED_SEARCH_FIELDS = Set.of("id", "name");
     private int clampSize(int size) {
         if (size <= 0) return 10;

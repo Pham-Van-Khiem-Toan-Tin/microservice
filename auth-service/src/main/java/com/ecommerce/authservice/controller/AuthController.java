@@ -1,32 +1,17 @@
 package com.ecommerce.authservice.controller;
 
-import com.ecommerce.authservice.dto.response.AuthResponse;
-import com.ecommerce.authservice.dto.response.TokenResponse;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletResponse;
+import com.ecommerce.authservice.dto.response.AuthDTO;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
 
-import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
-import java.util.Map;
-import java.util.UUID;
 
 @RestController
 public class AuthController {
@@ -43,12 +28,12 @@ public class AuthController {
     }
     @PreAuthorize("hasAuthority('VIEW_USER')")
     @GetMapping("/me")
-    public ResponseEntity<AuthResponse> authenticatedProfile(@AuthenticationPrincipal Jwt jwt) {
-        AuthResponse authResponse = AuthResponse.builder()
+    public ResponseEntity<AuthDTO> authenticatedProfile(@AuthenticationPrincipal Jwt jwt) {
+        AuthDTO authDTO = AuthDTO.builder()
                 .userId(jwt.getClaim("uid"))
                 .userName(jwt.getSubject())
                 .build();
-        return new ResponseEntity<>(authResponse, HttpStatus.OK);
+        return new ResponseEntity<>(authDTO, HttpStatus.OK);
     }
 //    @GetMapping("/login")
 //    public void login(HttpServletResponse response) throws IOException {

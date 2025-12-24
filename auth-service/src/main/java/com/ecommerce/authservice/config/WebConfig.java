@@ -1,7 +1,8 @@
 package com.ecommerce.authservice.config;
 
 import com.ecommerce.authservice.repository.UserRepository;
-import com.ecommerce.authservice.security.HttpCookieOAuth2AuthorizationRequestRepository;
+//import com.ecommerce.authservice.security.HttpCookieOAuth2AuthorizationRequestRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,16 +26,17 @@ import java.util.UUID;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@Slf4j
 public class WebConfig {
     @Autowired
     private UserRepository userRepository;
-    @Autowired
-    private HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
+
     @Autowired
     private CustomRoleHeaderFilter customRoleHeaderFilter;
-    // Inject cái Handler vừa viết
+
     @Autowired
     private OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -43,22 +45,22 @@ public class WebConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 )
                 .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/favicon.ico").permitAll()
-                .anyRequest().authenticated())
+                        .requestMatchers("/favicon.ico").permitAll()
+                        .anyRequest().authenticated())
+                .formLogin(AbstractHttpConfigurer::disable)
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
                 .addFilterAfter(customRoleHeaderFilter, BearerTokenAuthenticationFilter.class)
                 .oauth2Login(oauth2 -> oauth2
-                        .authorizationEndpoint(authorizationEndpoint ->
-                                authorizationEndpoint
-                                        .authorizationRequestRepository(cookieAuthorizationRequestRepository))
                         .userInfoEndpoint(userInfo ->
                                 userInfo.userAuthoritiesMapper(userAuthoritiesMapper()))
                         .successHandler(oAuth2AuthenticationSuccessHandler)
                         .failureHandler((request, response, exception) -> {
+                            log.error(exception.getMessage(), exception);
                             response.sendRedirect("http://localhost:5173/login?error=" + exception.getMessage());
                         }));
         return http.build();
     }
+
     private GrantedAuthoritiesMapper userAuthoritiesMapper() {
         return (authorities) -> {
             Set<GrantedAuthority> mappedAuthorities = new HashSet<>();

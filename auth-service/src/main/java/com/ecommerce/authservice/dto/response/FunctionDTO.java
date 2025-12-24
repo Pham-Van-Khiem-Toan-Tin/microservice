@@ -1,5 +1,6 @@
 package com.ecommerce.authservice.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 
 @Getter
@@ -7,10 +8,11 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class FunctionDTO {
     private String id;
     private String name;
     private String description;
-    private int sortOrder;
-    private long quantityPermission;
+    private Integer sortOrder;
+    private Long quantityPermission;
 }
