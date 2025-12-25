@@ -1,9 +1,7 @@
 package com.ecommerce.authservice.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -12,6 +10,9 @@ import java.util.Set;
 @Table(name = "subFunctions")
 @Getter
 @Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class SubFunctionEntity {
     @Id
     private String id;
@@ -22,7 +23,7 @@ public class SubFunctionEntity {
     @Column(nullable = false)
     private int sortOrder;
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "function_id", nullable = false)
+    @JoinColumn(name = "function_id")
     private FunctionEntity function;
     @ManyToMany(mappedBy = "subFunctions")
     private Set<RoleEntity> roles = new HashSet<>();

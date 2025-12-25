@@ -1,10 +1,7 @@
 package com.ecommerce.authservice.config;
 
-import com.ecommerce.authservice.security.HttpCookieOAuth2AuthorizationRequestRepository;
-import com.ecommerce.authservice.utils.CookieUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -16,78 +13,65 @@ import org.springframework.security.oauth2.client.authentication.OAuth2Authentic
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.ecommerce.authservice.security.HttpCookieOAuth2AuthorizationRequestRepository.REDIRECT_URI_PARAM_COOKIE_NAME;
 
 @Component
 public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
-    @Autowired
-    private HttpCookieOAuth2AuthorizationRequestRepository httpCookieOAuth2AuthorizationRequestRepository;
+    private static final String REG_ADMIN_IDP = "admin-idp";
+    private static final String REG_USER_IDP = "user-idp";
 
+
+    // ===== Frontend URLs =====
+    private static final String ADMIN_FE_URL = "http://localhost:5173/";
+    private static final String CUSTOMER_FE_URL = "http://localhost:5175/";
+    private static final String NO_ADMIN_ACCESS_URL = "http://localhost:5173/?reason=NO_ADMIN_ACCESS";
+
+    // ===== Session keys =====
+    private static final String SESSION_ACCESS_TOKEN = "BFF_ACCESS_TOKEN";
+    private static final String SESSION_AUTHORITIES = "AUTHORITIES";
     // 1. Inject Repository để lấy token
     @Autowired
     private OAuth2AuthorizedClientRepository authorizedClientRepository;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
-
-        // --- PHẦN THÊM MỚI: LẤY TOKEN VÀ LƯU VÀO SESSION ---
-        if (authentication instanceof OAuth2AuthenticationToken oauthToken) {
-            // Lấy thông tin Authorized Client (chứa access token, refresh token...)
-            OAuth2AuthorizedClient authorizedClient = authorizedClientRepository.loadAuthorizedClient(
-                    oauthToken.getAuthorizedClientRegistrationId(),
-                    authentication,
-                    request
+        if (!(authentication instanceof OAuth2AuthenticationToken oauthToken)) {
+            throw new IllegalStateException(
+                    "Expected OAuth2AuthenticationToken but got: "
+                            + (authentication == null ? "null" : authentication.getClass().getName())
             );
-
-            if (authorizedClient != null) {
-                String accessToken = authorizedClient.getAccessToken().getTokenValue();
-                Set<String> authorities = authentication.getAuthorities().stream()
-                        .map(GrantedAuthority::getAuthority)
-                        .collect(Collectors.toSet());
-                String rolesJson = new ObjectMapper().writeValueAsString(authorities);
-                // Lấy Access Token String và lưu vào Session
-                // KEY NÀY PHẢI TRÙNG VỚI KEY BẠN DÙNG Ở GATEWAY
-                HttpSession session = request.getSession();
-                session.setAttribute("AUTHORITIES", rolesJson);
-                session.setAttribute("BFF_ACCESS_TOKEN", accessToken);
-            }
         }
-        // --- HẾT PHẦN THÊM MỚI ---
+        HttpSession session = request.getSession(true);
+        OAuth2AuthorizedClient authorizedClient = authorizedClientRepository.loadAuthorizedClient(
+                oauthToken.getAuthorizedClientRegistrationId(),
+                authentication,
+                request
+        );
+        if (authorizedClient != null) {
+            String accessToken = authorizedClient.getAccessToken().getTokenValue();
+            Set<String> authorities = authentication.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .collect(Collectors.toSet());
+            String rolesJson = new ObjectMapper().writeValueAsString(authorities);
+            session.setAttribute(SESSION_AUTHORITIES, rolesJson);
+            session.setAttribute(SESSION_ACCESS_TOKEN, accessToken);
+        }
+        String regId = oauthToken.getAuthorizedClientRegistrationId();
 
-        // 2. Lấy URL mà Frontend muốn quay về
-        String targetUrl = determineTargetUrl(request, response, authentication);
+        String targetUrl;
 
-        if (response.isCommitted()) {
-            logger.debug("Response has already been committed. Unable to redirect to " + targetUrl);
-            return;
+        if (REG_ADMIN_IDP.equals(regId)) {
+            targetUrl =  ADMIN_FE_URL;
+        } else if (REG_USER_IDP.equals(regId)) {
+            targetUrl = CUSTOMER_FE_URL;
+        } else {
+            targetUrl = CUSTOMER_FE_URL;
         }
 
-        // 3. Xóa các Cookie tạm
-        clearAuthenticationAttributes(request, response);
-
-        // 4. Redirect về Frontend
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
-    }
-
-    protected String determineTargetUrl(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
-        Optional<String> redirectUri = CookieUtils.getCookie(request, REDIRECT_URI_PARAM_COOKIE_NAME)
-                .map(Cookie::getValue);
-
-        String targetUrl = redirectUri.orElse("http://localhost:5173/");
-
-        return UriComponentsBuilder.fromUriString(targetUrl)
-                .build().toUriString();
-    }
-
-    protected void clearAuthenticationAttributes(HttpServletRequest request, HttpServletResponse response) {
-        super.clearAuthenticationAttributes(request);
-        httpCookieOAuth2AuthorizationRequestRepository.removeAuthorizationRequest(request, response);
     }
 }
