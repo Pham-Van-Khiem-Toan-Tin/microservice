@@ -1,15 +1,17 @@
 package com.ecommerce.authservice.controller;
 
+import static com.ecommerce.authservice.constant.Constants.*;
+
+import com.ecommerce.authservice.dto.request.FunctionForm;
 import com.ecommerce.authservice.dto.response.AllFunctionDTO;
+import com.ecommerce.authservice.dto.response.ApiResponse;
 import com.ecommerce.authservice.dto.response.FunctionDTO;
+import com.ecommerce.authservice.dto.response.FunctionDetailDTO;
 import com.ecommerce.authservice.service.FunctionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Set;
@@ -40,5 +42,28 @@ public class FunctionController {
             @RequestParam(defaultValue = "10") int size
     ) {
         return functionService.search(keyword, fields, sort, page, size);
+    }
+    @PreAuthorize("hasAuthority('VIEW_FUNCTION')")
+    @GetMapping("/{id}")
+    public FunctionDetailDTO view(@PathVariable String id) {
+        return functionService.findFunctionById(id);
+    }
+    @PreAuthorize("hasAuthority('CREATE_FUNCTION')")
+    @PostMapping
+    public ApiResponse<Void> create(@RequestBody FunctionForm functionForm) {
+        functionService.createFunction(functionForm);
+        return ApiResponse.ok(CREAT_FUNCTION_SUCCESS);
+    }
+    @PreAuthorize("hasAuthority('EDIT_FUNCTION')")
+    @PutMapping("/{id}")
+    public ApiResponse<Void> edit(@RequestBody FunctionForm functionForm, @PathVariable String id ) {
+        functionService.editFunction(functionForm, id);
+        return ApiResponse.ok(UPDATE_FUNCTION_SUCCESS);
+    }
+    @PreAuthorize("hasAuthority('DELETE_FUNCTION')")
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@PathVariable String id) {
+        functionService.deleteFunction(id);
+        return ApiResponse.ok(DELETE_FUNCTION_SUCCESS);
     }
 }

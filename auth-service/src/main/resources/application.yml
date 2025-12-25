@@ -36,8 +36,9 @@ spring:
             issuer-uri: http://localhost:8085
   session:
     redis:
+      save-mode: on_set_attribute
       namespace: spring:session:bff
-    timeout: 2h
+    timeout: 12h
 logging:
   level:
     org.springframework.security: DEBUG
@@ -49,6 +50,8 @@ server:
     session:
       cookie:
         name: BFF_SESSION
+        max-age: 12h
+      timeout: 12h
 eureka:
   client:
     serviceUrl:

@@ -52,6 +52,7 @@ public class FunctionRepositoryCustomImpl implements FunctionRepositoryCustom {
                 root.get("name"),
                 root.get("description"),
                 root.get("sortOrder"),
+                root.get("icon"),
                 cb.countDistinct(subJoin.get("id")) // quantityPermission
         ));
 

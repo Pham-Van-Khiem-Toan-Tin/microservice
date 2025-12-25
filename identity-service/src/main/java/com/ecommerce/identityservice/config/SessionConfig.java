@@ -10,7 +10,7 @@ import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.session.data.redis.config.annotation.web.http.EnableRedisHttpSession;
 
-@EnableRedisHttpSession(redisNamespace = "spring:session:idp")
+@EnableRedisHttpSession(redisNamespace = "spring:session:idp", maxInactiveIntervalInSeconds = 60 * 60 * 24 * 30)
 @Configuration
 public class SessionConfig implements BeanClassLoaderAware {
 

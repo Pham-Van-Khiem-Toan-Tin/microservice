@@ -3,6 +3,7 @@ package com.ecommerce.authservice.service.impl;
 import static com.ecommerce.authservice.constant.Constants.*;
 
 import com.ecommerce.authservice.dto.request.SubFunctionForm;
+import com.ecommerce.authservice.dto.request.SubFunctionOptionForm;
 import com.ecommerce.authservice.dto.response.BusinessException;
 import com.ecommerce.authservice.dto.response.FunctionDTO;
 import com.ecommerce.authservice.dto.response.SubFunctionDTO;
@@ -21,10 +22,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,8 +33,11 @@ public class SubFunctionServiceImpl implements SubFunctionService {
     private EntityManager entityManager;
 
     @Override
-    public Set<SubFunctionDTO> getUnlinkedSubFunctions() {
-        Set<SubFunctionEntity> subFunctions = new HashSet<>(subFunctionRepository.findByFunctionIsNull());
+    public Set<SubFunctionDTO> getUnlinkedSubFunctions(SubFunctionOptionForm subFunctionOptionForm) {
+        String keyword = StringUtils.hasText(subFunctionOptionForm.getKeyword()) ? subFunctionOptionForm.getKeyword() : "";
+        Set<SubFunctionEntity> subFunctions = new HashSet<>(subFunctionRepository
+                .searchByNameOrIdFunctionNullExcludeIds( keyword,
+                        subFunctionOptionForm.getIds()));
         return subFunctions.stream().map(sf -> SubFunctionDTO.builder()
                 .id(sf.getId())
                 .name(sf.getName())
@@ -65,12 +66,18 @@ public class SubFunctionServiceImpl implements SubFunctionService {
                         .name(sf.getName())
                         .description(sf.getDescription())
                         .sortOrder(sf.getSortOrder())
+                        .function(Optional.ofNullable(sf.getFunction())
+                                .map(f -> FunctionDTO.builder()
+                                        .id(f.getId())
+                                        .name(f.getName())
+                                        .build())
+                                .orElse(null))
                         .build());
     }
 
 
     @Override
-    public SubFunctionEntity createSubFunction(SubFunctionForm subFunctionForm) {
+    public void createSubFunction(SubFunctionForm subFunctionForm) {
         if (!StringUtils.hasText(subFunctionForm.getName())
                 || !StringUtils.hasText(subFunctionForm.getDescription())
                 || !StringUtils.hasText(subFunctionForm.getId()))
@@ -81,7 +88,7 @@ public class SubFunctionServiceImpl implements SubFunctionService {
         if (StringUtils.hasText(subFunctionForm.getFunctionId())) {
             functionEntity = entityManager.find(FunctionEntity.class, subFunctionForm.getFunctionId());
         }
-        return subFunctionRepository.save(SubFunctionEntity.builder()
+        subFunctionRepository.save(SubFunctionEntity.builder()
                 .id(subFunctionForm.getId())
                 .name(subFunctionForm.getName())
                 .description(subFunctionForm.getDescription())
@@ -91,7 +98,7 @@ public class SubFunctionServiceImpl implements SubFunctionService {
     }
 
     @Override
-    public SubFunctionEntity updateSubFunction(SubFunctionForm subFunctionForm, String id) {
+    public void updateSubFunction(SubFunctionForm subFunctionForm, String id) {
         if (!StringUtils.hasText(subFunctionForm.getName())
                 || !StringUtils.hasText(subFunctionForm.getDescription())
                 || !StringUtils.hasText(subFunctionForm.getId())
@@ -108,7 +115,7 @@ public class SubFunctionServiceImpl implements SubFunctionService {
         subFunction.setName(subFunctionForm.getName());
         subFunction.setDescription(subFunctionForm.getDescription());
         subFunction.setFunction(functionEntity);
-        return subFunctionRepository.save(subFunction);
+        subFunctionRepository.save(subFunction);
     }
 
     @Override

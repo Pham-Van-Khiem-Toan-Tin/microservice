@@ -8,7 +8,12 @@ import lombok.Getter;
 public enum Constants {
     //Validate
     VALIDATE_FAIL(4001, "Dữ liệu không hợp lệ."),
-
+    // FUNCTION
+    DELETE_FUNCTION_SUCCESS(1008, "Xóa chức năng thành công"),
+    UPDATE_FUNCTION_SUCCESS(1007, "Cập nhật chức năng thành công"),
+    FUNCTION_NOT_EXIST(1006, "Chức năng không tồn tại"),
+    FUNCTION_EXIST(1006, "Chức năng đã tồn tại"),
+    CREAT_FUNCTION_SUCCESS(1005, "Thêm mới chức năng thành công."),
     // SUBFUNCTION
     SUBFUNCTION_EXIST(1004, "Quyền hạn đã tồn tại."),
     SUBFUNCTION_NOT_EXIST(1003, "Không tồn tại quyền hạn."),

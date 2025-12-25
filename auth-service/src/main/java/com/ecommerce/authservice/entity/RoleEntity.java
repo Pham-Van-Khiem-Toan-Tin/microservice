@@ -30,5 +30,6 @@ public class RoleEntity {
             joinColumns = @JoinColumn(name = "role_id"),
             inverseJoinColumns = @JoinColumn(name = "sub_function_id")
     )
+    @Builder.Default
     private Set<SubFunctionEntity> subFunctions = new HashSet<>();
 }

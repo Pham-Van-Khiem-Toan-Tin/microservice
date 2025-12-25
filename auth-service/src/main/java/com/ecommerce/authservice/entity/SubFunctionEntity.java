@@ -26,5 +26,6 @@ public class SubFunctionEntity {
     @JoinColumn(name = "function_id")
     private FunctionEntity function;
     @ManyToMany(mappedBy = "subFunctions")
+    @Builder.Default
     private Set<RoleEntity> roles = new HashSet<>();
 }

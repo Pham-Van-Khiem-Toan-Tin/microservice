@@ -6,6 +6,11 @@ spring:
     username: root
     password: 271201
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      auto-commit: true
+      transaction-isolation: TRANSACTION_READ_COMMITTED
   jpa:
     hibernate:
       ddl-auto: update
@@ -40,7 +45,8 @@ server:
     session:
       cookie:
         name: IDP_SESSION
-      timeout: 2h
+        max-age: 30d
+
 eureka:
   client:
     serviceUrl:

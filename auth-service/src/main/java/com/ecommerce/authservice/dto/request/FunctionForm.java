@@ -1,0 +1,20 @@
+package com.ecommerce.authservice.dto.request;
+
+import lombok.Builder;
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.util.Set;
+
+@Getter
+@Setter
+@Builder
+public class FunctionForm {
+    private String id;
+    private String name;
+    private String description;
+    private Integer sortOrder;
+    private String icon;
+    private Set<SubFunctionForm> subFunctions;
+}

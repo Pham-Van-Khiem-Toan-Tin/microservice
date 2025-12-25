@@ -3,33 +3,20 @@ spring:
     name: api-gateway
   cloud:
     gateway:
-      globalcors:
-        corsConfigurations:
-          '[/**]':
-            allowedOrigins:
-              - "http://localhost:5173"
-            allowedMethods:
-              - "*"
-            allowedHeaders:
-              - "*"
-            allowCredentials: true
-      default-filters:
-        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://localhost:8085
-  session:
-    redis:
-      namespace: spring:session:bff
-app:
-  api-prefix: /api/v1
-  introspect-url: http://localhost:8085
-  oauth2:
-    shop-client:
-      client-id: client
-      client-secret: secret
+      server:
+        webflux:
+          globalcors:
+            corsConfigurations:
+              '[/**]':
+                allowedOrigins:
+                  - "http://localhost:5173"
+                allowedMethods:
+                  - "*"
+                allowedHeaders:
+                  - "*"
+                allowCredentials: true
+          default-filters:
+            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
 server:
   port: 8082
 eureka:
@@ -47,5 +34,5 @@ logging:
     org.springframework.web.reactive: DEBUG
     reactor.ipc.netty: DEBUG
     reactor.netty: DEBUG
-jwt:
-  privateKey: 2md90kaOT7/BvajX6NVcPjr3kznZfvIUDnmtAurhoAb=
+    org.springframework.session: DEBUG
+    org.springframework.security.web.server: DEBUG

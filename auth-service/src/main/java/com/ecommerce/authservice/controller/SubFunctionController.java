@@ -2,6 +2,7 @@ package com.ecommerce.authservice.controller;
 
 import com.ecommerce.authservice.constant.Constants;
 import com.ecommerce.authservice.dto.request.SubFunctionForm;
+import com.ecommerce.authservice.dto.request.SubFunctionOptionForm;
 import com.ecommerce.authservice.dto.response.ApiResponse;
 import com.ecommerce.authservice.dto.response.SubFunctionDTO;
 import com.ecommerce.authservice.service.SubFunctionService;
@@ -19,9 +20,9 @@ public class SubFunctionController {
     @Autowired
     private SubFunctionService subFunctionService;
     @PreAuthorize("hasAuthority('VIEW_SUBFUNCTION_LIST')")
-    @GetMapping("/unlink")
-    public Set<SubFunctionDTO> all() {
-        return subFunctionService.getUnlinkedSubFunctions();
+    @PostMapping("/list/options")
+    public Set<SubFunctionDTO> all(@RequestBody SubFunctionOptionForm  subFunctionOptionForm) {
+        return subFunctionService.getUnlinkedSubFunctions(subFunctionOptionForm);
     }
     @PreAuthorize("hasAuthority('VIEW_SUBFUNCTION_LIST')")
     @GetMapping

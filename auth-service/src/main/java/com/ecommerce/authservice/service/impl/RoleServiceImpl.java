@@ -2,11 +2,9 @@ package com.ecommerce.authservice.service.impl;
 
 import com.ecommerce.authservice.dto.request.RoleForm;
 import com.ecommerce.authservice.dto.response.RoleDTO;
-import com.ecommerce.authservice.entity.FunctionEntity;
 import com.ecommerce.authservice.entity.RoleEntity;
 import com.ecommerce.authservice.repository.RoleRepository;
 import com.ecommerce.authservice.service.RoleService;
-import com.ecommerce.authservice.specs.FunctionSpecification;
 import com.ecommerce.authservice.specs.RoleSpecification;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -19,7 +17,6 @@ import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 
 
@@ -75,7 +72,7 @@ public class RoleServiceImpl implements RoleService {
         return Sort.by(direction, field);
     }
     @Override
-    public RoleEntity createRole(RoleForm roleForm) {
+    public void createRole(RoleForm roleForm) {
         if (!StringUtils.hasText(roleForm.getName())
                 || !StringUtils.hasText(roleForm.getDescription())
                 || !StringUtils.hasText(roleForm.getId())
@@ -86,7 +83,7 @@ public class RoleServiceImpl implements RoleService {
         if (!existed) {
             throw new RuntimeException("Quyền hạn đã tồn tại");
         }
-        return roleRepository.save(RoleEntity.builder()
+        roleRepository.save(RoleEntity.builder()
                 .id(roleForm.getId())
                 .name(roleForm.getName())
                 .description(roleForm.getDescription())
