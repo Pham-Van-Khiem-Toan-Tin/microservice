@@ -1,12 +1,15 @@
-package com.ecommerce.authservice.dto.request;
+package com.ecommerce.authservice.dto.response;
 
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.Set;
+
 @Data
 @Builder
-public class RoleForm {
+public class RoleDetailDTO {
     private String id;
     private String name;
     private String description;
+    private Set<String> subFunctions;
 }

@@ -22,6 +22,8 @@ public class RoleEntity {
     private String name;
     @Column(nullable = false, length = 100)
     private String description;
+    @Column
+    private Integer sortOrder;
     @OneToMany(mappedBy = "role")
     private List<UserEntity> users = new ArrayList<>();
     @ManyToMany(fetch = FetchType.EAGER)

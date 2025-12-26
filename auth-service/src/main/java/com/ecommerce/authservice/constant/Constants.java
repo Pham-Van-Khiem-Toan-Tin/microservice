@@ -8,6 +8,12 @@ import lombok.Getter;
 public enum Constants {
     //Validate
     VALIDATE_FAIL(4001, "Dữ liệu không hợp lệ."),
+    //ROLE
+    DELETE_ROLE_SUCCESS(1010, "Xóa vai trò thành công"),
+    UPDATE_ROLE_SUCCESS(1011, "Cập nhật vai trò thành công"),
+    CREATE_ROLE_SUCCESS(1010, "Thêm mới vai trò thành công"),
+    ROLE_NOT_EXIST(1006, "Vai trò không tồn tại"),
+    ROlE_EXIST(1006, "Vai trò đã tồn tại"),
     // FUNCTION
     DELETE_FUNCTION_SUCCESS(1008, "Xóa chức năng thành công"),
     UPDATE_FUNCTION_SUCCESS(1007, "Cập nhật chức năng thành công"),
