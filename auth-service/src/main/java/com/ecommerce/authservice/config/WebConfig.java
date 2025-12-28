@@ -59,7 +59,7 @@ public class WebConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/favicon.ico", "/roles", "/functions", "/subfunctions").permitAll()
+                        .requestMatchers("/favicon.ico", "/roles", "/api/**", "/functions", "/subfunctions").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(AbstractHttpConfigurer::disable)
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
@@ -94,75 +94,75 @@ public class WebConfig {
 
         return authorizedClientManager;
     }
-    @Bean
-    WebClient webClient(OAuth2AuthorizedClientManager authorizedClientManager) {
-        ServletOAuth2AuthorizedClientExchangeFilterFunction oauth2Client =
-                new ServletOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
-//        oauth2Client.setDefaultOAuth2AuthorizedClient(true);
-        return WebClient.builder()
-                .apply(oauth2Client.oauth2Configuration())
-                .filter(addAuthoritiesHeader())
-                .filter(retryOn401WithRefresh(authorizedClientManager))
-                .build();
-    }
-    @Bean
-    public ExchangeFilterFunction addAuthoritiesHeader() {
-        return (request, next) -> {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth == null) return next.exchange(request);
-
-            String authorities = auth.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .distinct()
-                    .reduce((a,b) -> a + "," + b)
-                    .orElse("");
-
-            ClientRequest mutated = ClientRequest.from(request)
-                    .header("X-Authorities", authorities)
-                    // nếu cần:
-                    // .header("X-User", auth.getName())
-                    .build();
-
-            return next.exchange(mutated);
-        };
-    }
-    @Bean
-    public ExchangeFilterFunction retryOn401WithRefresh(
-            OAuth2AuthorizedClientManager authorizedClientManager
-    ) {
-        return (request, next) -> next.exchange(request).flatMap(resp -> {
-            if (resp.statusCode() != HttpStatus.UNAUTHORIZED) {
-                return Mono.just(resp);
-            }
-
-            // Chỉ retry nếu đang là oauth2Login (có refresh token)
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (!(auth instanceof OAuth2AuthenticationToken oat)) {
-                return Mono.just(resp);
-            }
-
-            // IMPORTANT: consume/close response body trước khi retry để tránh leak
-            return resp.releaseBody()
-                    .then(Mono.defer(() -> {
-                        OAuth2AuthorizeRequest authorizeRequest = OAuth2AuthorizeRequest
-                                .withClientRegistrationId(oat.getAuthorizedClientRegistrationId())
-                                .principal(oat)
-                                .build();
-
-                        OAuth2AuthorizedClient refreshed = authorizedClientManager.authorize(authorizeRequest);
-                        if (refreshed == null || refreshed.getAccessToken() == null) {
-                            return next.exchange(request); // hoặc return 401 luôn
-                        }
-
-                        ClientRequest retryReq = ClientRequest.from(request)
-                                .headers(h -> h.set(HttpHeaders.AUTHORIZATION,
-                                        "Bearer " + refreshed.getAccessToken().getTokenValue()))
-                                .build();
-
-                        return next.exchange(retryReq);
-                    }));
-        });
-    }
+//    @Bean
+//    WebClient webClient(OAuth2AuthorizedClientManager authorizedClientManager) {
+//        ServletOAuth2AuthorizedClientExchangeFilterFunction oauth2Client =
+//                new ServletOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
+////        oauth2Client.setDefaultOAuth2AuthorizedClient(true);
+//        return WebClient.builder()
+//                .apply(oauth2Client.oauth2Configuration())
+//                .filter(addAuthoritiesHeader())
+//                .filter(retryOn401WithRefresh(authorizedClientManager))
+//                .build();
+//    }
+//    @Bean
+//    public ExchangeFilterFunction addAuthoritiesHeader() {
+//        return (request, next) -> {
+//            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+//            if (auth == null) return next.exchange(request);
+//
+//            String authorities = auth.getAuthorities().stream()
+//                    .map(GrantedAuthority::getAuthority)
+//                    .distinct()
+//                    .reduce((a,b) -> a + "," + b)
+//                    .orElse("");
+//
+//            ClientRequest mutated = ClientRequest.from(request)
+//                    .header("X-Authorities", authorities)
+//                    // nếu cần:
+//                    // .header("X-User", auth.getName())
+//                    .build();
+//
+//            return next.exchange(mutated);
+//        };
+//    }
+//    @Bean
+//    public ExchangeFilterFunction retryOn401WithRefresh(
+//            OAuth2AuthorizedClientManager authorizedClientManager
+//    ) {
+//        return (request, next) -> next.exchange(request).flatMap(resp -> {
+//            if (resp.statusCode() != HttpStatus.UNAUTHORIZED) {
+//                return Mono.just(resp);
+//            }
+//
+//            // Chỉ retry nếu đang là oauth2Login (có refresh token)
+//            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+//            if (!(auth instanceof OAuth2AuthenticationToken oat)) {
+//                return Mono.just(resp);
+//            }
+//
+//            // IMPORTANT: consume/close response body trước khi retry để tránh leak
+//            return resp.releaseBody()
+//                    .then(Mono.defer(() -> {
+//                        OAuth2AuthorizeRequest authorizeRequest = OAuth2AuthorizeRequest
+//                                .withClientRegistrationId(oat.getAuthorizedClientRegistrationId())
+//                                .principal(oat)
+//                                .build();
+//
+//                        OAuth2AuthorizedClient refreshed = authorizedClientManager.authorize(authorizeRequest);
+//                        if (refreshed == null || refreshed.getAccessToken() == null) {
+//                            return next.exchange(request); // hoặc return 401 luôn
+//                        }
+//
+//                        ClientRequest retryReq = ClientRequest.from(request)
+//                                .headers(h -> h.set(HttpHeaders.AUTHORIZATION,
+//                                        "Bearer " + refreshed.getAccessToken().getTokenValue()))
+//                                .build();
+//
+//                        return next.exchange(retryReq);
+//                    }));
+//        });
+//    }
     private GrantedAuthoritiesMapper userAuthoritiesMapper() {
         return (authorities) -> {
             Set<GrantedAuthority> mappedAuthorities = new HashSet<>();
