@@ -116,7 +116,7 @@ public class FunctionServiceImpl implements FunctionService {
         if (functionEntity == null)
             throw new BusinessException(FUNCTION_NOT_EXIST);
         Set<SubFunctionEntity> subFunctions = functionEntity.getSubFunctions();
-        if ((functionForm.getSubFunctions() == null | functionForm.getSubFunctions().isEmpty()) && subFunctions != null) {
+        if ((functionForm.getSubFunctions() == null || functionForm.getSubFunctions().isEmpty()) && subFunctions != null) {
             subFunctions.forEach(sf -> sf.setFunction(null));
             functionEntity.setSubFunctions(null);
         }
