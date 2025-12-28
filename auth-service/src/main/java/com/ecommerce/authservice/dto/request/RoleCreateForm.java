@@ -8,7 +8,7 @@ import java.util.Set;
 @Data
 @Builder
 public class RoleCreateForm {
-    private String id;
+    private String code;
     private String name;
     private String description;
     private Set<String> subFunctions;

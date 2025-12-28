@@ -1,10 +1,13 @@
 package com.ecommerce.authservice.controller;
 
 import com.ecommerce.authservice.constant.Constants;
+import com.ecommerce.authservice.dto.request.SubFunctionCreateForm;
+import com.ecommerce.authservice.dto.request.SubFunctionEditForm;
 import com.ecommerce.authservice.dto.request.SubFunctionForm;
 import com.ecommerce.authservice.dto.request.SubFunctionOptionForm;
 import com.ecommerce.authservice.dto.response.ApiResponse;
 import com.ecommerce.authservice.dto.response.SubFunctionDTO;
+import com.ecommerce.authservice.entity.SubFunctionEntity;
 import com.ecommerce.authservice.service.SubFunctionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -13,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import static com.ecommerce.authservice.constant.Constants.*;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/subfunctions")
@@ -42,13 +46,13 @@ public class SubFunctionController {
     }
     @PreAuthorize("hasAuthority('CREATE_SUBFUNCTION')")
     @PostMapping
-    public ApiResponse<Void> add(@RequestBody SubFunctionForm form) {
-        subFunctionService.createSubFunction(form);
-        return ApiResponse.of(CREATE_SUBFUNCTION_SUCCESS);
+    public ApiResponse<UUID> add(@RequestBody SubFunctionCreateForm form) {
+        SubFunctionEntity subFunctionEntity = subFunctionService.createSubFunction(form);
+        return ApiResponse.of(CREATE_SUBFUNCTION_SUCCESS, subFunctionEntity.getId());
     }
     @PreAuthorize("hasAuthority('EDIT_SUBFUNCTION')")
     @PutMapping("/{id}")
-    public ApiResponse<Void> edit(@RequestBody SubFunctionForm form, @PathVariable String id) {
+    public ApiResponse<Void> edit(@RequestBody SubFunctionEditForm form, @PathVariable String id) {
         subFunctionService.updateSubFunction(form, id);
         return ApiResponse.of(UPDATE_SUBFUNCTION_SUCCESS);
     }

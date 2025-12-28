@@ -53,7 +53,7 @@ public class WebConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/favicon.ico").permitAll()
+                        .requestMatchers("/favicon.ico", "/roles", "/functions", "/subfunctions").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(AbstractHttpConfigurer::disable)
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
@@ -112,8 +112,8 @@ public class WebConfig {
                             .orElseThrow(() -> new RuntimeException("User chưa được phân quyền hệ thống"));
 
                     // 3. Map Role từ DB ra Spring Security Authority
-                    localUser.getRole().getSubFunctions().forEach(roleEntity -> {
-                        mappedAuthorities.add(new SimpleGrantedAuthority(roleEntity.getId()));
+                    localUser.getRole().getSubFunctions().forEach(ath -> {
+                        mappedAuthorities.add(new SimpleGrantedAuthority(ath.getCode()));
                     });
                 }
             });

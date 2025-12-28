@@ -9,6 +9,7 @@ import java.util.Set;
 @Builder
 public class RoleDetailDTO {
     private String id;
+    private String code;
     private String name;
     private String description;
     private Set<String> subFunctions;

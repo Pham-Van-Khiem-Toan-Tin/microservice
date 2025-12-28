@@ -3,6 +3,8 @@ package com.ecommerce.authservice.dto.response;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @Builder
@@ -10,7 +12,8 @@ import lombok.*;
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class FunctionDTO {
-    private String id;
+    private UUID id;
+    private String code;
     private String name;
     private String description;
     private Integer sortOrder;

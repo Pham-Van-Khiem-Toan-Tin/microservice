@@ -9,6 +9,7 @@ import lombok.*;
 @AllArgsConstructor
 public class SubFunctionForm {
     private String id;
+    private String code;
     private String name;
     private String description;
     private String functionId;

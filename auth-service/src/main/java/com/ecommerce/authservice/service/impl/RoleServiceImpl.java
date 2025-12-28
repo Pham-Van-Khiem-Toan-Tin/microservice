@@ -22,10 +22,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -52,13 +49,18 @@ public class RoleServiceImpl implements RoleService {
     @Override
     public RoleDetailDTO findById(String id) {
         if (!StringUtils.hasText(id)) throw new BusinessException(ROLE_NOT_EXIST);
-        RoleEntity roleEntity = roleRepository.findById(id).orElseThrow(() -> new BusinessException(ROLE_NOT_EXIST));
+        RoleEntity roleEntity = roleRepository.findById(UUID.fromString(id)).orElseThrow(() ->
+                new BusinessException(ROLE_NOT_EXIST));
         Set<String> subFunctions = new HashSet<>();
         if (roleEntity.getSubFunctions() != null) {
-            subFunctions = roleEntity.getSubFunctions().stream().map(SubFunctionEntity::getId).collect(Collectors.toSet());
+            subFunctions = roleEntity.getSubFunctions()
+                    .stream()
+                    .map(sf -> sf.getId().toString())
+                    .collect(Collectors.toSet());
         }
         return RoleDetailDTO.builder()
-                .id(roleEntity.getId())
+                .id(roleEntity.getId().toString())
+                .code(roleEntity.getCode())
                 .name(roleEntity.getName())
                 .description(roleEntity.getDescription())
                 .subFunctions(subFunctions)
@@ -69,24 +71,24 @@ public class RoleServiceImpl implements RoleService {
     public void createRole(RoleCreateForm roleForm) {
         if (!StringUtils.hasText(roleForm.getName())
                 || !StringUtils.hasText(roleForm.getDescription())
-                || !StringUtils.hasText(roleForm.getId())
+                || !StringUtils.hasText(roleForm.getCode())
         ) {
             throw new BusinessException(VALIDATE_FAIL);
         }
-        boolean existed = roleRepository.existsById(roleForm.getId());
+        boolean existed = roleRepository.existsByCode(roleForm.getCode());
         if (existed) {
             throw new BusinessException(ROlE_EXIST);
         }
         Set<SubFunctionEntity> subFunctions = null;
         if (roleForm.getSubFunctions() != null && !roleForm.getSubFunctions().isEmpty()) {
-            subFunctions = new HashSet<>(subFunctionRepository.findAllByIdIn(roleForm.getSubFunctions()));
+            subFunctions = new HashSet<>(subFunctionRepository.findAllByIdIn(roleForm.getSubFunctions().stream().map(UUID::fromString).collect(Collectors.toSet())));
             if (subFunctions.isEmpty() || subFunctions.size() != roleForm.getSubFunctions().size()) {
                 throw new BusinessException(VALIDATE_FAIL);
             }
         }
 
         roleRepository.save(RoleEntity.builder()
-                .id(roleForm.getId())
+                .code(roleForm.getCode())
                 .name(roleForm.getName())
                 .description(roleForm.getDescription())
                 .subFunctions(subFunctions)
@@ -97,21 +99,25 @@ public class RoleServiceImpl implements RoleService {
     public void updateRole(RoleEditForm roleForm, String id) {
         if (!StringUtils.hasText(roleForm.getName())
                 || !StringUtils.hasText(roleForm.getDescription())
-                || !StringUtils.hasText(roleForm.getOldId())
-                || !StringUtils.hasText(roleForm.getNewId())
-                || !id.equals(roleForm.getOldId())
+                || !StringUtils.hasText(roleForm.getCode())
+                || !StringUtils.hasText(roleForm.getId())
         ) {
             throw new BusinessException(VALIDATE_FAIL);
         }
-        if (!roleForm.getOldId().equals(roleForm.getNewId()) && roleRepository.existsById(roleForm.getNewId()))
+        if (!roleForm.getId().equals(id) && roleRepository.existsById(UUID.fromString(roleForm.getId())))
             throw new BusinessException(ROlE_EXIST);
-        RoleEntity role = roleRepository.findById(roleForm.getOldId()).orElseThrow(() -> new BusinessException(ROLE_NOT_EXIST));
+        RoleEntity role = roleRepository.findById(UUID.fromString(roleForm.getId())).orElseThrow(() ->
+                new BusinessException(ROLE_NOT_EXIST));
         if (roleForm.getSubFunctions() != null && !roleForm.getSubFunctions().isEmpty()) {
-            Set<SubFunctionEntity> subFunctions = new HashSet<>(subFunctionRepository.findAllByIdIn(roleForm.getSubFunctions()));
+            Set<SubFunctionEntity> subFunctions = new HashSet<>(subFunctionRepository
+                    .findAllByIdIn(roleForm.getSubFunctions()
+                            .stream()
+                            .map(UUID::fromString)
+                            .collect(Collectors.toSet())));
             if (subFunctions.size() != roleForm.getSubFunctions().size()) throw new BusinessException(VALIDATE_FAIL);
             role.setSubFunctions(subFunctions);
         }
-        role.setId(roleForm.getNewId());
+        role.setCode(roleForm.getCode());
         role.setName(roleForm.getName());
         role.setDescription(roleForm.getDescription());
         roleRepository.save(role);
@@ -120,7 +126,8 @@ public class RoleServiceImpl implements RoleService {
     @Override
     public void deleteRole(String id) {
         if (!StringUtils.hasText(id)) throw new BusinessException(VALIDATE_FAIL);
-        RoleEntity role = roleRepository.findById(id).orElseThrow(() -> new BusinessException(ROLE_NOT_EXIST));
+        RoleEntity role = roleRepository.findById(UUID.fromString(id)).orElseThrow(() ->
+                new BusinessException(ROLE_NOT_EXIST));
         roleRepository.delete(role);
     }
 

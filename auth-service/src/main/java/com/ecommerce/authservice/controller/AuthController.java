@@ -20,18 +20,8 @@ import java.util.stream.Collectors;
 
 @RestController
 public class AuthController {
-    @Autowired
-    PasswordEncoder passwordEncoder;
-    private static final String IDP_AUTHORIZE_URL = "http://127.0.0.1:8085/oauth2/authorize";
-    private static final String CLIENT_ID = "admin-client";
-    private static final String REDIRECT_URI = "http://127.0.0.1:8082/auth/admin/callback";
-    private String generateStateToken() {
-        byte[] bytes = new byte[24]; // 24 bytes ~ 32 ký tự base64
-        SecureRandom random = new SecureRandom();
-        random.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-    @PreAuthorize("hasAuthority('VIEW_USER')")
+
+    @PreAuthorize("hasAuthority('VIEW_PROFILE')")
     @GetMapping("/me")
     public ResponseEntity<AuthDTO> authenticatedProfile(Authentication authentication) {
         OAuth2AuthenticationToken oat = (OAuth2AuthenticationToken) authentication;

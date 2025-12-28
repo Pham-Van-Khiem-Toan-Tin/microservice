@@ -3,6 +3,7 @@ package com.ecommerce.authservice.dto.response;
 import lombok.*;
 
 import java.util.Set;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -10,7 +11,8 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 public class FunctionDetailDTO {
-    private String id;
+    private UUID id;
+    private String code;
     private String name;
     private String description;
     private Integer sortOrder;

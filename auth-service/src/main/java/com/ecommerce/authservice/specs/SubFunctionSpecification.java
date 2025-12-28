@@ -27,9 +27,9 @@ public class SubFunctionSpecification {
 
             for (String field : fields) {
                 switch (field) {
-                    case "id" ->
+                    case "code" ->
                             predicates.add(
-                                    cb.like(cb.lower(root.get("id").as(String.class)), kw)
+                                    cb.like(cb.lower(root.get("code").as(String.class)), kw)
                             );
                     case "name" ->
                             predicates.add(

@@ -2,6 +2,8 @@ package com.ecommerce.authservice.service.impl;
 
 import static com.ecommerce.authservice.constant.Constants.*;
 
+import com.ecommerce.authservice.dto.request.SubFunctionCreateForm;
+import com.ecommerce.authservice.dto.request.SubFunctionEditForm;
 import com.ecommerce.authservice.dto.request.SubFunctionForm;
 import com.ecommerce.authservice.dto.request.SubFunctionOptionForm;
 import com.ecommerce.authservice.dto.response.BusinessException;
@@ -36,10 +38,14 @@ public class SubFunctionServiceImpl implements SubFunctionService {
     public Set<SubFunctionDTO> getUnlinkedSubFunctions(SubFunctionOptionForm subFunctionOptionForm) {
         String keyword = StringUtils.hasText(subFunctionOptionForm.getKeyword()) ? subFunctionOptionForm.getKeyword() : "";
         Set<SubFunctionEntity> subFunctions = new HashSet<>(subFunctionRepository
-                .searchByNameOrIdFunctionNullExcludeIds( keyword,
-                        subFunctionOptionForm.getIds()));
+                .searchAvailableByNameOrCode(keyword,
+                        subFunctionOptionForm.getIds()
+                                .stream()
+                                .map(UUID::fromString)
+                                .collect(Collectors.toSet())));
         return subFunctions.stream().map(sf -> SubFunctionDTO.builder()
                 .id(sf.getId())
+                .code(sf.getCode())
                 .name(sf.getName())
                 .description(sf.getDescription())
                 .sortOrder(sf.getSortOrder())
@@ -63,12 +69,14 @@ public class SubFunctionServiceImpl implements SubFunctionService {
         return subFunctionRepository.findAll(spec, pageable)
                 .map(sf -> SubFunctionDTO.builder()
                         .id(sf.getId())
+                        .code(sf.getCode())
                         .name(sf.getName())
                         .description(sf.getDescription())
                         .sortOrder(sf.getSortOrder())
                         .function(Optional.ofNullable(sf.getFunction())
                                 .map(f -> FunctionDTO.builder()
                                         .id(f.getId())
+                                        .code(f.getCode())
                                         .name(f.getName())
                                         .build())
                                 .orElse(null))
@@ -77,19 +85,19 @@ public class SubFunctionServiceImpl implements SubFunctionService {
 
 
     @Override
-    public void createSubFunction(SubFunctionForm subFunctionForm) {
+    public SubFunctionEntity createSubFunction(SubFunctionCreateForm subFunctionForm) {
         if (!StringUtils.hasText(subFunctionForm.getName())
                 || !StringUtils.hasText(subFunctionForm.getDescription())
-                || !StringUtils.hasText(subFunctionForm.getId()))
+                || !StringUtils.hasText(subFunctionForm.getCode()))
             throw new BusinessException(VALIDATE_FAIL);
-        if (subFunctionRepository.existsById(subFunctionForm.getId()))
+        if (subFunctionRepository.existsByCode(subFunctionForm.getCode()))
             throw new BusinessException(SUBFUNCTION_EXIST);
         FunctionEntity functionEntity = null;
         if (StringUtils.hasText(subFunctionForm.getFunctionId())) {
-            functionEntity = entityManager.find(FunctionEntity.class, subFunctionForm.getFunctionId());
+            functionEntity = entityManager.find(FunctionEntity.class, UUID.fromString(subFunctionForm.getFunctionId()));
         }
-        subFunctionRepository.save(SubFunctionEntity.builder()
-                .id(subFunctionForm.getId())
+        return subFunctionRepository.save(SubFunctionEntity.builder()
+                .code(subFunctionForm.getCode())
                 .name(subFunctionForm.getName())
                 .description(subFunctionForm.getDescription())
                 .sortOrder(1)
@@ -98,20 +106,21 @@ public class SubFunctionServiceImpl implements SubFunctionService {
     }
 
     @Override
-    public void updateSubFunction(SubFunctionForm subFunctionForm, String id) {
+    public void updateSubFunction(SubFunctionEditForm subFunctionForm, String id) {
         if (!StringUtils.hasText(subFunctionForm.getName())
                 || !StringUtils.hasText(subFunctionForm.getDescription())
-                || !StringUtils.hasText(subFunctionForm.getId())
+                || !StringUtils.hasText(subFunctionForm.getCode())
                 || !id.equals(subFunctionForm.getId()))
             throw new BusinessException(VALIDATE_FAIL);
-        SubFunctionEntity subFunction = subFunctionRepository.findById(subFunctionForm.getId()).orElseThrow(
-                () -> new BusinessException(SUBFUNCTION_NOT_EXIST)
-        );
+        SubFunctionEntity subFunction = subFunctionRepository.findById(UUID.fromString(subFunctionForm.getId()))
+                .orElseThrow(
+                        () -> new BusinessException(SUBFUNCTION_NOT_EXIST)
+                );
         FunctionEntity functionEntity = null;
         if (StringUtils.hasText(subFunctionForm.getFunctionId())) {
-            functionEntity = entityManager.find(FunctionEntity.class, subFunctionForm.getFunctionId());
+            functionEntity = entityManager.find(FunctionEntity.class, UUID.fromString(subFunctionForm.getFunctionId()));
         }
-        subFunction.setId(subFunction.getId());
+        subFunction.setCode(subFunctionForm.getCode());
         subFunction.setName(subFunctionForm.getName());
         subFunction.setDescription(subFunctionForm.getDescription());
         subFunction.setFunction(functionEntity);
@@ -122,19 +131,21 @@ public class SubFunctionServiceImpl implements SubFunctionService {
     public SubFunctionDTO getSubFunction(String id) {
         if (!StringUtils.hasText(id))
             throw new BusinessException(VALIDATE_FAIL);
-        SubFunctionEntity subFunction = subFunctionRepository.findById(id).orElseThrow(
+        SubFunctionEntity subFunction = subFunctionRepository.findById(UUID.fromString(id)).orElseThrow(
                 () -> new BusinessException(SUBFUNCTION_NOT_EXIST)
         );
         FunctionEntity functionEntity = subFunction.getFunction();
 
         SubFunctionDTO subFunctionDTO = SubFunctionDTO.builder()
                 .id(subFunction.getId())
+                .code(subFunction.getCode())
                 .name(subFunction.getName())
                 .description(subFunction.getDescription())
                 .build();
         if (functionEntity != null)
             subFunctionDTO.setFunction(FunctionDTO.builder()
                     .id(functionEntity.getId())
+                    .code(functionEntity.getCode())
                     .name(functionEntity.getName())
                     .build());
         return subFunctionDTO;
@@ -144,7 +155,7 @@ public class SubFunctionServiceImpl implements SubFunctionService {
     public void deleteSubFunction(String id) {
         if (!StringUtils.hasText(id))
             throw new BusinessException(VALIDATE_FAIL);
-        SubFunctionEntity subFunction = subFunctionRepository.findById(id)
+        SubFunctionEntity subFunction = subFunctionRepository.findById(UUID.fromString(id))
                 .orElseThrow(() -> new BusinessException(SUBFUNCTION_NOT_EXIST));
         subFunctionRepository.delete(subFunction);
     }

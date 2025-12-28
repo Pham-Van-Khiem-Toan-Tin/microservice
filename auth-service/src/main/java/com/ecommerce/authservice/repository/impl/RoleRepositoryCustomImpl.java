@@ -19,6 +19,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Repository
 public class RoleRepositoryCustomImpl implements RoleRepositoryCustom {
@@ -42,6 +43,7 @@ public class RoleRepositoryCustomImpl implements RoleRepositoryCustom {
 
         cq.groupBy(
                 root.get("id"),
+                root.get("code"),
                 root.get("name"),
                 root.get("description")
         );
@@ -49,6 +51,7 @@ public class RoleRepositoryCustomImpl implements RoleRepositoryCustom {
         cq.select(cb.construct(
                 RoleDTO.class,
                 root.get("id"),
+                root.get("code"),
                 root.get("name"),
                 root.get("description"),
                 cb.countDistinct(subJoin.get("id")) // quantityPermission

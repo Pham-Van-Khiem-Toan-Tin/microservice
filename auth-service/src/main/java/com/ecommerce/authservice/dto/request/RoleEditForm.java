@@ -8,8 +8,8 @@ import java.util.Set;
 @Data
 @Builder
 public class RoleEditForm {
-    private String oldId;
-    private String newId;
+    private String id;
+    private String code;
     private String name;
     private String description;
     private Set<String> subFunctions;
