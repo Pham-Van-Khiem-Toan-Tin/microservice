@@ -2,6 +2,7 @@ package com.ecommerce.authservice.controller;
 
 import static com.ecommerce.authservice.constant.Constants.*;
 
+import com.ecommerce.authservice.dto.request.FunctionEditForm;
 import com.ecommerce.authservice.dto.request.FunctionForm;
 import com.ecommerce.authservice.dto.response.AllFunctionDTO;
 import com.ecommerce.authservice.dto.response.ApiResponse;
@@ -56,7 +57,7 @@ public class FunctionController {
     }
     @PreAuthorize("hasAuthority('EDIT_FUNCTION')")
     @PutMapping("/{id}")
-    public ApiResponse<Void> edit(@RequestBody FunctionForm functionForm, @PathVariable String id ) {
+    public ApiResponse<Void> edit(@RequestBody FunctionEditForm functionForm, @PathVariable String id ) {
         functionService.editFunction(functionForm, id);
         return ApiResponse.ok(UPDATE_FUNCTION_SUCCESS);
     }

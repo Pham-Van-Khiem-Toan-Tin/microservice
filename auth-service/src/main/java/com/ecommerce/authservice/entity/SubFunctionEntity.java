@@ -2,12 +2,17 @@ package com.ecommerce.authservice.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
-@Table(name = "subFunctions")
+@Table(name = "subFunctions", indexes = {
+        @Index(name = "idx_code", columnList = "code")
+})
 @Getter
 @Setter
 @Builder
@@ -15,7 +20,12 @@ import java.util.Set;
 @AllArgsConstructor
 public class SubFunctionEntity {
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(length = 16)
+    private UUID id;
+    @Column(nullable = false, unique = true)
+    private String code;
     @Column(nullable = false, length = 100)
     private String name;
     @Column(nullable = false, length = 100)

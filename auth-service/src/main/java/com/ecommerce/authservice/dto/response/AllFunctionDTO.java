@@ -12,6 +12,7 @@ import java.util.Set;
 @Builder
 public class AllFunctionDTO {
     private String id;
+    private String code;
     private String name;
     private String description;
     private int sortOrder;

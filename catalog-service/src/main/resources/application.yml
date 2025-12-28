@@ -1,22 +1,16 @@
 spring:
   application:
    name: product-service
-<<<<<<< HEAD
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
-  data:
-    mongodb:
-      uri: mongodb://localhost:27017/ecommerce
-=======
+#  rabbitmq:
+#    host: localhost
+#    port: 5672
+#    username: guest
+#    password: guest
   data:
     mongodb:
       host: localhost
       port: 27017
       database: ecommerce
->>>>>>> f4c53d4c7e1e88145e85d67db2d6d92b05d46a59
 server:
   port: 8083
 eureka:

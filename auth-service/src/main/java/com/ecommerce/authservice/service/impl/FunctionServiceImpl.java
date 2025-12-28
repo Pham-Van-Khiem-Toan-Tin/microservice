@@ -2,6 +2,7 @@ package com.ecommerce.authservice.service.impl;
 
 import static com.ecommerce.authservice.constant.Constants.*;
 
+import com.ecommerce.authservice.dto.request.FunctionEditForm;
 import com.ecommerce.authservice.dto.request.FunctionForm;
 import com.ecommerce.authservice.dto.request.SubFunctionForm;
 import com.ecommerce.authservice.dto.response.*;
@@ -11,6 +12,7 @@ import com.ecommerce.authservice.repository.FunctionRepository;
 import com.ecommerce.authservice.repository.SubFunctionRepository;
 import com.ecommerce.authservice.service.FunctionService;
 import com.ecommerce.authservice.specs.FunctionSpecification;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -34,7 +36,7 @@ public class FunctionServiceImpl implements FunctionService {
     public Set<AllFunctionDTO> findAllFunction() {
         Set<FunctionEntity> functions = new HashSet<>(functionRepository.findAllWithSubFunctions());
         return functions.stream().map((f) -> AllFunctionDTO.builder()
-                .id(f.getId())
+                .id(f.getId().toString())
                 .name(f.getName())
                 .description(f.getDescription())
                 .sortOrder(f.getSortOrder())
@@ -50,7 +52,9 @@ public class FunctionServiceImpl implements FunctionService {
 
     @Override
     public FunctionDetailDTO findFunctionById(String id) {
-        FunctionEntity functionEntity = functionRepository.findById(id).orElseThrow(
+        if (!StringUtils.hasText(id))
+            throw new BusinessException(VALIDATE_FAIL);
+        FunctionEntity functionEntity = functionRepository.findById(UUID.fromString(id)).orElseThrow(
                 () -> new BusinessException(FUNCTION_NOT_EXIST)
         );
         Set<SubFunctionEntity> subFunctions = functionEntity.getSubFunctions();
@@ -58,12 +62,14 @@ public class FunctionServiceImpl implements FunctionService {
         if (subFunctions != null) {
             subFunctionDTOSet = subFunctions.stream().map(sf -> SubFunctionList.builder()
                     .id(sf.getId())
+                    .code(sf.getCode())
                     .name(sf.getName())
                     .description(sf.getDescription())
                     .build()).collect(Collectors.toSet());
         }
         return FunctionDetailDTO.builder()
                 .id(functionEntity.getId())
+                .code(functionEntity.getCode())
                 .name(functionEntity.getName())
                 .description(functionEntity.getDescription())
                 .sortOrder(functionEntity.getSortOrder())
@@ -87,42 +93,59 @@ public class FunctionServiceImpl implements FunctionService {
 
     @Override
     public void createFunction(FunctionForm functionForm) {
-        validateSubFunctionForm(functionForm);
-        Set<SubFunctionEntity> subFunctions = null;
-        if (functionForm.getSubFunctions() != null && !functionForm.getSubFunctions().isEmpty()) {
-            Set<String> subFunctionIds = functionForm.getSubFunctions().stream().map(SubFunctionForm::getId).collect(Collectors.toSet());
-            Set<SubFunctionEntity> subFunctionEntitySet = new HashSet<>(subFunctionRepository.findAllByIdIn(subFunctionIds));
-            if (subFunctionEntitySet.isEmpty() || subFunctionEntitySet.size() != subFunctionIds.size())
-                throw new BusinessException(VALIDATE_FAIL);
-            subFunctions = subFunctionEntitySet;
+        if (!StringUtils.hasText(functionForm.getName())
+                || !StringUtils.hasText(functionForm.getDescription())
+                || !StringUtils.hasText(functionForm.getCode())
+                || !StringUtils.hasText(functionForm.getIcon())
+        ) {
+            throw new BusinessException(VALIDATE_FAIL);
         }
         FunctionEntity functionEntity = FunctionEntity.builder()
-                .id(functionForm.getId())
+                .code(functionForm.getCode())
                 .name(functionForm.getName())
                 .description(functionForm.getDescription())
                 .icon(functionForm.getIcon())
                 .sortOrder(functionForm.getSortOrder())
-                .subFunctions(subFunctions)
                 .build();
+        if (functionForm.getSubFunctions() != null && !functionForm.getSubFunctions().isEmpty()) {
+            Set<UUID> subFunctionIds = functionForm.getSubFunctions().stream().map(sf ->
+                    UUID.fromString(sf.getId())).collect(Collectors.toSet());
+            Set<SubFunctionEntity> subFunctionEntitySet = new HashSet<>(subFunctionRepository.findAllByIdIn(subFunctionIds));
+            if (subFunctionEntitySet.isEmpty() || subFunctionEntitySet.size() != subFunctionIds.size())
+                throw new BusinessException(VALIDATE_FAIL);
+            subFunctionEntitySet.forEach(sf -> {sf.setFunction(functionEntity);});
+            functionEntity.setSubFunctions(subFunctionEntitySet);
+        }
+
         functionRepository.save(functionEntity);
     }
 
     @Override
-    public void editFunction(FunctionForm functionForm, String id) {
-        validateSubFunctionForm(functionForm);
+    public void editFunction(FunctionEditForm functionForm, String id) {
+        if (!StringUtils.hasText(functionForm.getName())
+                || !StringUtils.hasText(functionForm.getDescription())
+                || !StringUtils.hasText(functionForm.getCode())
+                || !StringUtils.hasText(functionForm.getIcon())
+                || !StringUtils.hasText(functionForm.getId())
+        ) {
+            throw new BusinessException(VALIDATE_FAIL);
+        }
         if (!functionForm.getId().equals(id))
             throw new BusinessException(VALIDATE_FAIL);
-        FunctionEntity functionEntity = functionRepository.findById(functionForm.getId()).orElse(null);
+        FunctionEntity functionEntity = functionRepository.findById(UUID
+                .fromString(functionForm.getId())).orElse(null);
         if (functionEntity == null)
             throw new BusinessException(FUNCTION_NOT_EXIST);
         Set<SubFunctionEntity> subFunctions = functionEntity.getSubFunctions();
-        if ((functionForm.getSubFunctions() == null || functionForm.getSubFunctions().isEmpty()) && subFunctions != null) {
+
+        if ((functionForm.getSubFunctions() == null || functionForm.getSubFunctions()
+                .isEmpty()) && subFunctions != null) {
             subFunctions.forEach(sf -> sf.setFunction(null));
             functionEntity.setSubFunctions(null);
         }
         if (functionForm.getSubFunctions() != null && !functionForm.getSubFunctions().isEmpty()) {
-            Set<String> subFunctionIds = functionForm.getSubFunctions().stream().map(SubFunctionForm::getId).collect(Collectors.toSet());
-            Set<String> subFunctionIdsOfEntity = functionEntity.getSubFunctions().stream().map(SubFunctionEntity::getId).collect(Collectors.toSet());
+            Set<UUID> subFunctionIds = functionForm.getSubFunctions().stream().map(fs -> UUID.fromString(fs.getId())).collect(Collectors.toSet());
+            Set<UUID> subFunctionIdsOfEntity = functionEntity.getSubFunctions().stream().map(SubFunctionEntity::getId).collect(Collectors.toSet());
             Set<SubFunctionEntity> subFunctionForm = new HashSet<>(subFunctionRepository.findAllByIdIn(subFunctionIds));
             if (subFunctionForm.isEmpty() || subFunctionForm.size() != subFunctionIds.size())
                 throw new BusinessException(VALIDATE_FAIL);
@@ -133,7 +156,7 @@ public class FunctionServiceImpl implements FunctionService {
             subFunctionForm.forEach(sf -> sf.setFunction(functionEntity));
             functionEntity.setSubFunctions(subFunctionForm);
         }
-        functionEntity.setId(functionForm.getId());
+        functionEntity.setCode(functionForm.getCode());
         functionEntity.setName(functionForm.getName());
         functionEntity.setDescription(functionForm.getDescription());
         functionEntity.setIcon(functionForm.getIcon());
@@ -141,31 +164,25 @@ public class FunctionServiceImpl implements FunctionService {
         functionRepository.save(functionEntity);
 
     }
-
+    @Transactional
     @Override
     public void deleteFunction(String id) {
         if (!StringUtils.hasText(id))
             throw new BusinessException(VALIDATE_FAIL);
-        FunctionEntity functionEntity = functionRepository.findById(id).orElseThrow(
+        FunctionEntity functionEntity = functionRepository.findById(UUID.fromString(id)).orElseThrow(
                 () -> new BusinessException(FUNCTION_NOT_EXIST)
         );
+        subFunctionRepository.clearFunctionByFunctionId(functionEntity.getId());
         functionRepository.delete(functionEntity);
     }
 
-    private void validateSubFunctionForm(FunctionForm functionForm) {
-        if (!StringUtils.hasText(functionForm.getName())
-                || !StringUtils.hasText(functionForm.getDescription())
-                || !StringUtils.hasText(functionForm.getId())
-                || !StringUtils.hasText(functionForm.getIcon())
-        ) {
-            throw new BusinessException(VALIDATE_FAIL);
-        }
-    }
+
 
     @Override
     public Set<FunctionDTO> findAllFunctionsOptions() {
         return functionRepository.findAll().stream().map(sf -> FunctionDTO.builder()
                 .id(sf.getId())
+                .code(sf.getCode())
                 .name(sf.getName())
                 .build()).collect(Collectors.toSet());
     }

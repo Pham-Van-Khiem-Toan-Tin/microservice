@@ -10,7 +10,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-@Repository
-public interface RoleRepository extends JpaRepository<RoleEntity, String>, JpaSpecificationExecutor<RoleEntity>, RoleRepositoryCustom {
+import java.util.UUID;
 
+@Repository
+public interface RoleRepository extends JpaRepository<RoleEntity, UUID>, JpaSpecificationExecutor<RoleEntity>, RoleRepositoryCustom {
+
+    boolean existsByCode(String code);
 }

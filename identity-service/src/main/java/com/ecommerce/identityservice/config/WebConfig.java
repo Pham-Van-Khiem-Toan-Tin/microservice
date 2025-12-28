@@ -114,7 +114,7 @@ public class WebConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
-                        .requestMatchers("/register", "/terms", "/privacy", "/login", "/verify-email", "forgot-password", "new-password", "/role/**",
+                        .requestMatchers("/register", "/terms", "/privacy", "/login", "/verify-email", "forgot-password", "new-password", "/role/**","/favicon.ico",
                                 "/css/**", "/js/**", "/images/**", "/fontawesome/**", "/images/**", "/webjars/**", "/favicon.ico", "/.well-known/appspecific/com.chrome.devtools.json")
                         .permitAll()
                         .anyRequest().authenticated())

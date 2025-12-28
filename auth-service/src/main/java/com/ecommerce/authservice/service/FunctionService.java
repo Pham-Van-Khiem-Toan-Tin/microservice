@@ -1,5 +1,6 @@
 package com.ecommerce.authservice.service;
 
+import com.ecommerce.authservice.dto.request.FunctionEditForm;
 import com.ecommerce.authservice.dto.request.FunctionForm;
 import com.ecommerce.authservice.dto.response.AllFunctionDTO;
 import com.ecommerce.authservice.dto.response.FunctionDTO;
@@ -16,6 +17,6 @@ public interface FunctionService {
     Set<FunctionDTO> findAllFunctionsOptions();
     Page<FunctionDTO> search(String keyword, List<String> fields, String sort, int page, int size);
     void createFunction(FunctionForm functionForm);
-    void editFunction(FunctionForm functionForm, String id);
+    void editFunction(FunctionEditForm functionEditFormForm, String id);
     void deleteFunction(String id);
 }

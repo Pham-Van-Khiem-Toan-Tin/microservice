@@ -11,7 +11,7 @@ import java.util.Set;
 @Setter
 @Builder
 public class FunctionForm {
-    private String id;
+    private String code;
     private String name;
     private String description;
     private Integer sortOrder;

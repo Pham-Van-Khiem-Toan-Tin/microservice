@@ -2,14 +2,15 @@ package com.ecommerce.authservice.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Entity
-@Table(name = "roles")
+@Table(name = "roles", indexes = {
+        @Index(name = "idx_code", columnList = "code")
+})
 @Getter
 @Setter
 @Builder
@@ -17,11 +18,18 @@ import java.util.Set;
 @NoArgsConstructor
 public class RoleEntity {
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(length = 16)
+    private UUID id;
+    @Column(nullable = false, unique = true)
+    private String code;
     @Column(nullable = false, length = 100)
     private String name;
     @Column(nullable = false, length = 100)
     private String description;
+    @Column
+    private Integer sortOrder;
     @OneToMany(mappedBy = "role")
     private List<UserEntity> users = new ArrayList<>();
     @ManyToMany(fetch = FetchType.EAGER)

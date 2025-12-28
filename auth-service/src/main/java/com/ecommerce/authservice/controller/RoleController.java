@@ -1,13 +1,16 @@
 package com.ecommerce.authservice.controller;
 
-import com.ecommerce.authservice.dto.request.RoleForm;
+import static com.ecommerce.authservice.constant.Constants.*;
+
+import com.ecommerce.authservice.dto.request.RoleCreateForm;
+import com.ecommerce.authservice.dto.request.RoleEditForm;
+import com.ecommerce.authservice.dto.response.ApiResponse;
 import com.ecommerce.authservice.dto.response.RoleDTO;
 
+import com.ecommerce.authservice.dto.response.RoleDetailDTO;
 import com.ecommerce.authservice.service.RoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,11 +33,27 @@ public class RoleController {
     ) {
         return roleService.search(keyword, fields, sort, page, size);
     }
-    @PreAuthorize("hasAuthority('CREATE_ROLE')")
-    @PostMapping("/new")
-    public ResponseEntity<String> createRole(@RequestBody RoleForm roleForm) {
-        roleService.createRole(roleForm);
-        return ResponseEntity.ok("Tạo mới quyền thành công");
+    @PreAuthorize("hasAuthority('VIEW_ROLE')")
+    @GetMapping("/{id}")
+    public RoleDetailDTO view(@PathVariable String id) {
+        return roleService.findById(id);
     }
-
+    @PreAuthorize("hasAuthority('CREATE_ROLE')")
+    @PostMapping
+    public ApiResponse<Void> create(@RequestBody RoleCreateForm roleForm) {
+        roleService.createRole(roleForm);
+        return ApiResponse.ok(CREATE_ROLE_SUCCESS);
+    }
+    @PreAuthorize("hasAuthority('EDIT_ROLE')")
+    @PutMapping("/{id}")
+    public ApiResponse<Void> edit(@PathVariable String id, @RequestBody RoleEditForm roleForm) {
+        roleService.updateRole(roleForm, id);
+        return ApiResponse.ok(UPDATE_ROLE_SUCCESS);
+    }
+    @PreAuthorize("hasAuthority('DELETE_ROLE')")
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@PathVariable String id) {
+        roleService.deleteRole(id);
+        return ApiResponse.ok(DELETE_ROLE_SUCCESS);
+    }
 }

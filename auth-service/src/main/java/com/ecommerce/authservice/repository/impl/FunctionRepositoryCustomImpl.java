@@ -41,6 +41,7 @@ public class FunctionRepositoryCustomImpl implements FunctionRepositoryCustom {
 
         cq.groupBy(
                 root.get("id"),
+                root.get("code"),
                 root.get("name"),
                 root.get("description"),
                 root.get("sortOrder")
@@ -49,6 +50,7 @@ public class FunctionRepositoryCustomImpl implements FunctionRepositoryCustom {
         cq.select(cb.construct(
                 FunctionDTO.class,
                 root.get("id"),
+                root.get("code"),
                 root.get("name"),
                 root.get("description"),
                 root.get("sortOrder"),
