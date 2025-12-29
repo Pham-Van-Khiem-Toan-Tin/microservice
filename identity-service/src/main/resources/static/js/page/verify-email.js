@@ -35,7 +35,7 @@ $(document).ready(function () {
             onSuccess: function (data) {
                 Notification.success(data.message, 1500)
                 setTimeout(function () {
-                    window.location.href = "/login" + data.data;
+                    window.location.href = "/login";
                 }, 1500)
             },
             onError: function () {

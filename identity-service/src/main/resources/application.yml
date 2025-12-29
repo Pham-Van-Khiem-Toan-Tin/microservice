@@ -14,15 +14,18 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-#    show-sql: true
+    show-sql: true
   data:
     redis:
       timeout: 2000
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8085
   session:
     redis:
       namespace: spring:session:idp
-  jackson:
-    time-zone: Asia/Ho_Chi_Minh
   mail:
     host: smtp.gmail.com
     port: 587
@@ -38,6 +41,8 @@ logging:
   level:
     org.springframework.security: DEBUG
     org.springframework.security.web.authentication: TRACE
+    org.springframework.security.oauth2: DEBUG
+    org.springframework.web: DEBUG
 server:
   port: 8085
   forward-headers-strategy: FRAMEWORK

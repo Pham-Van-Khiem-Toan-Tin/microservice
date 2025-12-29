@@ -2,29 +2,45 @@ package com.ecommerce.identityservice.entity;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
-@Data
 @Entity
-@Table(name = "roles")
+@Table(name = "roles", indexes = {
+        @Index(name = "idx_code", columnList = "code")
+})
+@Getter
+@Setter
 @Builder
-@NoArgsConstructor
 @AllArgsConstructor
-public class RoleEntity implements Serializable {
-//    private static final long serialVersionUID = 1L;
+@NoArgsConstructor
+public class RoleEntity {
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(length = 16)
+    private UUID id;
     @Column(nullable = false, unique = true)
+    private String code;
+    @Column(nullable = false, length = 100)
     private String name;
-    @Column(nullable = false)
-    private int position;
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String description;
+    @Column
+    private Integer sortOrder;
+    @OneToMany(mappedBy = "role")
+    private List<UserEntity> users = new ArrayList<>();
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "role_sub_functions",
+            joinColumns = @JoinColumn(name = "role_id"),
+            inverseJoinColumns = @JoinColumn(name = "sub_function_id")
+    )
+    @Builder.Default
+    private Set<SubFunctionEntity> subFunctions = new HashSet<>();
 }
+

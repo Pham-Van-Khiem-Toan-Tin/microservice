@@ -5,10 +5,9 @@ import lombok.Getter;
 
 @Getter
 public class BusinessException extends RuntimeException {
-    private final Constants constants;
-
-    public BusinessException(Constants constants) {
-        super(constants.getMessage());
-        this.constants = constants;
+    private final Constants responseCode;
+    public BusinessException(Constants responseCode) {
+        super(responseCode.getMessage());
+        this.responseCode = responseCode;
     }
 }

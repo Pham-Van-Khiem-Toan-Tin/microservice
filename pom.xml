@@ -17,10 +17,9 @@
         <module>order-service</module>
         <module>catalog-service</module>
         <module>discovery-service</module>
-        <module>api-gateway</module>
         <module>identity-service</module>
         <module>payment-service</module>
-        <module>auth-service</module>
+        <module>bff-admin</module>
     </modules>
     <properties>
         <maven.compiler.source>21</maven.compiler.source>

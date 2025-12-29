@@ -17,15 +17,11 @@ import static com.ecommerce.identityservice.constants.Constants.*;
 @Slf4j
 public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
-    public ApiResponse<Object> handleBusinessException(BusinessException ex) {
-        log.warn("Business Error: {}", ex.getConstants().getMessage());
-        return ApiResponse.error(ex.getConstants());
-    }
-    @ExceptionHandler(Exception.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR) // Lỗi crash server là 500
-    public ApiResponse<Object> handleGeneralException(Exception ex) {
-        // Log lỗi nghiêm trọng (Stack Trace) để dev fix
-        log.error("System Error: ", ex);
-        return ApiResponse.error(INTERNAL_SERVER);
+    public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException ex) {
+        // tùy bạn: mapping status theo code nghiệp vụ, ở đây dùng 400
+        log.error(ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.of(ex.getResponseCode(), null));
     }
 }

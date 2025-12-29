@@ -4,9 +4,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -14,9 +17,9 @@ import java.util.Objects;
 public class ClientRequiredRoleId implements Serializable {
     @Column(name = "client_id", length = 120)
     private String clientId;
-
-    @Column(name = "role_id", length = 80)
-    private String roleId;
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(name = "role_id", length = 16)
+    private UUID roleId;
 
     public ClientRequiredRoleId() {}
     public ClientRequiredRoleId(String clientId, String roleCode) {

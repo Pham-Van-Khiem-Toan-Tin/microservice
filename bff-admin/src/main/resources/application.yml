@@ -1,0 +1,75 @@
+spring:
+  application:
+    name: auth-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8085
+      client:
+        registration:
+          admin-idp: # <--- Registration ID 1
+            provider: my-identity-provider
+            client-id: admin-client
+            client-secret: secret
+            authorization-grant-type: authorization_code
+            redirect-uri: "http://localhost:8088/login/oauth2/code/admin-idp"
+            scope: openid, profile, write
+#          user-idp: # <--- Registration ID 2
+#            provider: my-identity-provider
+#            client-id: user-client
+#            client-secret: secret
+#            authorization-grant-type: authorization_code
+#            redirect-uri: "http://localhost:8082/auth/login/oauth2/code/user-idp"
+#            scope: openid, profile
+        provider:
+          my-identity-provider:
+            issuer-uri: http://localhost:8085
+#  cloud:
+#    gateway:
+#      server:
+#        webflux:
+#          globalcors:
+#            corsConfigurations:
+#              '[/**]':
+#                allowedOrigins:
+#                  - "http://localhost:5173"
+#                allowedMethods:
+#                  - "*"
+#                allowedHeaders:
+#                  - "*"
+#                allowCredentials: true
+#          default-filters:
+#            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+  session:
+    redis:
+      save-mode: on_set_attribute
+      namespace: spring:session:bff
+    timeout: 12h
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: DEBUG
+    org.springframework.web: DEBUG
+server:
+  port: 8088
+  reactive:
+    session:
+      cookie:
+        name: BFF_SESSION
+        same-site: Lax
+        secure: false
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    hostname: localhost
+    prefer-ip-address: true
+    instance-id: ${eureka.instance.hostname}:${server.port}
+bff:
+  internal-jwt:
+    issuer: http://localhost:8088
+    ttl-seconds: 300

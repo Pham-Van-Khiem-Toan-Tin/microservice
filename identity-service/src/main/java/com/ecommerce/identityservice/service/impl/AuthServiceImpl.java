@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
 @Service
 @Slf4j
@@ -46,9 +45,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(EXISTS_USER);
         }
         String otp = OtpUtils.generate6Digit();
-        RoleEntity role = entityManager.getReference(RoleEntity.class, "CUSTOMER");
-        Set<RoleEntity> roles = new HashSet<>();
-        roles.add(role);
+//        RoleEntity role = entityManager.getReference(RoleEntity.class, "ADMIN");
         UserEntity userEntity = UserEntity
                 .builder()
                 .email(user.getEmail())
@@ -62,7 +59,7 @@ public class AuthServiceImpl implements AuthService {
                 .otpEmail(otp)
                 .otpEmailExpiration(Instant.now().plusSeconds(120))
                 .build();
-        userEntity.setRoles(roles);
+//        userEntity.setRole(role);
         UserEntity createdUser = userRepository.save(userEntity);
         try {
             emailService.sendOtpEmail(createdUser.getEmail(), createdUser.getFirstName() + createdUser.getLastName(), otp, 2);

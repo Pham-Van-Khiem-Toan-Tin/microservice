@@ -53,13 +53,9 @@ public class UserEntity implements Serializable {
     @Column(name = "avatar_url")
     private String avatarUrl;
 //    @JsonIgnore
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-            name = "users_roles",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id")
-    )
-    private Set<RoleEntity> roles = new HashSet<>();
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "role_id", referencedColumnName = "id")
+    private RoleEntity role;
     @Column(nullable = false)
     private int status;
     @Column(nullable = false, name = "created_at")

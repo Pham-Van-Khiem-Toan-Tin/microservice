@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.web.DefaultRedirectStrategy;
@@ -17,10 +18,11 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.Set;
 
+@Slf4j
 @Component
 public class IdpLoginSuccessHandler implements AuthenticationSuccessHandler {
-    private static final String ADMIN_INIT_URL = "http://localhost:8082/auth/oauth2/authorization/admin-idp";
-    private static final String CUSTOMER_INIT_URL = "http://localhost:8082/auth/oauth2/authorization/user-idp";
+    private static final String ADMIN_INIT_URL = "http://localhost:8088/oauth2/authorization/admin-idp";
+    private static final String CUSTOMER_INIT_URL = "http://localhost:8088/oauth2/authorization/user-idp";
 
     // Mặc định Spring dùng cái này để lưu request trước khi bị đá sang trang login
     private final RequestCache requestCache = new HttpSessionRequestCache();
@@ -35,6 +37,7 @@ public class IdpLoginSuccessHandler implements AuthenticationSuccessHandler {
             redirectStrategy.sendRedirect(request, response, savedRequest.getRedirectUrl());
             return;
         }
+        log.debug(String.valueOf(savedRequest));
         Set<String> roles = AuthorityUtils.authorityListToSet(authentication.getAuthorities());
         if (roles.contains("SUPER_ADMIN") || roles.contains("ADMIN") || roles.contains("EMPLOYEE")) {
             // Nếu là Admin -> Đẩy sang luồng khởi tạo Admin của BFF

@@ -17,11 +17,15 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -42,6 +46,8 @@ import org.springframework.security.oauth2.server.authorization.settings.ClientS
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
@@ -56,12 +62,15 @@ import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class WebConfig {
     @Autowired
     ClientRepository clientRepository;
@@ -96,9 +105,7 @@ public class WebConfig {
                 )
 
                 .cors(Customizer.withDefaults())
-                .oauth2ResourceServer(resourceServer -> resourceServer
-                        .jwt(Customizer.withDefaults())
-                )
+
                 .exceptionHandling(ex -> ex
                         .defaultAuthenticationEntryPointFor(
                                 new LoginUrlAuthenticationEntryPoint("/login"),
@@ -123,6 +130,9 @@ public class WebConfig {
                     login.loginPage("/login")
                             .successHandler(idpLoginSuccessHandler);
                 })
+                .oauth2ResourceServer(resourceServer -> resourceServer
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+                )
                 .rememberMe(rm -> rm
                         .rememberMeParameter("remember-me")
                         .tokenValiditySeconds(60 * 60 * 24 * 30)  // 30 ngày
@@ -144,67 +154,44 @@ public class WebConfig {
 
         return new ProviderManager(provider);
     }
-    private Consumer<OAuth2AuthorizationCodeRequestAuthenticationContext> validateClientAccess() {
-        return ctx -> {
-            String clientId = ctx.getRegisteredClient().getClientId();
-            Authentication principal = ctx.getAuthentication();
-            Set<String> authorities = AuthorityUtils.authorityListToSet(principal.getAuthorities());
-            if ("admin-client".equals(clientId)) {
-                // Client Admin bắt buộc phải có ROLE_ADMIN
-                if (!authorities.contains("SUPER_ADMIN")) {
-                    throw new OAuth2AuthenticationException(new OAuth2Error("access_denied", "Bạn không phải Admin", null));
-                }
-            }
-
-            else if ("user-client".equals(clientId)) {
-                // Client Customer bắt buộc phải có ROLE_CUSTOMER
-                if (!authorities.contains("ROLE_CUSTOMER")) {
-                    throw new OAuth2AuthenticationException(new OAuth2Error("access_denied", "Tài khoản khách hàng không hợp lệ", null));
-                }
+    @Bean
+    public OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer() {
+        return context -> {
+            if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
+                context.getClaims().claims((claims) -> {
+                   Authentication principal = context.getPrincipal();
+                   Set<String> authorities = principal.getAuthorities().stream()
+                           .map(GrantedAuthority::getAuthority)
+                           .collect(Collectors.toSet());
+                    claims.put("authorities", authorities);
+                });
             }
         };
+    }
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+        grantedAuthoritiesConverter.setAuthoritiesClaimName("authorities");
+        grantedAuthoritiesConverter.setAuthorityPrefix("");
+        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
+        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+        return jwtAuthenticationConverter;
     }
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        CorsConfiguration config = new CorsConfiguration();
-        config.addAllowedHeader("*");
-        config.addAllowedMethod("*");
-        config.addAllowedOrigin("*");
-        config.setAllowCredentials(true);
-        source.registerCorsConfiguration("/**", config);
-        return source;
-    }
-    @Bean
-    public JpaRegisteredClientRepository jpaRegisteredClientRepository(PasswordEncoder passwordEncoder) {
-        String clientId = "user-client";
-        JpaRegisteredClientRepository jpaRegisteredClientRepository = new JpaRegisteredClientRepository(clientRepository);
-        RegisteredClient existing = jpaRegisteredClientRepository.findByClientId(clientId);
-        if (existing == null) {
-            RegisteredClient oidcClient = RegisteredClient.withId(UUID.randomUUID().toString())
-                    .clientId(clientId)
-                    .clientSecret(passwordEncoder().encode("secret"))
-                    .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                    .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                    .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                    .redirectUri("http://localhost:8082/auth/oauth2/code/user-idp")
-                    .scope(OidcScopes.OPENID)
-                    .scope(OidcScopes.PROFILE)
-                    .tokenSettings(TokenSettings.builder()
-                            .accessTokenTimeToLive(Duration.ofMinutes(15))
-                            .refreshTokenTimeToLive(Duration.ofDays(15))
-                            .reuseRefreshTokens(true)
-                            .build())
-                    .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
-                    .build();
-            jpaRegisteredClientRepository.save(oidcClient);
-        }
-        return jpaRegisteredClientRepository;
-    }
+//    @Bean
+//    public CorsConfigurationSource corsConfigurationSource() {
+//        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+//        CorsConfiguration config = new CorsConfiguration();
+//        config.addAllowedHeader("*");
+//        config.addAllowedMethod("*");
+//        config.setAllowedOrigins(List.of("http://localhost:8088", "http://localhost:5173"));
+//        config.setAllowCredentials(true);
+//        source.registerCorsConfiguration("/**", config);
+//        return source;
+//    }
     @Bean
     public JWKSource<SecurityContext> jwkSource() {
         KeyPair keyPair = generateRsaKey();
@@ -234,31 +221,31 @@ public class WebConfig {
     public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) {
         return OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
     }
-    @Bean
-    public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() {
-        return (context) -> {
-            // Áp dụng cho cả ID Token và Access Token
-            if (OidcParameterNames.ID_TOKEN.equals(context.getTokenType().getValue()) ||
-                    OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
-
-                Authentication authentication = context.getPrincipal();
-                Object principal = authentication.getPrincipal();
-
-                // Kiểm tra xem principal có phải là UserDetails của bạn không
-                if (principal instanceof CustomUserDetail userDetails) {
-
-                    // Lấy UUID từ UserDetails
-                    String userId = userDetails.getId().toString();
-
-                    // --- QUAN TRỌNG: GHI ĐÈ sub ---
-                    context.getClaims().claim("uid", userId);
-
-                    // (Tùy chọn) Thêm username vào claim khác nếu cần hiển thị
-                    context.getClaims().claim("username", userDetails.getUsername());
-                }
-            }
-        };
-    }
+//    @Bean
+//    public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() {
+//        return (context) -> {
+//            // Áp dụng cho cả ID Token và Access Token
+//            if (OidcParameterNames.ID_TOKEN.equals(context.getTokenType().getValue()) ||
+//                    OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
+//
+//                Authentication authentication = context.getPrincipal();
+//                Object principal = authentication.getPrincipal();
+//
+//                // Kiểm tra xem principal có phải là UserDetails của bạn không
+//                if (principal instanceof CustomUserDetail userDetails) {
+//
+//                    // Lấy UUID từ UserDetails
+//                    String userId = userDetails.getId().toString();
+//
+//                    // --- QUAN TRỌNG: GHI ĐÈ sub ---
+//                    context.getClaims().claim("uid", userId);
+//
+//                    // (Tùy chọn) Thêm username vào claim khác nếu cần hiển thị
+//                    context.getClaims().claim("username", userDetails.getUsername());
+//                }
+//            }
+//        };
+//    }
     @Bean
     public RestTemplate restTemplate() {
         return new RestTemplate();
