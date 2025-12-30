@@ -66,8 +66,8 @@ public enum Constants {
 
 
 
-    private int code;
-    private String message;
+    private final int code;
+    private final String message;
 
 
 }

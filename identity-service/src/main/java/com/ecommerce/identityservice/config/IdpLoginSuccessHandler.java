@@ -33,7 +33,6 @@ public class IdpLoginSuccessHandler implements AuthenticationSuccessHandler {
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
         SavedRequest savedRequest = requestCache.getRequest(request, response);
         if (savedRequest != null) {
-            // Nếu có, cho đi tiếp theo đúng quy trình cũ (Flow chuẩn)
             redirectStrategy.sendRedirect(request, response, savedRequest.getRedirectUrl());
             return;
         }

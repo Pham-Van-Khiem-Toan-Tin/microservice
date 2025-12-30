@@ -26,7 +26,7 @@ public class RoleController {
     public Page<RoleDTO> findAll(
             @RequestParam(defaultValue = "") String keyword,
             @RequestParam(required = false, name = "fields") List<String> fields,
-            @RequestParam(defaultValue = "id:asc") String sort,
+            @RequestParam(defaultValue = "code:asc") String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {

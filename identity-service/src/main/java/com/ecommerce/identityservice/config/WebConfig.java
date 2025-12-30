@@ -15,65 +15,47 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.RememberMeAuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.AuthorityUtils;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.core.AuthorizationGrantType;
-import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
-import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
-import org.springframework.security.oauth2.core.OAuth2Error;
-import org.springframework.security.oauth2.core.oidc.OidcScopes;
-import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
-import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationCodeRequestAuthenticationContext;
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
-import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
-import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationFilter;
+import org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import java.time.Duration;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class WebConfig {
-    @Autowired
-    ClientRepository clientRepository;
     @Autowired
     private IdpLoginSuccessHandler idpLoginSuccessHandler;
     @Autowired
@@ -137,23 +119,33 @@ public class WebConfig {
                         .rememberMeParameter("remember-me")
                         .tokenValiditySeconds(60 * 60 * 24 * 30)  // 30 ngày
                         .key("chuoi-bi-mat-nao-do")
+                        .rememberMeCookieName("remember-me")
                         .userDetailsService(userDetailsService)
                 );
         return http.build();
     }
-    @Bean
-    public AuthenticationManager authenticationManager(
-            UserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder) {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder);
-
-        // ==> QUAN TRỌNG: Đừng xóa password vội để còn dùng nó tạo RememberMe Cookie
-        provider.setForcePrincipalAsString(false);
-
-        return new ProviderManager(provider);
-    }
+//    @Bean
+//    RememberMeAuthenticationFilter rememberMeFilter() {
+//        RememberMeAuthenticationFilter rememberMeFilter = new RememberMeAuthenticationFilter();
+//        rememberMeFilter.setRememberMeServices(rememberMeServices());
+//        rememberMeFilter.setAuthenticationManager(theAuthenticationManager);
+//        return rememberMeFilter;
+//    }
+//
+//    @Bean
+//    TokenBasedRememberMeServices rememberMeServices() {
+//        TokenBasedRememberMeServices rememberMeServices = new TokenBasedRememberMeServices();
+//        rememberMeServices.setUserDetailsService(myUserDetailsService);
+//        rememberMeServices.setKey("springRocks");
+//        return rememberMeServices;
+//    }
+//
+//    @Bean
+//    RememberMeAuthenticationProvider rememberMeAuthenticationProvider() {
+//        RememberMeAuthenticationProvider rememberMeAuthenticationProvider = new RememberMeAuthenticationProvider();
+//        rememberMeAuthenticationProvider.setKey("springRocks");
+//        return rememberMeAuthenticationProvider;
+//    }
     @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer() {
         return context -> {
@@ -181,17 +173,6 @@ public class WebConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-//    @Bean
-//    public CorsConfigurationSource corsConfigurationSource() {
-//        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-//        CorsConfiguration config = new CorsConfiguration();
-//        config.addAllowedHeader("*");
-//        config.addAllowedMethod("*");
-//        config.setAllowedOrigins(List.of("http://localhost:8088", "http://localhost:5173"));
-//        config.setAllowCredentials(true);
-//        source.registerCorsConfiguration("/**", config);
-//        return source;
-//    }
     @Bean
     public JWKSource<SecurityContext> jwkSource() {
         KeyPair keyPair = generateRsaKey();
@@ -221,31 +202,6 @@ public class WebConfig {
     public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) {
         return OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
     }
-//    @Bean
-//    public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() {
-//        return (context) -> {
-//            // Áp dụng cho cả ID Token và Access Token
-//            if (OidcParameterNames.ID_TOKEN.equals(context.getTokenType().getValue()) ||
-//                    OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
-//
-//                Authentication authentication = context.getPrincipal();
-//                Object principal = authentication.getPrincipal();
-//
-//                // Kiểm tra xem principal có phải là UserDetails của bạn không
-//                if (principal instanceof CustomUserDetail userDetails) {
-//
-//                    // Lấy UUID từ UserDetails
-//                    String userId = userDetails.getId().toString();
-//
-//                    // --- QUAN TRỌNG: GHI ĐÈ sub ---
-//                    context.getClaims().claim("uid", userId);
-//
-//                    // (Tùy chọn) Thêm username vào claim khác nếu cần hiển thị
-//                    context.getClaims().claim("username", userDetails.getUsername());
-//                }
-//            }
-//        };
-//    }
     @Bean
     public RestTemplate restTemplate() {
         return new RestTemplate();

@@ -1,6 +1,6 @@
 spring:
   application:
-   name: product-service
+   name: catalog-service
 #  rabbitmq:
 #    host: localhost
 #    port: 5672
@@ -11,6 +11,16 @@ spring:
       host: localhost
       port: 27017
       database: ecommerce
+      auto-index-creation: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8085
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
 server:
   port: 8083
 eureka:
