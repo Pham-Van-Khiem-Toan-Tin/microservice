@@ -17,10 +17,10 @@ import java.util.Map;
 @Setter
 public class ProductVariantEntity {
     @Id
-    private ObjectId id;
+    private String id;
 
     @Indexed
-    private ObjectId productId;
+    private String productId;
 
     @Indexed(unique = true)
     private String sku;

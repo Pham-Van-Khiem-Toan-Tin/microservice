@@ -9,9 +9,8 @@ import java.util.Optional;
 import java.util.Set;
 
 @Repository
-public interface ProductRepository extends MongoRepository<ProductEntity, ObjectId> {
-    Optional<ProductEntity> findBySlug(String slug);
-    boolean existsBySlug(String slug);
+public interface ProductRepository extends MongoRepository<ProductEntity, String> {
+    Optional<ProductEntity> findBySlugAndCategoryId(String slug, String categoryId);
 
-    Set<ProductEntity> findByCategoryId(ObjectId categoryId);
+    Optional<ProductEntity> findBySlug(String slug);
 }

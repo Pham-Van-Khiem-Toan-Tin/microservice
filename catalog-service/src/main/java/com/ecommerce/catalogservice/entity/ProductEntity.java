@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 @Document("products")
@@ -23,26 +24,20 @@ public class ProductEntity {
 
     @Indexed(unique = true)
     private String slug;
+    @Indexed
+    private String categoryId;        // leaf category
+    private List<String> ancestors;
+    @Indexed
+    private String brandCode;
 
-    private ObjectId categoryId;        // leaf category
-    private ObjectId attributeSetId;
+    @Indexed
+    private  ProductStatus status;
 
-    // Product-level attributes
-    private Map<String, String> productAttributes;
+    private List<SpecBlock> specifications;
 
-    private Image mainImage;
-    private String description;
-    private String status;
+    private List<Variant> variants;
 
+    private String updatedBy;
     private Instant createdAt;
     private Instant updatedAt;
-
-    @Getter
-    @Setter
-    public static class Image {
-        private String link;
-        private String alt;
-        private String publicId;
-    }
-
 }

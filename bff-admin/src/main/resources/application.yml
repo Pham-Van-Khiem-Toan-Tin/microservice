@@ -1,6 +1,6 @@
 spring:
   application:
-    name: auth-service
+    name: bff-admin
   security:
     oauth2:
       resourceserver:

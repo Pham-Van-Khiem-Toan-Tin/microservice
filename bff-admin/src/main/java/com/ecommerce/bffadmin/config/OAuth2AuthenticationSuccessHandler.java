@@ -25,17 +25,9 @@ import java.util.stream.Collectors;
 
 @Component
 public class OAuth2AuthenticationSuccessHandler extends RedirectServerAuthenticationSuccessHandler {
-    private static final String REG_ADMIN_IDP = "admin-idp";
-
-
-    // ===== Frontend URLs =====
     private static final String ADMIN_FE_URL = "http://localhost:5173/";
-    private static final String NO_ADMIN_ACCESS_URL = "http://localhost:5173/?reason=NO_ADMIN_ACCESS";
 
-    // ===== Session keys =====
-    private static final String SESSION_ACCESS_TOKEN = "BFF_ACCESS_TOKEN";
-    private static final String SESSION_AUTHORITIES = "AUTHORITIES";
-    // 1. Inject Repository để lấy token
+
 
 
     @Override

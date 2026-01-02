@@ -1,10 +1,10 @@
 package com.ecommerce.catalogservice.entity;
 
 import lombok.*;
-import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
 import java.util.List;
@@ -17,15 +17,18 @@ import java.util.List;
 @NoArgsConstructor
 public class AttributeEntity {
     @Id
-    private ObjectId id;
+    private String id;
 
     @Indexed(unique = true)
     private String code;
 
-    private String name;
-    private String dataType;
+    private String label;
+    @Field("type")
+    private AttributeDataType dataType;
     private String unit;
-    private List<String> options;
+    private List<OptionEntity> options;
 
+    private String updatedBy;
+    private Instant updatedAt;
     private Instant createdAt;
 }

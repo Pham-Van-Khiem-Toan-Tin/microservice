@@ -15,5 +15,6 @@ public class CategoryDetailDTO {
     private String imageUrl;
     private boolean isFeatured;
     private String parentName;
+    private String parentId;
     private String slug;
 }

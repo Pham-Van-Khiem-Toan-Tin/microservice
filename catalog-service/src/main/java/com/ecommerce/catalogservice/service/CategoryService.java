@@ -15,9 +15,9 @@ import java.util.Set;
 
 public interface CategoryService {
     Page<CategoryDTO> search(String keyword, List<CategorySearchField> fields, Pageable pageable);
-    CategoryEntity createCategory(CategoryCreateForm categoryForm);
-    CategoryEntity updateCategory(CategoryUpdateForm categoryForm);
-    CategoryEntity deleteCategory(String id);
-    Set<CategoryOptionDTO> getParentCategories();
-    CategoryDetailDTO getCategoryDetailDTO(String id);
+//    CategoryEntity createCategory(CategoryCreateForm categoryForm);
+//    CategoryEntity updateCategory(CategoryUpdateForm categoryForm, String id);
+//    void deleteCategory(String id);
+//    Set<CategoryOptionDTO> getParentCategories();
+//    CategoryDetailDTO getCategoryDetailDTO(String id);
 }

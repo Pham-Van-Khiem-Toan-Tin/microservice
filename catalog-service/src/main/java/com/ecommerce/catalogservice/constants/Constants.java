@@ -10,8 +10,18 @@ public enum Constants {
     DATA_FORMAT(400, "Dữ liệu không hợp lệ"),
     VALIDATE_FAIL(4001, "Dữ liệu không hợp lệ."),
 
+    //attribute
+    ATTRIBUTE_CREATE_SUCCESS(1006, "Thêm mới thuộc tính thành công."),
+    ATTRIBUTE_EDIT_SUCCESS(1006, "Cập nhật thuộc tính thành công."),
+    ATTRIBUTE_DELETE_SUCCESS(1006, "Xóa thuộc tính thành công."),
+
+
     //category
     SLUG_EXIST(409, "Slug đã tồn tại"),
+    DELETE_CATEGORY_SUCESS(1005, "Xóa danh mục thành công."),
+    UPDATE_CATEGORY_SUCCESS(1004, "Cập nhật danh mục thành công"),
+
+    UPDATE_CATEGORY_FAIL(1003, "Cập nhật danh mục không thành công"),
     CREATE_CATEGORY_FAIL(1002, "Thêm mới danh mục thất bại. Vui lòng thử lại sau"),
     CREATE_CATEGORY_SUCCESS(1001, "Thêm mới danh mục thành công"),
     //product

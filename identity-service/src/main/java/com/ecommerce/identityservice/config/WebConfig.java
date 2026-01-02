@@ -104,7 +104,7 @@ public class WebConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
                         .requestMatchers("/register", "/terms", "/privacy", "/login", "/verify-email", "forgot-password", "new-password", "/role/**","/favicon.ico",
-                                "/css/**", "/js/**", "/images/**", "/fontawesome/**", "/images/**", "/webjars/**", "/favicon.ico", "/.well-known/appspecific/com.chrome.devtools.json")
+                                "/css/**", "/js/**", "/images/**", "/fontawesome/**", "/error", "/webjars/**", "/favicon.ico", "/.well-known/appspecific/com.chrome.devtools.json")
                         .permitAll()
                         .anyRequest().authenticated())
                 .cors(Customizer.withDefaults())
@@ -114,14 +114,14 @@ public class WebConfig {
                 })
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
-                )
-                .rememberMe(rm -> rm
-                        .rememberMeParameter("remember-me")
-                        .tokenValiditySeconds(60 * 60 * 24 * 30)  // 30 ngày
-                        .key("chuoi-bi-mat-nao-do")
-                        .rememberMeCookieName("remember-me")
-                        .userDetailsService(userDetailsService)
                 );
+//                .rememberMe(rm -> rm
+//                        .rememberMeParameter("remember-me")
+//                        .tokenValiditySeconds(60 * 60 * 24 * 30)
+//                        .key("chuoi-bi-mat-nao-do")
+//                        .rememberMeCookieName("RM_ID")
+//                        .userDetailsService(userDetailsService)
+//                );
         return http.build();
     }
 //    @Bean
@@ -152,6 +152,8 @@ public class WebConfig {
             if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
                 context.getClaims().claims((claims) -> {
                    Authentication principal = context.getPrincipal();
+                   CustomUserDetail principalCustomUserDetail = (CustomUserDetail) principal.getPrincipal();
+                   claims.put("uid", principalCustomUserDetail.getId().toString());
                    Set<String> authorities = principal.getAuthorities().stream()
                            .map(GrantedAuthority::getAuthority)
                            .collect(Collectors.toSet());

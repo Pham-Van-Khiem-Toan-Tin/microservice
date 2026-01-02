@@ -11,5 +11,5 @@ public class CategoryDTO {
     private String name;
     private String slug;
     private Integer level;
-    private Boolean isVisible;
+    private Boolean active;
 }
