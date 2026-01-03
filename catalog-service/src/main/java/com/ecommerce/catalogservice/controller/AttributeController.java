@@ -4,6 +4,7 @@ import com.ecommerce.catalogservice.constants.Constants;
 import com.ecommerce.catalogservice.dto.request.*;
 import com.ecommerce.catalogservice.dto.response.ApiResponse;
 import com.ecommerce.catalogservice.dto.response.AttributeDTO;
+import com.ecommerce.catalogservice.entity.AttributeConfig;
 import com.ecommerce.catalogservice.service.AttributeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -34,6 +35,11 @@ public class AttributeController {
         Sort sortObj = parseSort(sort, Sort.by("code").ascending());
         Pageable pageable = PageRequest.of(page, size, sortObj);
         return attributeService.search(keyword, fields, pageable);
+    }
+    @PreAuthorize("hasAuthority('VIEW_ATTRIBUTE_LIST')")
+    @PostMapping("/options")
+    public List<AttributeDetailDTO> searchAttributeOption(@RequestBody AttributeOptionForm form) {
+        return attributeService.searchAttributeOption(form);
     }
     @PreAuthorize("hasAuthority('VIEW_ATTRIBUTE')")
     @GetMapping("/{id}")

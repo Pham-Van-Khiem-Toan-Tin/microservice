@@ -16,5 +16,7 @@ public interface CategoryRepository extends MongoRepository<CategoryEntity, Stri
     Optional<CategoryEntity> findBySlug(String slug);
 //    List<CategoryEntity> findByMenuEnabledTrueOrderByMenuOrderAsc();
 //    List<CategoryEntity> findByParentId(String parentId);
-//    Boolean existsBySlug(String slug);
+    Boolean existsBySlug(String slug);
+
+    List<CategoryEntity> findAllByIsLeaf(Boolean isLeaf);
 }

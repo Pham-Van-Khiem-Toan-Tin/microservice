@@ -10,6 +10,10 @@ public enum Constants {
     DATA_FORMAT(400, "Dữ liệu không hợp lệ"),
     VALIDATE_FAIL(4001, "Dữ liệu không hợp lệ."),
 
+    //brand
+    BRAND_CREATE_SUCCESS(1008, "Thêm thương hiệu thành công"),
+    BRAND_EDIT_SUCCESS(1007, "Cập nhật thương hiệu thành công"),
+
     //attribute
     ATTRIBUTE_CREATE_SUCCESS(1006, "Thêm mới thuộc tính thành công."),
     ATTRIBUTE_EDIT_SUCCESS(1006, "Cập nhật thuộc tính thành công."),

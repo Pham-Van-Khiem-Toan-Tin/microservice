@@ -2,10 +2,7 @@ package com.ecommerce.catalogservice.service.impl;
 
 import static com.ecommerce.catalogservice.constants.Constants.*;
 
-import com.ecommerce.catalogservice.dto.request.AttributeCreateForm;
-import com.ecommerce.catalogservice.dto.request.AttributeDetailDTO;
-import com.ecommerce.catalogservice.dto.request.AttributeEditForm;
-import com.ecommerce.catalogservice.dto.request.AttributeSearchField;
+import com.ecommerce.catalogservice.dto.request.*;
 import com.ecommerce.catalogservice.dto.response.AttributeDTO;
 import com.ecommerce.catalogservice.dto.response.BusinessException;
 import com.ecommerce.catalogservice.entity.AttributeDataType;
@@ -68,6 +65,32 @@ public class AttributeServiceImpl implements AttributeService {
                 )
                 .toList();
         return new PageImpl<>(attributeDTOS, pageable, total);
+    }
+
+    @Override
+    public List<AttributeDetailDTO> searchAttributeOption(AttributeOptionForm form) {
+        Query query = new Query();
+        if (form.getAttributeIds() != null && !form.getAttributeIds().isEmpty()) {
+            query.addCriteria(Criteria.where("_id").nin(form.getAttributeIds()));
+        }
+        if (StringUtils.hasText(form.getKeyword())) {
+            Criteria criteria = new Criteria().orOperator(
+                    Criteria.where("code").regex(form.getKeyword(), "i"),
+                    Criteria.where("label").regex(form.getKeyword(), "i")
+            );
+            query.addCriteria(criteria);
+        }
+        List<AttributeEntity> attributes = mongoTemplate.find(query, AttributeEntity.class);
+        return attributes.stream().map(
+                at -> AttributeDetailDTO.builder()
+                        .id(at.getId())
+                        .code(at.getCode())
+                        .label(at.getLabel())
+                        .dataType(at.getDataType())
+                        .unit(at.getUnit())
+                        .options(at.getOptions())
+                        .build()
+        ).toList();
     }
 
     @Override

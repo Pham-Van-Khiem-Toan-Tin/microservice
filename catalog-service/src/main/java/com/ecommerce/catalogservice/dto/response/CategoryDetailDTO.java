@@ -1,20 +1,21 @@
 package com.ecommerce.catalogservice.dto.response;
 
+import com.ecommerce.catalogservice.entity.ImageEntity;
 import lombok.Builder;
 import lombok.Data;
+
+import java.util.List;
 
 @Data
 @Builder
 public class CategoryDetailDTO {
     private String id;
     private String name;
-    private boolean isVisible;
-    private Integer sortOrder;
-    private String menuLabel;
-    private String iconUrl;
-    private String imageUrl;
-    private boolean isFeatured;
+    private String slug;
+    private String icon;
+    private ImageEntity image;
     private String parentName;
     private String parentId;
-    private String slug;
+    private boolean active;
+    private List<AttributeConfigDTO> attributeConfigs;
 }

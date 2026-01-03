@@ -2,6 +2,7 @@ package com.ecommerce.catalogservice.controller;
 
 
 import static com.ecommerce.catalogservice.constants.Constants.*;
+
 import com.ecommerce.catalogservice.dto.request.CategoryCreateForm;
 import com.ecommerce.catalogservice.dto.request.CategorySearchField;
 import com.ecommerce.catalogservice.dto.request.CategoryUpdateForm;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Set;
@@ -27,6 +29,7 @@ import java.util.Set;
 public class CategoryController {
     @Autowired
     private CategoryService categoryService;
+
     @PreAuthorize("hasAuthority('VIEW_CATEGORY_LIST')")
     @GetMapping
     public Page<CategoryDTO> findAllCategories(
@@ -40,11 +43,17 @@ public class CategoryController {
         Pageable pageable = PageRequest.of(page, size, sortObj);
         return categoryService.search(keyword, fields, pageable);
     }
-//    @PreAuthorize("hasAuthority('VIEW_CATEGORY_LIST')")
-//    @GetMapping("/options")
-//    public Set<CategoryOptionDTO> getParentCategoryOptions() {
-//        return categoryService.getParentCategories();
-//    }
+
+    @PreAuthorize("hasAuthority('VIEW_CATEGORY_LIST')")
+    @GetMapping("/options")
+    public Set<CategoryOptionDTO> getParentCategoryOptions() {
+        return categoryService.getParentCategories();
+    }
+    @PreAuthorize("hasAuthority('VIEW_CATEGORY_LIST')")
+    @GetMapping("/leaf")
+    public Set<CategoryOptionDTO> getCategoryOptions() {
+        return categoryService.getCategoryLeafOptions();
+    }
     private Sort parseSort(String raw, Sort fallback) {
         try {
             if (raw == null || raw.isBlank()) return fallback;
@@ -59,27 +68,36 @@ public class CategoryController {
             return fallback;
         }
     }
-//    @PreAuthorize("hasAuthority('CREATE_CATEGORY')")
-//    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-//    public ApiResponse<Void> createCategory(@ModelAttribute CategoryCreateForm categoryForm) {
-//        categoryService.createCategory(categoryForm);
-//        return ApiResponse.ok(CREATE_CATEGORY_SUCCESS);
-//    }
-//    @PreAuthorize("hasAuthority('VIEW_CATEGORY')")
-//    @GetMapping("/{id}")
-//    public CategoryDetailDTO getCategoryById(@PathVariable String id) {
-//        return categoryService.getCategoryDetailDTO(id);
-//    }
-//    @PreAuthorize("hasAuthority('EDIT_CATEGORY')")
-//    @PutMapping( value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-//    public ApiResponse<Void> updateCategory(@ModelAttribute CategoryUpdateForm categoryForm, @PathVariable String id) {
-//        categoryService.updateCategory(categoryForm, id);
-//        return ApiResponse.ok(UPDATE_CATEGORY_SUCCESS);
-//    }
-//    @PreAuthorize("hasAuthority('DELETE_CATEGORY')")
-//    @DeleteMapping("/{id}")
-//    public ApiResponse<Void> deleteCategory(@PathVariable String id) {
-//        categoryService.deleteCategory(id);
-//        return ApiResponse.ok(DELETE_CATEGORY_SUCESS);
-//    }
+
+    @PreAuthorize("hasAuthority('CREATE_CATEGORY')")
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<Void> createCategory(
+            @RequestPart("data") CategoryCreateForm categoryForm,
+            @RequestPart("image") MultipartFile image
+    ) {
+        categoryService.createCategory(categoryForm, image);
+        return ApiResponse.ok(CREATE_CATEGORY_SUCCESS);
+    }
+
+    @PreAuthorize("hasAuthority('VIEW_CATEGORY')")
+    @GetMapping("/{id}")
+    public CategoryDetailDTO getCategoryById(@PathVariable String id) {
+        return categoryService.getCategoryDetailDTO(id);
+    }
+
+    @PreAuthorize("hasAuthority('EDIT_CATEGORY')")
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<Void> updateCategory(
+            @RequestPart("data") CategoryUpdateForm categoryForm,
+            @RequestPart(value = "image", required = false) MultipartFile image,
+            @PathVariable String id) {
+        categoryService.updateCategory(categoryForm, image, id);
+        return ApiResponse.ok(UPDATE_CATEGORY_SUCCESS);
+    }
+    @PreAuthorize("hasAuthority('DELETE_CATEGORY')")
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> deleteCategory(@PathVariable String id) {
+        categoryService.deleteCategory(id);
+        return ApiResponse.ok(DELETE_CATEGORY_SUCESS);
+    }
 }

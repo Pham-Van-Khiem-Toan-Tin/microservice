@@ -1,7 +1,5 @@
 package com.ecommerce.catalogservice.dto.request;
 
-import com.ecommerce.catalogservice.entity.AttributeConfig;
-import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,8 +14,7 @@ public class CategoryCreateForm {
     private String icon;
     private String parentId;
     private boolean active;
-    private List<AttributeConfig> attributeConfigs;
+    private List<AttributeConfigForm> attributeConfigs;
 
 
-    private MultipartFile image;
 }
