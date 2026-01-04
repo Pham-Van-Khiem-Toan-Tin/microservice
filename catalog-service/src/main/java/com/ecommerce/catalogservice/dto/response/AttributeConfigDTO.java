@@ -1,6 +1,7 @@
 package com.ecommerce.catalogservice.dto.response;
 
 import com.ecommerce.catalogservice.entity.AttributeDataType;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
 import org.springframework.data.mongodb.core.mapping.Field;
@@ -15,8 +16,8 @@ public class AttributeConfigDTO {
     private String label;
     private AttributeDataType dataType;
     private String unit;
-    private boolean isRequired;
-    private boolean isFilterable;
+    private Boolean isRequired;
+    private Boolean isFilterable;
     private Integer displayOrder;
     private List<AttributeOptionDTO> optionsValue;
 }

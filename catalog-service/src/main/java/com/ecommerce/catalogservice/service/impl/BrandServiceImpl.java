@@ -7,6 +7,7 @@ import com.ecommerce.catalogservice.dto.request.BrandEditForm;
 import com.ecommerce.catalogservice.dto.request.BrandSearchField;
 import com.ecommerce.catalogservice.dto.response.*;
 import com.ecommerce.catalogservice.entity.BrandEntity;
+import com.ecommerce.catalogservice.entity.BrandStatus;
 import com.ecommerce.catalogservice.entity.CategoryEntity;
 import com.ecommerce.catalogservice.entity.ImageEntity;
 import com.ecommerce.catalogservice.repository.BrandRepository;
@@ -137,7 +138,7 @@ public class BrandServiceImpl implements BrandService {
                 || !StringUtils.hasText(form.getSlug())
                 || form.getCategories() == null
                 || form.getCategories().isEmpty()
-                || id.equals(form.getId()))
+                || !id.equals(form.getId()))
             throw new BusinessException(VALIDATE_FAIL);
         BrandEntity brand = brandRepository.findById(id).orElseThrow(
                 () -> new BusinessException(VALIDATE_FAIL)
@@ -171,5 +172,17 @@ public class BrandServiceImpl implements BrandService {
                 () -> new BusinessException(VALIDATE_FAIL)
         );
         brandRepository.delete(brand);
+    }
+
+    @Override
+    public List<BrandOptionDTOS> getBrandOptions() {
+        List<BrandEntity> brands = brandRepository.findAllByStatus(BrandStatus.active);
+
+        return brands.stream().map(
+                br -> BrandOptionDTOS.builder()
+                        .id(br.getId())
+                        .name(br.getName())
+                        .build()
+        ).toList();
     }
 }

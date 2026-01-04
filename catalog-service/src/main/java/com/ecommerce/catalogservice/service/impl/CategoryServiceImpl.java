@@ -107,8 +107,8 @@ public class CategoryServiceImpl implements CategoryService {
                 .attributeConfigs(categoryForm.getAttributeConfigs().stream()
                         .map(at -> new AttributeConfig(
                                 at.getId(),
-                                at.isRequired(),
-                                at.isFilterable(),
+                                at.getIsRequired(),
+                                at.getIsFilterable(),
                                 at.getDisplayOrder(),
                                 at.getAllowedOptionIds()
                         ))
@@ -153,6 +153,14 @@ public class CategoryServiceImpl implements CategoryService {
         category.setIcon(categoryForm.getIcon());
         category.setSlug(categoryForm.getSlug());
         category.setActive(categoryForm.isActive());
+        category.setAttributeConfigs(categoryForm.getAttributeConfigs().stream().map(
+                at -> new AttributeConfig(
+                        at.getId(),
+                        at.getIsRequired(),
+                        at.getIsFilterable(),
+                        at.getDisplayOrder(),
+                        at.getAllowedOptionIds())
+        ).toList());
         if (!StringUtils.hasText(categoryForm.getParentId())) {
             category.setParentId(null);
             category.setLevel(0);
@@ -243,18 +251,41 @@ public class CategoryServiceImpl implements CategoryService {
                                     ? new ArrayList<>()
                                     : config.getAllowedOptionIds()
                     ));
+            Map<String, Boolean> requiredMap = attributeConfigs.stream()
+                    .collect(Collectors.toMap(
+                            AttributeConfig::getId,
+                            AttributeConfig::isRequired // hoặc c.isRequired() tùy class
+                    ));
+
+            Map<String, Boolean> filterableMap = attributeConfigs.stream()
+                    .collect(Collectors.toMap(
+                            AttributeConfig::getId,
+                            AttributeConfig::isFilterable
+                    ));
+
+            Map<String, Integer> displayOrderMap = attributeConfigs.stream()
+                    .collect(Collectors.toMap(
+                            AttributeConfig::getId,
+                            AttributeConfig::getDisplayOrder
+                    ));
             List<AttributeEntity> attributeEntities = attributeRepository
                     .findAllById(allowedOptionsMap.keySet());
             attributeConfigDTOS = attributeEntities.stream()
                     .map(entity -> {
                         List<String> allowIds = allowedOptionsMap
                                 .getOrDefault(entity.getId(), Collections.emptyList());
+                        Boolean isRequired = requiredMap.getOrDefault(entity.getId(), false);
+                        Boolean isFilterable = filterableMap.getOrDefault(entity.getId(), false);
+                        Integer displayOrder = displayOrderMap.getOrDefault(entity.getId(), 0);
                         return AttributeConfigDTO
                                 .builder()
                                 .id(entity.getId())
                                 .code(entity.getCode())
                                 .label(entity.getLabel())
                                 .unit(entity.getUnit())
+                                .isRequired(isRequired)
+                                .isFilterable(isFilterable)
+                                .displayOrder(displayOrder)
                                 .dataType(entity.getDataType())
                                 .optionsValue(entity.getOptions() == null
                                         ? Collections.emptyList()

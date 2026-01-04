@@ -20,6 +20,7 @@
         <module>identity-service</module>
         <module>payment-service</module>
         <module>bff-admin</module>
+        <module>inventory-service</module>
     </modules>
     <properties>
         <maven.compiler.source>21</maven.compiler.source>

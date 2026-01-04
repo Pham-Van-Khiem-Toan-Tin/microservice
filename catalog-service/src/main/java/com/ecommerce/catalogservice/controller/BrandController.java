@@ -7,6 +7,7 @@ import com.ecommerce.catalogservice.dto.request.CategorySearchField;
 import com.ecommerce.catalogservice.dto.response.ApiResponse;
 import com.ecommerce.catalogservice.dto.response.BrandDTOS;
 import com.ecommerce.catalogservice.dto.response.BrandDetailDTO;
+import com.ecommerce.catalogservice.dto.response.BrandOptionDTOS;
 import com.ecommerce.catalogservice.service.BrandService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -40,6 +41,11 @@ public class BrandController {
         Pageable pageable = PageRequest.of(page, size, sortObj);
         return brandService.searchBrands(keyword, fields, pageable);
     }
+    @PreAuthorize("hasAuthority('VIEW_BRAND_LIST')")
+    @GetMapping("/options")
+    public List<BrandOptionDTOS> getBrandOptions() {
+        return brandService.getBrandOptions();
+    }
     @PreAuthorize("hasAuthority('VIEW_BRAND')")
     @GetMapping("/{id}")
     public BrandDetailDTO getBrand(@PathVariable String id) {
@@ -57,7 +63,7 @@ public class BrandController {
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<Void> updateBrand(
             @RequestPart("data") BrandEditForm form,
-            @RequestPart("logo") MultipartFile logo,
+            @RequestPart(value = "logo", required = false) MultipartFile logo,
             @PathVariable String id) {
         brandService.updateBrand(form, logo, id);
         return ApiResponse.ok(BRAND_EDIT_SUCCESS);

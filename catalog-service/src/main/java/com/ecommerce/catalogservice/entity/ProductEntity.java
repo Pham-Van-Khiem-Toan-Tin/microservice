@@ -25,17 +25,32 @@ public class ProductEntity {
     @Indexed(unique = true)
     private String slug;
     @Indexed
-    private String categoryId;        // leaf category
-    private List<String> ancestors;
+    private String brandId;
     @Indexed
-    private String brandCode;
+    private String categoryId;        // leaf category
+
+
+    @Indexed
+    private Double minPrice;
+    @Indexed
+    private Double maxPrice;
+    private Boolean hasVariants;
+
+    private List<ProductAttribute> attributes;
+
+    private List<ProductOption> options;
+
+
+    private ImageEntity thumbnail;
+    private List<ImageEntity> gallery;
+    private String description; // HTML content
+    private String shortDescription;
+
 
     @Indexed
     private  ProductStatus status;
 
-    private List<SpecBlock> specifications;
-
-    private List<Variant> variants;
+    private SeoInfo seo;
 
     private String updatedBy;
     private Instant createdAt;

@@ -5,6 +5,7 @@ import com.ecommerce.catalogservice.dto.request.BrandEditForm;
 import com.ecommerce.catalogservice.dto.request.BrandSearchField;
 import com.ecommerce.catalogservice.dto.response.BrandDTOS;
 import com.ecommerce.catalogservice.dto.response.BrandDetailDTO;
+import com.ecommerce.catalogservice.dto.response.BrandOptionDTOS;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,4 +21,5 @@ public interface BrandService {
     void updateBrand(BrandEditForm form, MultipartFile image, String id);
 
     void deleteBrand(String id);
+    List<BrandOptionDTOS> getBrandOptions();
 }
