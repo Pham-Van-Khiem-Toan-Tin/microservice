@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Lazy;
 import java.util.TimeZone;
 
 @SpringBootApplication
-public class AuthServiceApplication {
+public class BffAdminApplication {
     @Autowired
     @Lazy
     private EurekaClient eurekaClient;
@@ -20,6 +20,6 @@ public class AuthServiceApplication {
         TimeZone.setDefault(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
     }
     public static void main(String[] args) {
-        SpringApplication.run(AuthServiceApplication.class, args);
+        SpringApplication.run(BffAdminApplication.class, args);
     }
 }

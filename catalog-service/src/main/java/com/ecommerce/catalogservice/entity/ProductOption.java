@@ -13,6 +13,5 @@ import java.util.List;
 public class ProductOption {
     private String id;   // Tự sinh hoặc ID attribute (VD: opt_color)
     private String label; // Tên nhóm (VD: Màu sắc)
-    private String code;
     private List<KV> values;
 }
