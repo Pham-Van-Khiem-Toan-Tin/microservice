@@ -1,4 +1,4 @@
-package com.ecommerce.catalogservice.dto.request;
+package com.ecommerce.catalogservice.dto.request.brand;
 
 public enum BrandSearchField {
     name, slug, status

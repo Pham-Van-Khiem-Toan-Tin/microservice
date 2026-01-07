@@ -8,7 +8,8 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class KV {
-    private String k;
-    private String v;
+public class ProductOptionItem {
+    private String id;
+    private String value;
+    private Boolean active;
 }

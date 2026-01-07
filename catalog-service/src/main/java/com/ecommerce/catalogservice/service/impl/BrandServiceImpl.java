@@ -2,9 +2,9 @@ package com.ecommerce.catalogservice.service.impl;
 
 import static com.ecommerce.catalogservice.constants.Constants.*;
 
-import com.ecommerce.catalogservice.dto.request.BrandCreateForm;
-import com.ecommerce.catalogservice.dto.request.BrandEditForm;
-import com.ecommerce.catalogservice.dto.request.BrandSearchField;
+import com.ecommerce.catalogservice.dto.request.brand.BrandCreateForm;
+import com.ecommerce.catalogservice.dto.request.brand.BrandEditForm;
+import com.ecommerce.catalogservice.dto.request.brand.BrandSearchField;
 import com.ecommerce.catalogservice.dto.response.*;
 import com.ecommerce.catalogservice.entity.BrandEntity;
 import com.ecommerce.catalogservice.entity.BrandStatus;

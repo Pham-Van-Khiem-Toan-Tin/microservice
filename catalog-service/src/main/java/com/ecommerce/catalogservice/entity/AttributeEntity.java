@@ -21,14 +21,17 @@ public class AttributeEntity {
 
     @Indexed(unique = true)
     private String code;
-
+    @Indexed
     private String label;
     @Field("type")
     private AttributeDataType dataType;
     private String unit;
     private List<OptionEntity> options;
-
+    private Boolean active;
+    private Boolean deleted;
     private String updatedBy;
     private Instant updatedAt;
     private Instant createdAt;
+    private String deletedBy;
+    private Instant deletedAt;
 }

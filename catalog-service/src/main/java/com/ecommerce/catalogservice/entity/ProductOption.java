@@ -11,7 +11,8 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProductOption {
-    private String id;   // Tự sinh hoặc ID attribute (VD: opt_color)
-    private String label; // Tên nhóm (VD: Màu sắc)
-    private List<KV> values;
+    private String id;
+    private String label;
+    private Boolean active;
+    private List<ProductOptionItem> values;
 }

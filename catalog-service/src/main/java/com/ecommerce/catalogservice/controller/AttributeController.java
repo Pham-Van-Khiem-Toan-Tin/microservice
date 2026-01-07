@@ -1,10 +1,8 @@
 package com.ecommerce.catalogservice.controller;
 
-import com.ecommerce.catalogservice.constants.Constants;
-import com.ecommerce.catalogservice.dto.request.*;
+import com.ecommerce.catalogservice.dto.request.attribute.*;
 import com.ecommerce.catalogservice.dto.response.ApiResponse;
 import com.ecommerce.catalogservice.dto.response.AttributeDTO;
-import com.ecommerce.catalogservice.entity.AttributeConfig;
 import com.ecommerce.catalogservice.service.AttributeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;

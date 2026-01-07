@@ -1,10 +1,8 @@
 package com.ecommerce.catalogservice.dto.response;
 
 import com.ecommerce.catalogservice.entity.AttributeDataType;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
-import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.util.List;
 

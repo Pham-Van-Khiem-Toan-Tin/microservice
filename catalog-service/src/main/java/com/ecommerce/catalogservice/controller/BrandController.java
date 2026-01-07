@@ -1,9 +1,8 @@
 package com.ecommerce.catalogservice.controller;
 
-import com.ecommerce.catalogservice.dto.request.BrandCreateForm;
-import com.ecommerce.catalogservice.dto.request.BrandEditForm;
-import com.ecommerce.catalogservice.dto.request.BrandSearchField;
-import com.ecommerce.catalogservice.dto.request.CategorySearchField;
+import com.ecommerce.catalogservice.dto.request.brand.BrandCreateForm;
+import com.ecommerce.catalogservice.dto.request.brand.BrandEditForm;
+import com.ecommerce.catalogservice.dto.request.brand.BrandSearchField;
 import com.ecommerce.catalogservice.dto.response.ApiResponse;
 import com.ecommerce.catalogservice.dto.response.BrandDTOS;
 import com.ecommerce.catalogservice.dto.response.BrandDetailDTO;

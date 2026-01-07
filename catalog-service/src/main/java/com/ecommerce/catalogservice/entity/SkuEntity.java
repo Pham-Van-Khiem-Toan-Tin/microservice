@@ -37,7 +37,7 @@ public class SkuEntity {
 
     // Cách 2: Attribute List (Dùng cho Query/Filter chính xác)
     // Lưu cụ thể giá trị
-    private List<SkuAttribute> variantAttributes;
+    private List<SkuSpecs> specs;
 
     // --- MEDIA RIÊNG ---
     private ImageEntity image; // Ảnh riêng cho SKU này (VD: Ảnh máy màu đen)
@@ -46,6 +46,7 @@ public class SkuEntity {
     // Lưu ý: Tồn kho THẬT nằm ở Inventory Service.
     // Field này chỉ cache để hiển thị nhanh "Còn hàng" hay không.
     private Boolean isAvailable;
+    private Integer stock;
 
     private Long soldCount; // Số lượng đã bán (Cache để sort)
     private String updatedBy;

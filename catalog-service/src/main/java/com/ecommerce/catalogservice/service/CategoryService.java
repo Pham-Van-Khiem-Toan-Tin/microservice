@@ -1,8 +1,8 @@
 package com.ecommerce.catalogservice.service;
 
-import com.ecommerce.catalogservice.dto.request.CategoryCreateForm;
-import com.ecommerce.catalogservice.dto.request.CategorySearchField;
-import com.ecommerce.catalogservice.dto.request.CategoryUpdateForm;
+import com.ecommerce.catalogservice.dto.request.category.CategoryCreateForm;
+import com.ecommerce.catalogservice.dto.request.category.CategorySearchField;
+import com.ecommerce.catalogservice.dto.request.category.CategoryUpdateForm;
 import com.ecommerce.catalogservice.dto.response.CategoryDTO;
 import com.ecommerce.catalogservice.dto.response.CategoryDetailDTO;
 import com.ecommerce.catalogservice.dto.response.CategoryOptionDTO;

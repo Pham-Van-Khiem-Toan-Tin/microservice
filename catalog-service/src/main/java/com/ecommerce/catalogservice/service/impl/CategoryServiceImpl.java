@@ -1,14 +1,12 @@
 package com.ecommerce.catalogservice.service.impl;
 
 
-import com.ecommerce.catalogservice.dto.request.CategoryCreateForm;
-import com.ecommerce.catalogservice.dto.request.CategorySearchField;
-import com.ecommerce.catalogservice.dto.request.CategoryUpdateForm;
+import com.ecommerce.catalogservice.dto.request.attribute.AttributeConfigForm;
+import com.ecommerce.catalogservice.dto.request.category.CategoryCreateForm;
+import com.ecommerce.catalogservice.dto.request.category.CategorySearchField;
+import com.ecommerce.catalogservice.dto.request.category.CategoryUpdateForm;
 import com.ecommerce.catalogservice.dto.response.*;
-import com.ecommerce.catalogservice.entity.AttributeConfig;
-import com.ecommerce.catalogservice.entity.AttributeEntity;
-import com.ecommerce.catalogservice.entity.CategoryEntity;
-import com.ecommerce.catalogservice.entity.ImageEntity;
+import com.ecommerce.catalogservice.entity.*;
 import com.ecommerce.catalogservice.repository.AttributeRepository;
 import com.ecommerce.catalogservice.repository.CategoryRepository;
 import com.ecommerce.catalogservice.service.CategoryService;
@@ -25,10 +23,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -97,41 +91,143 @@ public class CategoryServiceImpl implements CategoryService {
         if (!StringUtils.hasText(categoryForm.getName())
                 || !StringUtils.hasText(categoryForm.getIcon())
                 || image == null
-                || image.isEmpty()
-        ) throw new BusinessException(VALIDATE_FAIL);
+                || image.isEmpty()) {
+            throw new BusinessException(VALIDATE_FAIL);
+        }
+
+        String slug = SlugUtils.toSlug(categoryForm.getName());
+        if (categoryRepository.existsBySlug(slug)) {
+            throw new BusinessException(VALIDATE_FAIL);
+        }
+
+        // 1) Validate + map attribute configs (đừng map thẳng)
+        List<AttributeConfig> mappedConfigs = validateAndMapAttributeConfigs(categoryForm.getAttributeConfigs());
+
         CategoryEntity categoryEntity = CategoryEntity.builder()
                 .name(categoryForm.getName())
-                .slug(SlugUtils.toSlug(categoryForm.getName()))
+                .slug(slug)
                 .icon(categoryForm.getIcon())
                 .active(categoryForm.isActive())
-                .attributeConfigs(categoryForm.getAttributeConfigs().stream()
-                        .map(at -> new AttributeConfig(
-                                at.getId(),
-                                at.getIsRequired(),
-                                at.getIsFilterable(),
-                                at.getDisplayOrder(),
-                                at.getAllowedOptionIds()
-                        ))
-                        .toList())
+                .attributeConfigs(mappedConfigs)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
+                .isLeaf(true) // category mới tạo luôn là leaf
                 .build();
+
+        // 2) Parent / Level / Ancestor
         if (StringUtils.hasText(categoryForm.getParentId())) {
-            CategoryEntity categoryParent = categoryRepository.findById(categoryForm.getParentId()).orElseThrow(
-                    () -> new BusinessException(VALIDATE_FAIL)
-            );
-            if (categoryParent.getLevel() == 2) throw new BusinessException(VALIDATE_FAIL);
-            categoryEntity.setParentId(categoryParent.getId());
-            categoryEntity.setLevel(categoryParent.getLevel() + 1);
-            if (categoryEntity.getLevel() == 2) categoryEntity.setIsLeaf(true);
+            CategoryEntity parent = categoryRepository.findById(categoryForm.getParentId())
+                    .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
+
+            // giới hạn depth
+            if (parent.getLevel() == 2) throw new BusinessException(VALIDATE_FAIL);
+
+            categoryEntity.setParentId(parent.getId());
+            categoryEntity.setLevel(parent.getLevel() + 1);
+
+            // ancestor = parent.ancestor + parent
+            List<Ancestors> ancestors = new ArrayList<>();
+            if (parent.getAncestor() != null && !parent.getAncestor().isEmpty()) {
+                ancestors.addAll(parent.getAncestor());
+            }
+            ancestors.add(new Ancestors(parent.getId(), parent.getName(), parent.getSlug()));
+            categoryEntity.setAncestor(ancestors);
+
+            // parent chắc chắn không còn leaf
+            if (Boolean.TRUE.equals(parent.getIsLeaf())) {
+                parent.setIsLeaf(false);
+                categoryRepository.save(parent);
+            }
         } else {
             categoryEntity.setParentId(null);
             categoryEntity.setLevel(0);
+            categoryEntity.setAncestor(List.of()); // không để null
         }
+
+        // 3) Upload image
         CloudinaryUploadResult upload = cloudinaryService.uploadImage(image, "categories");
-        ImageEntity imageData = new ImageEntity(upload.getUrl(), upload.getPublicId());
-        categoryEntity.setImage(imageData);
+        categoryEntity.setImage(new ImageEntity(upload.getUrl(), upload.getPublicId()));
+
         categoryRepository.save(categoryEntity);
+    }
+
+    private List<AttributeConfig> validateAndMapAttributeConfigs(List<AttributeConfigForm> forms) {
+        if (forms == null) return List.of();
+
+        // validate cơ bản + chống trùng code
+        for (AttributeConfigForm f : forms) {
+            if (f == null || !StringUtils.hasText(f.getCode())) throw new BusinessException(VALIDATE_FAIL);
+            if (f.getIsRequired() == null) throw new BusinessException(VALIDATE_FAIL);
+            if (f.getIsFilterable() == null) throw new BusinessException(VALIDATE_FAIL);
+            if (f.getDisplayOrder() == null) throw new BusinessException(VALIDATE_FAIL);
+            if (f.getDisplayOrder() < 0) throw new BusinessException(VALIDATE_FAIL);
+        }
+
+        List<String> codes = forms.stream()
+                .map(AttributeConfigForm::getCode)
+                .map(String::trim)
+                .distinct()
+                .toList();
+
+        // query 1 lần
+        List<AttributeEntity> attrs = attributeRepository.findByCodeIn(codes);
+        var attrByCode = attrs.stream()
+                .collect(java.util.stream.Collectors.toMap(AttributeEntity::getCode, a -> a, (a, b) -> a));
+
+        // đảm bảo đủ attribute
+        if (attrByCode.size() != codes.size()) throw new BusinessException(VALIDATE_FAIL);
+
+        // validate từng config theo attribute
+        for (AttributeConfigForm f : forms) {
+            AttributeEntity attr = attrByCode.get(f.getCode().trim());
+            if (attr == null) throw new BusinessException(VALIDATE_FAIL);
+
+            // active/deleted check
+            if (Boolean.TRUE.equals(attr.getDeleted())) throw new BusinessException(VALIDATE_FAIL);
+            if (!Boolean.TRUE.equals(attr.getActive())) throw new BusinessException(VALIDATE_FAIL);
+
+            AttributeDataType type = attr.getDataType();
+            boolean isSelectType = type == AttributeDataType.SELECT || type == AttributeDataType.MULTI_SELECT;
+
+            List<String> allowed = f.getAllowedOptionIds();
+            boolean hasAllowed = allowed != null && !allowed.isEmpty();
+
+            if (isSelectType) {
+                if (!hasAllowed) throw new BusinessException(VALIDATE_FAIL);
+
+                // option id hợp lệ + active + not deprecated
+                var optionById = (attr.getOptions() == null ? List.<OptionEntity>of() : attr.getOptions()).stream()
+                        .filter(o -> o != null && StringUtils.hasText(o.getId()))
+                        .collect(java.util.stream.Collectors.toMap(OptionEntity::getId, o -> o, (a, b) -> a));
+
+                for (String optId : allowed) {
+                    if (!StringUtils.hasText(optId)) throw new BusinessException(VALIDATE_FAIL);
+
+                    OptionEntity opt = optionById.get(optId);
+                    if (opt == null) throw new BusinessException(VALIDATE_FAIL);
+                    if (!Boolean.TRUE.equals(opt.getActive())) throw new BusinessException(VALIDATE_FAIL);
+                    if (Boolean.TRUE.equals(opt.getDeprecated())) throw new BusinessException(VALIDATE_FAIL);
+                }
+
+                // chống trùng optionId
+                long distinct = allowed.stream().filter(StringUtils::hasText).distinct().count();
+                if (distinct != allowed.size()) throw new BusinessException(VALIDATE_FAIL);
+
+            } else {
+                // non-select => không được gửi allowedOptionIds
+                if (hasAllowed) throw new BusinessException(VALIDATE_FAIL);
+            }
+        }
+
+        // Map sang entity config (sau khi validate xong)
+        return forms.stream().map(f -> new AttributeConfig(
+                f.getCode().trim(),
+                f.getIsRequired(),
+                f.getIsFilterable(),
+                f.getDisplayOrder(),
+                (f.getAllowedOptionIds() == null ? null : f.getAllowedOptionIds()),
+                true
+        )).toList();
     }
 
 
@@ -155,23 +251,46 @@ public class CategoryServiceImpl implements CategoryService {
         category.setActive(categoryForm.isActive());
         category.setAttributeConfigs(categoryForm.getAttributeConfigs().stream().map(
                 at -> new AttributeConfig(
-                        at.getId(),
+                        at.getCode(),
                         at.getIsRequired(),
                         at.getIsFilterable(),
                         at.getDisplayOrder(),
-                        at.getAllowedOptionIds())
+                        at.getAllowedOptionIds(),
+                        true)
         ).toList());
-        if (!StringUtils.hasText(categoryForm.getParentId())) {
+        String newParentId = categoryForm.getParentId();
+        String oldParentId = category.getParentId();
+        if (newParentId.equals(category.getId())) throw new BusinessException(VALIDATE_FAIL);
+        boolean parentChanged = StringUtils.hasText(newParentId)
+                && !Objects.equals(oldParentId, newParentId);
+        if (!StringUtils.hasText(newParentId)) {
             category.setParentId(null);
             category.setLevel(0);
             category.setIsLeaf(false);
-        } else if (StringUtils.hasText(categoryForm.getParentId()) || !category.getParentId().equals(categoryForm.getParentId())) {
+            // set root
+        } else if (parentChanged) {
             CategoryEntity categoryParent = categoryRepository.findById(categoryForm.getParentId()).orElseThrow(
                     () -> new BusinessException(VALIDATE_FAIL)
             );
+            if (categoryParent.getAncestor() != null) {
+                boolean parentIsDescendant = categoryParent.getAncestor().stream()
+                        .anyMatch(a -> Objects.equals(a.getId(), category.getId()));
+                if (parentIsDescendant) throw new BusinessException(VALIDATE_FAIL);
+            }
             if (categoryParent.getLevel() == 2) throw new BusinessException(VALIDATE_FAIL);
             category.setParentId(categoryParent.getId());
             category.setLevel(categoryParent.getLevel() + 1);
+            List<Ancestors> ancestors = new ArrayList<>();
+            List<Ancestors> parentAnc = categoryParent.getAncestor();
+            if (parentAnc != null) ancestors.addAll(parentAnc);
+
+            ancestors.add(new Ancestors(
+                    categoryParent.getId(),
+                    categoryParent.getName(),
+                    categoryParent.getSlug()
+            ));
+
+            category.setAncestor(ancestors);
             if (category.getLevel() == 2) category.setIsLeaf(true);
         }
         if (image != null && !image.isEmpty()) {
@@ -246,37 +365,37 @@ public class CategoryServiceImpl implements CategoryService {
         if (attributeConfigs != null && !attributeConfigs.isEmpty()) {
             Map<String, List<String>> allowedOptionsMap = attributeConfigs.stream()
                     .collect(Collectors.toMap(
-                            AttributeConfig::getId,
+                            AttributeConfig::getCode,
                             config -> config.getAllowedOptionIds() == null
                                     ? new ArrayList<>()
                                     : config.getAllowedOptionIds()
                     ));
             Map<String, Boolean> requiredMap = attributeConfigs.stream()
                     .collect(Collectors.toMap(
-                            AttributeConfig::getId,
+                            AttributeConfig::getCode,
                             AttributeConfig::isRequired // hoặc c.isRequired() tùy class
                     ));
 
             Map<String, Boolean> filterableMap = attributeConfigs.stream()
                     .collect(Collectors.toMap(
-                            AttributeConfig::getId,
+                            AttributeConfig::getCode,
                             AttributeConfig::isFilterable
                     ));
 
             Map<String, Integer> displayOrderMap = attributeConfigs.stream()
                     .collect(Collectors.toMap(
-                            AttributeConfig::getId,
+                            AttributeConfig::getCode,
                             AttributeConfig::getDisplayOrder
                     ));
             List<AttributeEntity> attributeEntities = attributeRepository
-                    .findAllById(allowedOptionsMap.keySet());
+                    .findAllByCodeIn(allowedOptionsMap.keySet());
             attributeConfigDTOS = attributeEntities.stream()
                     .map(entity -> {
                         List<String> allowIds = allowedOptionsMap
-                                .getOrDefault(entity.getId(), Collections.emptyList());
-                        Boolean isRequired = requiredMap.getOrDefault(entity.getId(), false);
-                        Boolean isFilterable = filterableMap.getOrDefault(entity.getId(), false);
-                        Integer displayOrder = displayOrderMap.getOrDefault(entity.getId(), 0);
+                                .getOrDefault(entity.getCode(), Collections.emptyList());
+                        Boolean isRequired = requiredMap.getOrDefault(entity.getCode(), false);
+                        Boolean isFilterable = filterableMap.getOrDefault(entity.getCode(), false);
+                        Integer displayOrder = displayOrderMap.getOrDefault(entity.getCode(), 0);
                         return AttributeConfigDTO
                                 .builder()
                                 .id(entity.getId())
@@ -292,7 +411,10 @@ public class CategoryServiceImpl implements CategoryService {
                                         : entity.getOptions().stream()
                                         .map(opt -> AttributeOptionDTO
                                                 .builder()
-                                                .active(allowIds.contains(opt.getValue()))
+                                                .id(opt.getId())
+                                                .deprecated(opt.getDeprecated())
+                                                .selected(allowIds.contains(opt.getId()))
+                                                .active(opt.getActive())
                                                 .value(opt.getValue())
                                                 .label(opt.getLabel())
                                                 .build())

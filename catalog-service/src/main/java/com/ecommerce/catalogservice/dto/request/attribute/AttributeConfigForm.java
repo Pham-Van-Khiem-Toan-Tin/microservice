@@ -1,14 +1,13 @@
-package com.ecommerce.catalogservice.dto.request;
+package com.ecommerce.catalogservice.dto.request.attribute;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.util.List;
 
 @Data
 public class AttributeConfigForm {
     private String id;
+    private String code;
     private Boolean isRequired;
     private Boolean isFilterable;
     private Integer displayOrder;

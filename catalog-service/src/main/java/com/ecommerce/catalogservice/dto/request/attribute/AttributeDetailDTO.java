@@ -1,4 +1,4 @@
-package com.ecommerce.catalogservice.dto.request;
+package com.ecommerce.catalogservice.dto.request.attribute;
 
 import com.ecommerce.catalogservice.entity.AttributeDataType;
 import com.ecommerce.catalogservice.entity.OptionEntity;

@@ -1,4 +1,4 @@
-package com.ecommerce.catalogservice.dto.request;
+package com.ecommerce.catalogservice.dto.request.attribute;
 
 import com.ecommerce.catalogservice.entity.AttributeDataType;
 import com.ecommerce.catalogservice.entity.OptionEntity;
@@ -9,7 +9,8 @@ import java.util.List;
 
 @Getter
 @Setter
-public class AttributeCreateForm {
+public class AttributeEditForm {
+    private String id;
     private String code;
     private String label;
     private AttributeDataType dataType;
