@@ -132,7 +132,7 @@ public class CategoryServiceImpl implements CategoryService {
             }
             ancestors.add(new Ancestors(parent.getId(), parent.getName(), parent.getSlug()));
             categoryEntity.setAncestor(ancestors);
-
+            if (parent.getLevel() == 0) categoryEntity.setIsLeaf(false);
             // parent chắc chắn không còn leaf
             if (Boolean.TRUE.equals(parent.getIsLeaf())) {
                 parent.setIsLeaf(false);

@@ -4,9 +4,7 @@ import lombok.Data;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 @Data
-public class SkuSpecs {
-    private String k;
-    private String v;
-    @Field("val_id")
-    private String valId;
+public class SkuSelect {
+    private String code;
+    private String valueId;
 }

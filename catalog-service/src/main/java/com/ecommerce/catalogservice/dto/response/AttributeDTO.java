@@ -12,5 +12,6 @@ public class AttributeDTO {
     private String id;
     private String code;
     private String label;
+    private Boolean active;
     private AttributeDataType dataType;
 }

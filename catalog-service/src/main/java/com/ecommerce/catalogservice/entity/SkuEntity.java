@@ -32,12 +32,12 @@ public class SkuEntity {
     @Indexed
     private Double price;         // Giá bán thực tế
     private Double originalPrice; // Giá niêm yết (để gạch đi)
-
+    private Double costPrice;
     // --- ĐỊNH DANH BIẾN THỂ (Mapping) ---
 
     // Cách 2: Attribute List (Dùng cho Query/Filter chính xác)
     // Lưu cụ thể giá trị
-    private List<SkuSpecs> specs;
+    private List<SkuSelect> selections;
 
     // --- MEDIA RIÊNG ---
     private ImageEntity image; // Ảnh riêng cho SKU này (VD: Ảnh máy màu đen)
@@ -45,7 +45,12 @@ public class SkuEntity {
     // --- TRẠNG THÁI ---
     // Lưu ý: Tồn kho THẬT nằm ở Inventory Service.
     // Field này chỉ cache để hiển thị nhanh "Còn hàng" hay không.
-    private Boolean isAvailable;
+    @Indexed
+    private Boolean active;
+
+    private Boolean discontinued;
+    private String discontinuedReason;
+
     private Integer stock;
 
     private Long soldCount; // Số lượng đã bán (Cache để sort)

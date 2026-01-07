@@ -18,8 +18,8 @@ import java.util.List;
 @AllArgsConstructor
 @Data
 @CompoundIndexes({
-        @CompoundIndex(name = "idx_attributes_id", def = "{'attributes.id': 1}"),
-        @CompoundIndex(name = "idx_attributes_values_value", def = "{'attributes.values.value': 1}")
+        @CompoundIndex(name = "idx_variantGroups_id", def = "{'variantGroups.id': 1}"),
+        @CompoundIndex(name = "idx_variantGroups_values_value", def = "{'variantGroups.values.id': 1}")
 })
 public class ProductEntity {
     @Id
@@ -48,7 +48,7 @@ public class ProductEntity {
 
     private List<ProductSpecs> specs;
 
-    private List<ProductOption> attributes;
+    private List<ProductVariantGroup> variantGroups;
     @Field("number_of_reviews")
     private Integer numberOfReviews;
     @Field("average_rating")

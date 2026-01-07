@@ -67,6 +67,7 @@ public class AttributeServiceImpl implements AttributeService {
                         atb -> AttributeDTO.builder()
                                 .id(atb.getId())
                                 .code(atb.getCode())
+                                .active(atb.getActive())
                                 .label(atb.getLabel())
                                 .dataType(atb.getDataType())
                                 .build()

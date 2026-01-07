@@ -10,9 +10,8 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProductOption {
-    private String id;
+public class ProductVariantGroup {
+    private String code;
     private String label;
-    private Boolean active;
     private List<ProductOptionItem> values;
 }
