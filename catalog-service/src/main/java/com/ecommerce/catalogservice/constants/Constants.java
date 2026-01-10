@@ -11,6 +11,7 @@ public enum Constants {
     VALIDATE_FAIL(4001, "Dữ liệu không hợp lệ."),
 
     //product
+    PRODUCT_DELETE_SUCCESS(200, "Xóa sản phẩm thành công"),
     PRODUCT_CREATE_SUCCESS(1009, "Thêm mới sản phẩm thành công"),
 
     //brand
@@ -21,7 +22,6 @@ public enum Constants {
     ATTRIBUTE_CREATE_SUCCESS(1006, "Thêm mới thuộc tính thành công."),
     ATTRIBUTE_EDIT_SUCCESS(1006, "Cập nhật thuộc tính thành công."),
     ATTRIBUTE_DELETE_SUCCESS(1006, "Xóa thuộc tính thành công."),
-
 
     //category
     SLUG_EXIST(409, "Slug đã tồn tại"),

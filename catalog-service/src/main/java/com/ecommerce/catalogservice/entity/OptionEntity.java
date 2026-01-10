@@ -9,7 +9,7 @@ import org.springframework.data.annotation.Id;
 public class OptionEntity {
     private String id;
     private String label;
-    private String value;
     private Boolean active;
     private Boolean deprecated;
+    private Integer displayOrder;
 }

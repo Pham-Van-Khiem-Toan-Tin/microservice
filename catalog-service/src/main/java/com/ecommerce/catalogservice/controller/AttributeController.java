@@ -2,7 +2,8 @@ package com.ecommerce.catalogservice.controller;
 
 import com.ecommerce.catalogservice.dto.request.attribute.*;
 import com.ecommerce.catalogservice.dto.response.ApiResponse;
-import com.ecommerce.catalogservice.dto.response.AttributeDTO;
+import com.ecommerce.catalogservice.dto.response.attribute.AttributeDTO;
+import com.ecommerce.catalogservice.dto.response.attribute.AttributeDetailDTO;
 import com.ecommerce.catalogservice.service.AttributeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -38,6 +39,24 @@ public class AttributeController {
     @PostMapping("/options")
     public List<AttributeDetailDTO> searchAttributeOption(@RequestBody AttributeOptionForm form) {
         return attributeService.searchAttributeOption(form);
+    }
+    @PreAuthorize("hasAuthority('EDIT_ATTRIBUTE')")
+    @PatchMapping("/revoke/{id}")
+    public ApiResponse<Void> revokeAttribute(@PathVariable String id) {
+        attributeService.revokeAttribute(id);
+        return ApiResponse.ok(ATTRIBUTE_EDIT_SUCCESS);
+    }
+    @PreAuthorize("hasAuthority('EDIT_ATTRIBUTE')")
+    @PatchMapping("/revoke-option/{id}")
+    public ApiResponse<Void> revokeAttributeOption(@PathVariable String id, @RequestBody RevokeOptionForm form) {
+        attributeService.revokeAttributeOption(id, form);
+        return ApiResponse.ok(ATTRIBUTE_EDIT_SUCCESS);
+    }
+    @PreAuthorize("hasAuthority('EDIT_ATTRIBUTE')")
+    @PatchMapping("/{id}")
+    public ApiResponse<Void> toggleActiveAttribute(@PathVariable String id) {
+        attributeService.changeActiveAttribute(id);
+        return ApiResponse.ok(ATTRIBUTE_EDIT_SUCCESS);
     }
     @PreAuthorize("hasAuthority('VIEW_ATTRIBUTE')")
     @GetMapping("/{id}")

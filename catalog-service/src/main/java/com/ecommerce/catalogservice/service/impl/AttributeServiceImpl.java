@@ -1,9 +1,10 @@
 package com.ecommerce.catalogservice.service.impl;
 
 import static com.ecommerce.catalogservice.constants.Constants.*;
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
 import com.ecommerce.catalogservice.dto.request.attribute.*;
-import com.ecommerce.catalogservice.dto.response.AttributeDTO;
+import com.ecommerce.catalogservice.dto.response.attribute.*;
 import com.ecommerce.catalogservice.dto.response.BusinessException;
 import com.ecommerce.catalogservice.entity.AttributeDataType;
 import com.ecommerce.catalogservice.entity.AttributeEntity;
@@ -13,17 +14,17 @@ import com.ecommerce.catalogservice.repository.CategoryRepository;
 import com.ecommerce.catalogservice.repository.ProductRepository;
 import com.ecommerce.catalogservice.service.AttributeService;
 import com.ecommerce.catalogservice.utils.AuthenticationUtils;
+import com.ecommerce.catalogservice.utils.SlugUtils;
+import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -62,18 +63,70 @@ public class AttributeServiceImpl implements AttributeService {
 
         long total = mongoTemplate.count(query, AttributeEntity.class);
         query.with(pageable);
-        List<AttributeEntity> atbs = mongoTemplate.find(query, AttributeEntity.class);
-        List<AttributeDTO> attributeDTOS = atbs.stream().map(
-                        atb -> AttributeDTO.builder()
-                                .id(atb.getId())
-                                .code(atb.getCode())
-                                .active(atb.getActive())
-                                .label(atb.getLabel())
-                                .dataType(atb.getDataType())
-                                .build()
+        List<AttributeEntity> attributeEntityList = mongoTemplate.find(query, AttributeEntity.class);
+        List<String> codes = attributeEntityList.stream().map(AttributeEntity::getCode).filter(StringUtils::hasText).toList();
+        Map<String, Long> catCounts = countCategoriesByAttributeCodes(codes);
+        Map<String, Long> prodCounts = countProductsBySpecCodes(codes);
+
+        List<AttributeDTO> attributeDTOS = attributeEntityList.stream().map(
+                        atb -> {
+                            long categoryCount = catCounts.getOrDefault(atb.getCode(), 0L);
+                            long productCount = prodCounts.getOrDefault(atb.getCode(), 0L);
+                            UsageDTO usage = UsageDTO.builder()
+                                    .usedInProducts(productCount > 0)
+                                    .usedInCategories(categoryCount > 0)
+                                    .categoryCount(categoryCount)
+                                    .productCount(productCount)
+                                    .build();
+
+                            CapabilitiesDTO cap = getCapabilities(usage, atb);
+                            return AttributeDTO.builder()
+                                    .id(atb.getId())
+                                    .code(atb.getCode())
+                                    .active(atb.getActive())
+                                    .label(atb.getLabel())
+                                    .dataType(atb.getDataType())
+                                    .usage(usage)
+                                    .capabilities(cap)
+                                    .build();
+                        }
                 )
                 .toList();
         return new PageImpl<>(attributeDTOS, pageable, total);
+    }
+
+    private Map<String, Long> countCategoriesByAttributeCodes(List<String> codes) {
+        if (codes == null || codes.isEmpty()) return Collections.emptyMap();
+
+        Aggregation agg = newAggregation(
+                match(Criteria.where("attribute_configs.code").in(codes)),
+                unwind("attributeConfigs"),
+                match(Criteria.where("attribute_configs.code").in(codes)),
+                group("attribute_configs.code").count().as("cnt")
+        );
+
+        AggregationResults<CodeCountDTO> rs =
+                mongoTemplate.aggregate(agg, "categories", CodeCountDTO.class);
+
+        return rs.getMappedResults().stream()
+                .collect(Collectors.toMap(CodeCountDTO::getId, CodeCountDTO::getCnt));
+    }
+
+    private Map<String, Long> countProductsBySpecCodes(List<String> codes) {
+        if (codes == null || codes.isEmpty()) return Collections.emptyMap();
+
+        Aggregation agg = newAggregation(
+                match(Criteria.where("specs.code").in(codes)),
+                unwind("specs"),
+                match(Criteria.where("specs.code").in(codes)),
+                group("specs.code").count().as("cnt")
+        );
+
+        AggregationResults<CodeCountDTO> rs =
+                mongoTemplate.aggregate(agg, "products", CodeCountDTO.class);
+
+        return rs.getMappedResults().stream()
+                .collect(Collectors.toMap(CodeCountDTO::getId, CodeCountDTO::getCnt));
     }
 
     @Override
@@ -109,33 +162,74 @@ public class AttributeServiceImpl implements AttributeService {
             throw new BusinessException(VALIDATE_FAIL);
         AttributeEntity attribute = attributeRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
-
+        UsageDTO usageDTO = getUsage(attribute.getCode());
         return AttributeDetailDTO.builder()
                 .id(attribute.getId())
                 .code(attribute.getCode())
                 .label(attribute.getLabel())
+                .active(attribute.getActive())
+                .deleted(attribute.getDeleted())
                 .dataType(attribute.getDataType())
+                .usage(usageDTO)
+                .capabilities(getCapabilities(usageDTO, attribute))
                 .options(attribute.getOptions())
                 .unit(attribute.getUnit())
                 .build();
     }
 
+    private UsageDTO getUsage(String code) {
+        long categoryCount = categoryRepository.countUsingAttributeCode(code);
+        long productCount = productRepository.countUsingSpecCode(code);
+
+        return UsageDTO.builder()
+                .usedInProducts(productCount > 0)
+                .usedInCategories(categoryCount > 0)
+                .categoryCount(categoryCount)
+                .productCount(productCount)
+                .build();
+    }
+
+    private CapabilitiesDTO getCapabilities(UsageDTO usage, AttributeEntity entity) {
+        boolean usedAnywhere = usage.getUsedInCategories() || usage.getUsedInProducts();
+
+        // rule gợi ý (bạn có thể strict hơn tuỳ business)
+        boolean canDelete = !usedAnywhere;
+        boolean canChangeCode = false;                 // luôn false (immutable)
+        boolean canChangeDataType = !usage.getUsedInProducts();     // hoặc !usage.usedInProducts()
+        boolean canRemoveOptions = !usage.getUsedInProducts();
+        return CapabilitiesDTO.builder()
+                .canDelete(canDelete)
+                .canChangeCode(canChangeCode)
+                .canChangeDataType(canChangeDataType)
+                .canRemoveOptions(canRemoveOptions)
+                .canEditLabel(!entity.getDeleted())
+                .canToggleActive(!entity.getDeleted())
+                .canAddOptions(!entity.getDeleted())
+                .canEditOptionLabel(!entity.getDeleted())
+                .canToggleOptionActive(!entity.getDeleted())
+                .canHardDeleteOptions(!usedAnywhere)
+                .build();
+
+    }
+
     @Override
     public void addAttribute(AttributeCreateForm form) {
         if (!StringUtils.hasText(form.getLabel())
-                || !StringUtils.hasText(form.getCode())
                 || !StringUtils.hasText(form.getDataType().toString())
         )
             throw new BusinessException(VALIDATE_FAIL);
-        if (attributeRepository.existsByCode(form.getCode()))
+        String code = SlugUtils.toSlug(form.getLabel());
+        if (attributeRepository.existsByCode(code))
             throw new BusinessException(VALIDATE_FAIL);
         AttributeDataType type = form.getDataType();
         List<AttributeOptionCreate> options = form.getOptions();
         if (type == AttributeDataType.SELECT || type == AttributeDataType.MULTI_SELECT) {
             if (options == null || options.isEmpty())
                 throw new BusinessException(VALIDATE_FAIL);
-            List<String> attributeOptionValueList = options.stream().map(AttributeOptionCreate::getValue).toList();
-            Set<String> attributeOptionValueSet = options.stream().map(AttributeOptionCreate::getValue).collect(Collectors.toSet());
+            Boolean isValidate = options.stream().allMatch(o -> StringUtils.hasText(o.getLabel()));
+            if (!isValidate) throw new BusinessException(VALIDATE_FAIL);
+            List<String> attributeOptionValueList = options.stream().map(o -> SlugUtils.toSlug(o.getLabel())).toList();
+            Set<String> attributeOptionValueSet = options.stream().map(o -> SlugUtils.toSlug(o.getLabel())).collect(Collectors.toSet());
             if (attributeOptionValueList.size() != attributeOptionValueSet.size())
                 throw new BusinessException(VALIDATE_FAIL);
         } else {
@@ -148,19 +242,18 @@ public class AttributeServiceImpl implements AttributeService {
         Instant now = Instant.now();
         AttributeEntity entity = AttributeEntity
                 .builder()
-                .code(form.getCode())
+                .code(code)
                 .label(form.getLabel())
                 .dataType(type)
-                .active(true)
-                .deleted(false)
+                .active(form.getActive())
                 .unit(normalizeUnit(form.getUnit(), type))
                 .options(form.getOptions().stream().map(
                         item -> new OptionEntity(
-                                item.getId(),
+                                SlugUtils.toSlug(item.getLabel()),
                                 item.getLabel(),
-                                item.getValue(),
-                                true,
-                                false
+                                item.getActive(),
+                                false,
+                                item.getDisplayOrder()
                         )
                 ).toList())
                 .createdAt(now)
@@ -171,148 +264,336 @@ public class AttributeServiceImpl implements AttributeService {
 
     @Override
     public void updateAttribute(AttributeEditForm form, String id) {
-        if (!StringUtils.hasText(form.getLabel())
-                || !StringUtils.hasText(form.getCode())
-                || !StringUtils.hasText(form.getDataType().toString())
+        // 0) Basic validate
+        if (form == null
+                || !StringUtils.hasText(id)
                 || !StringUtils.hasText(form.getId())
-                || !id.equals(form.getId()))
+                || !id.equals(form.getId())
+                || !StringUtils.hasText(form.getLabel())
+                || !StringUtils.hasText(form.getCode())
+                || form.getDataType() == null
+                || form.getActive() == null) {
             throw new BusinessException(VALIDATE_FAIL);
+        }
+
         AttributeEntity attribute = attributeRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
+
+        AttributeDataType oldType = attribute.getDataType();
         AttributeDataType newType = form.getDataType();
-        List<OptionEntity> incoming = form.getOptions();
-        boolean isSelectType = newType == AttributeDataType.SELECT
-                || newType == AttributeDataType.MULTI_SELECT;
-        if (isSelectType && (incoming == null || incoming.isEmpty())) throw new BusinessException(VALIDATE_FAIL);
-        if (!isSelectType && incoming != null && !incoming.isEmpty()) throw new BusinessException(VALIDATE_FAIL);
-        boolean attributeUsedInCategory = categoryRepository.existsByAttributeConfigsCode(attribute.getCode());
-        boolean attributeUsedInProduct = productRepository.existsBySpecsCode(attribute.getCode());
-        if (!form.getCode().equals(attribute.getCode())
-                && (attributeUsedInCategory || attributeUsedInProduct))
+
+        boolean oldIsSelectType = oldType == AttributeDataType.SELECT || oldType == AttributeDataType.MULTI_SELECT;
+        boolean newIsSelectType = newType == AttributeDataType.SELECT || newType == AttributeDataType.MULTI_SELECT;
+
+        // 1) Used check (code is the key in products.specs.code & categories.attribute_configs.code)
+        boolean usedInCategory = categoryRepository.existsByAttributeConfigsCode(attribute.getCode());
+        boolean usedInProduct = productRepository.existsBySpecsCode(attribute.getCode());
+        boolean used = usedInCategory || usedInProduct;
+
+        // 2) Prevent changing code if used (VERY IMPORTANT in your schema)
+        String incomingCode = form.getCode().trim();
+        if (!incomingCode.equals(attribute.getCode()) && used) {
             throw new BusinessException(VALIDATE_FAIL);
-        if (attribute.getDataType() != null
-                && attribute.getDataType() != newType
-                && (attributeUsedInCategory || attributeUsedInProduct))
+        }
+
+        // 3) Prevent changing datatype if used (avoid breaking existing product/category data)
+        if (oldType != newType && used) {
             throw new BusinessException(VALIDATE_FAIL);
-        // Merge options an toàn (KHÔNG đè thẳng)
-        if (isSelectType) {
-            List<OptionEntity> merged = mergeOptionsSafely(
-                    attribute.getCode(),          // code hiện tại (đã lock nếu dùng)
-                    attribute.getOptions(),
-                    incoming
-            );
-            attribute.setOptions(merged);
+        }
+
+        // 4) Validate options presence based on newType
+        if (newIsSelectType) {
+            if (form.getOptions() == null || form.getOptions().isEmpty()) {
+                throw new BusinessException(VALIDATE_FAIL);
+            }
         } else {
+            // non-select must not carry options
+            if (form.getOptions() != null && !form.getOptions().isEmpty()) {
+                throw new BusinessException(VALIDATE_FAIL);
+            }
+        }
+
+        // 5) Options update
+        if (newIsSelectType) {
+            // Case 5.1: non-select -> select (initialize fresh option list from payload)
+            if (!oldIsSelectType) {
+                // validate label non-blank + unique by slug
+                List<String> labels = form.getOptions().stream()
+                        .map(o -> o.getLabel() == null ? "" : o.getLabel().trim())
+                        .toList();
+
+                if (labels.stream().anyMatch(l -> !StringUtils.hasText(l))) {
+                    throw new BusinessException(VALIDATE_FAIL);
+                }
+
+                Set<String> slugs = labels.stream()
+                        .map(SlugUtils::toSlug)
+                        .collect(Collectors.toSet());
+
+                if (slugs.size() != labels.size()) {
+                    throw new BusinessException(VALIDATE_FAIL);
+                }
+
+                List<OptionEntity> optionEntities = form.getOptions().stream()
+                        .map(o -> new OptionEntity(
+                                SlugUtils.toSlug(o.getLabel().trim()),
+                                o.getLabel().trim(),
+                                Boolean.TRUE.equals(o.getActive()),
+                                false,
+                                o.getDisplayOrder()
+                        ))
+                        .toList();
+
+                attribute.setOptions(optionEntities);
+            } else {
+                // Case 5.2: select -> select (merge safely: soft delete if used, hard delete if not used)
+                List<OptionEntity> merged = mergeOptionsSafely(
+                        attribute,
+                        attribute.getOptions(),
+                        form.getOptions(),
+                        newType
+                );
+                attribute.setOptions(merged);
+            }
+        }
+        else {
+            // newType is non-select
+            // If old was select, at this point used must be false (blocked above), so safe to drop options
             attribute.setOptions(null);
         }
+
+        // 6) Update remaining fields
         Instant now = Instant.now();
-        attribute.setCode(form.getCode());
-        attribute.setLabel(form.getLabel());
+        attribute.setCode(incomingCode);
+        attribute.setLabel(form.getLabel().trim());
         attribute.setDataType(newType);
+        attribute.setActive(form.getActive());
         attribute.setUnit(normalizeUnit(form.getUnit(), newType));
-        attribute.setOptions(form.getOptions());
         attribute.setUpdatedAt(now);
         attribute.setUpdatedBy(AuthenticationUtils.getUserId());
 
         attributeRepository.save(attribute);
+    }
 
+    public List<String> findUsedOptionIdsInProducts_Select(String attributeCode) {
+        Aggregation agg = Aggregation.newAggregation(
+                Aggregation.unwind("specs"),
+                Aggregation.match(Criteria.where("specs.code").is(attributeCode)),
+                Aggregation.match(Criteria.where("specs.valueId").ne(null)),
+                Aggregation.group().addToSet("specs.valueId").as("optionIds"),
+                Aggregation.project("optionIds")
+        );
+
+        AggregationResults<Document> rs =
+                mongoTemplate.aggregate(agg, "products", Document.class);
+
+        Document doc = rs.getUniqueMappedResult();
+        if (doc == null) return List.of();
+
+        @SuppressWarnings("unchecked")
+        List<String> optionIds = (List<String>) doc.get("optionIds");
+        return optionIds == null ? List.of() : optionIds;
+    }
+
+    public List<String> findUsedOptionIdsInProducts_MultiSelect(String attributeCode) {
+        Aggregation agg = Aggregation.newAggregation(
+                Aggregation.unwind("specs"),
+                Aggregation.match(Criteria.where("specs.code").is(attributeCode)),
+                Aggregation.match(Criteria.where("specs.valueIds").ne(null)),
+                Aggregation.unwind("specs.valueIds"),
+                Aggregation.group().addToSet("specs.valueIds").as("optionIds"),
+                Aggregation.project("optionIds")
+        );
+
+        AggregationResults<Document> rs =
+                mongoTemplate.aggregate(agg, "products", Document.class);
+
+        Document doc = rs.getUniqueMappedResult();
+        if (doc == null) return List.of();
+
+        @SuppressWarnings("unchecked")
+        List<String> optionIds = (List<String>) doc.get("optionIds");
+        return optionIds == null ? List.of() : optionIds;
+    }
+
+    public List<String> findUsedOptionIdsInCategories(String attributeCode) {
+        Aggregation agg = Aggregation.newAggregation(
+                Aggregation.unwind("attribute_configs"),
+                Aggregation.match(Criteria.where("attribute_configs.code").is(attributeCode)),
+                Aggregation.match(Criteria.where("attribute_configs.allowed_option_ids").ne(null)),
+                Aggregation.unwind("attribute_configs.allowed_option_ids"),
+                Aggregation.group().addToSet("attribute_configs.allowed_option_ids").as("optionIds"),
+                Aggregation.project("optionIds")
+        );
+
+        AggregationResults<Document> rs =
+                mongoTemplate.aggregate(agg, "categories", Document.class);
+
+        Document doc = rs.getUniqueMappedResult();
+        if (doc == null) return List.of();
+
+        @SuppressWarnings("unchecked")
+        List<String> optionIds = (List<String>) doc.get("optionIds");
+        return optionIds == null ? List.of() : optionIds;
+    }
+
+    public List<String> findUsedOptionIdsEverywhere(String attributeCode, AttributeDataType dataType) {
+        Set<String> used = new HashSet<>();
+
+        // từ category config
+        used.addAll(findUsedOptionIdsInCategories(attributeCode));
+
+        // từ product specs
+        if (dataType == AttributeDataType.SELECT) {
+            used.addAll(findUsedOptionIdsInProducts_Select(attributeCode));
+        } else if (dataType == AttributeDataType.MULTI_SELECT) {
+            used.addAll(findUsedOptionIdsInProducts_MultiSelect(attributeCode));
+        }
+
+        return new ArrayList<>(used);
     }
 
     private List<OptionEntity> mergeOptionsSafely(
-            String attributeCode,
+            AttributeEntity attribute,
             List<OptionEntity> existing,
-            List<OptionEntity> incoming
+            List<OptionEntity> incoming,
+            AttributeDataType dataType
     ) {
-        existing = existing == null ? List.of() : existing;
+        if (existing == null) existing = List.of();
+        if (incoming == null) incoming = List.of();
 
-        // map option cũ theo id
-        Map<String, OptionEntity> oldById = existing.stream()
+        // 1) Used option ids (from products + categories)
+        Set<String> usedOptionIds = new HashSet<>(findUsedOptionIdsEverywhere(attribute.getCode(), dataType));
+
+        // 2) Build map existing by id
+        Map<String, OptionEntity> existingById = existing.stream()
+                .filter(o -> org.springframework.util.StringUtils.hasText(o.getId()))
+                .collect(Collectors.toMap(
+                        OptionEntity::getId,
+                        o -> o,
+                        (a, b) -> a // in case duplicated data, keep first
+                ));
+
+        Set<String> existingIds = new HashSet<>(existingById.keySet());
+
+        // 3) Split incoming: hasId (update) vs new (no id)
+        List<OptionEntity> incomingWithId = incoming.stream()
                 .filter(o -> StringUtils.hasText(o.getId()))
-                .collect(Collectors.toMap(OptionEntity::getId, o -> o, (a, b) -> a));
+                .toList();
 
+        List<OptionEntity> incomingNew = incoming.stream()
+                .filter(o -> !StringUtils.hasText(o.getId()))
+                .toList();
+
+        // 4) Validate: incomingWithId ids must be unique and must exist
         Set<String> incomingIds = new HashSet<>();
-        List<OptionEntity> result = new ArrayList<>();
+        for (OptionEntity o : incomingWithId) {
+            String id = o.getId().trim();
+            if (!incomingIds.add(id)) {
+                throw new BusinessException(VALIDATE_FAIL); // duplicated id in payload
+            }
+            if (!existingById.containsKey(id)) {
+                throw new BusinessException(VALIDATE_FAIL); // update id not found
+            }
+        }
 
-        // 1) Upsert incoming
-        for (OptionEntity in : incoming) {
-            if (!StringUtils.hasText(in.getLabel()) || !StringUtils.hasText(in.getValue()))
+        // 5) Validate: label must be non-blank for ALL incoming items
+        // (Nếu bạn muốn cho phép label rỗng thì bỏ đoạn này, nhưng thường nên chặn)
+        for (OptionEntity o : incoming) {
+            String label = (o.getLabel() == null) ? "" : o.getLabel().trim();
+            if (!StringUtils.hasText(label)) {
                 throw new BusinessException(VALIDATE_FAIL);
-
-            String inId = StringUtils.hasText(in.getId()) ? in.getId() : UUID.randomUUID().toString();
-            incomingIds.add(inId);
-
-            OptionEntity old = oldById.get(inId);
-
-            if (old == null) {
-                // option mới
-                result.add(new OptionEntity(
-                        inId,
-                        in.getLabel().trim(),
-                        in.getValue().trim(),
-                        in.getActive() != null ? in.getActive() : true,
-                        false
-                ));
-            } else {
-                // option cũ: nếu đã dùng -> không cho đổi value
-                boolean used = isOptionUsedSomewhere(attributeCode, old.getId());
-
-                if (used && !Objects.equals(old.getValue(), in.getValue()))
-                    throw new BusinessException(VALIDATE_FAIL);
-
-                boolean nextActive = in.getActive() != null ? in.getActive() : Boolean.TRUE.equals(old.getActive());
-                boolean nextDeprecated = Boolean.TRUE.equals(old.getDeprecated());
-
-                // nếu đã dùng mà tắt -> deprecated
-                if (used && !nextActive) nextDeprecated = true;
-
-                result.add(new OptionEntity(
-                        old.getId(),
-                        in.getLabel().trim(),
-                        used ? old.getValue() : in.getValue().trim(),
-                        nextActive,
-                        nextDeprecated
-                ));
             }
         }
 
-        // 2) Option bị “xóa” khỏi incoming
-        for (OptionEntity old : existing) {
-            if (!StringUtils.hasText(old.getId())) continue;
-            if (incomingIds.contains(old.getId())) continue;
-
-            boolean used = isOptionUsedSomewhere(attributeCode, old.getId());
-
-            if (used) {
-                // không được remove -> set inactive + deprecated
-                result.add(new OptionEntity(
-                        old.getId(),
-                        old.getLabel(),
-                        old.getValue(),
-                        false,
-                        true
-                ));
+        // 6) Validate: unique slug among incoming labels (new + update)
+        // Đồng thời tạo set slug của incoming để kiểm tra trùng
+        Set<String> incomingSlugs = new HashSet<>();
+        for (OptionEntity o : incoming) {
+            String slug = SlugUtils.toSlug(o.getLabel().trim());
+            if (!incomingSlugs.add(slug)) {
+                throw new BusinessException(VALIDATE_FAIL); // duplicated label/slug in incoming
             }
-            // nếu chưa used => bỏ luôn (hard remove) OK
         }
 
-        // 3) Chống trùng value
-        Set<String> seen = new HashSet<>();
-        for (OptionEntity o : result) {
-            String key = (o.getValue() == null) ? "" : o.getValue().trim().toLowerCase();
-            if (!seen.add(key)) throw new BusinessException(VALIDATE_FAIL);
+        // 7) Determine deleted IDs (existing - incomingWithId)
+        Set<String> deletedIds = new HashSet<>(existingIds);
+        deletedIds.removeAll(incomingIds);
+
+        // Soft delete if used, hard delete if not used
+        Set<String> softDeleteIds = deletedIds.stream()
+                .filter(usedOptionIds::contains)
+                .collect(Collectors.toSet());
+
+        Set<String> hardDeleteIds = deletedIds.stream()
+                .filter(id -> !usedOptionIds.contains(id))
+                .collect(Collectors.toSet());
+
+        // 8) Validate: new options generate id by slug
+        // allow reuse only if that id is being hard-deleted in this request
+        List<OptionEntity> createdOptions = new ArrayList<>();
+        for (OptionEntity o : incomingNew) {
+            String label = o.getLabel().trim();
+            String newId = SlugUtils.toSlug(label);
+
+            boolean idExists = existingIds.contains(newId);
+            boolean canReuse = hardDeleteIds.contains(newId);
+
+            if (idExists && !canReuse) {
+                // would collide with existing option that is not being removed (or is soft-deleted/kept)
+                throw new BusinessException(VALIDATE_FAIL);
+            }
+
+            OptionEntity created = new OptionEntity(
+                    newId,
+                    label,
+                    Boolean.TRUE.equals(o.getActive()),
+                    false,
+                    o.getDisplayOrder()
+            );
+            createdOptions.add(created);
         }
 
-        return result;
+        // 9) Apply updates for incomingWithId
+        List<OptionEntity> updatedOptions = new ArrayList<>();
+        for (OptionEntity inc : incomingWithId) {
+            OptionEntity old = existingById.get(inc.getId().trim());
+            if (old == null) throw new BusinessException(VALIDATE_FAIL);
+
+            old.setLabel(inc.getLabel().trim());
+            old.setActive(Boolean.TRUE.equals(inc.getActive()));
+            old.setDisplayOrder(inc.getDisplayOrder());
+            old.setDeprecated(false); // since it is in incoming, treat as not deprecated
+            updatedOptions.add(old);
+        }
+
+        // 10) Build soft-deleted options to keep
+        List<OptionEntity> softDeletedOptions = new ArrayList<>();
+        for (String id : softDeleteIds) {
+            OptionEntity old = existingById.get(id);
+            if (old == null) continue; // safety
+
+            old.setActive(false);
+            old.setDeprecated(true);
+            // displayOrder: giữ nguyên (stable). Nếu bạn muốn đẩy xuống cuối thì set lại ở đây.
+            softDeletedOptions.add(old);
+        }
+
+        // 11) Final result = updated + created + soft-deleted (hard-deleted is omitted)
+        List<OptionEntity> merged = new ArrayList<>();
+        merged.addAll(updatedOptions);
+        merged.addAll(createdOptions);
+        merged.addAll(softDeletedOptions);
+
+        // 12) Sort stable (optional but recommended)
+        merged.sort(Comparator
+                .comparing(OptionEntity::getDisplayOrder, Comparator.nullsLast(Integer::compareTo))
+                .thenComparing(o -> o.getId() == null ? "" : o.getId())
+        );
+
+        return merged;
     }
 
-    private boolean isOptionUsedSomewhere(String attributeCode, String optionId) {
-        // 1) Category đang allow option này?
-        // Query tối ưu nhất là exists + index trên:
-        // { "attribute_configs.code": 1, "attribute_configs.allowed_option_ids": 1 }
-        return categoryRepository.existsAttrConfigUsingOption(attributeCode, optionId);
-
-        // 2) Nếu bạn có SKU lưu selections.optionId/value thì check thêm ở skuRepository (nếu cần)
-    }
 
     @Override
     public void deleteAttribute(String id) {
@@ -320,20 +601,17 @@ public class AttributeServiceImpl implements AttributeService {
                 .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
 
         boolean usedInCategory = categoryRepository.existsByAttributeConfigsCode(attribute.getCode());
-        boolean usedInProduct  = productRepository.existsBySpecsCode(attribute.getCode());
+        boolean usedInProduct = productRepository.existsBySpecsCode(attribute.getCode());
         String userId = AuthenticationUtils.getUserId();
         Instant now = Instant.now();
         if (usedInCategory || usedInProduct) {
             // soft delete
             attribute.setActive(false);      // hoặc setDeleted(true)
             attribute.setDeleted(true);
-            attribute.setDeletedAt(now);
-            attribute.setDeletedBy(userId);
-
             // nếu là select-type thì tiện tay “đóng băng” option
             if (attribute.getOptions() != null) {
                 List<OptionEntity> closed = attribute.getOptions().stream()
-                        .map(o -> new OptionEntity(o.getId(), o.getLabel(), o.getValue(), false, true))
+                        .map(o -> new OptionEntity(o.getId(), o.getLabel(), false, true, o.getDisplayOrder()))
                         .toList();
                 attribute.setOptions(closed);
             }
@@ -346,6 +624,63 @@ public class AttributeServiceImpl implements AttributeService {
 
         // chưa dùng -> hard delete ok
         attributeRepository.deleteById(id);
+    }
+
+    @Override
+    public void changeActiveAttribute(String id) {
+        if (!StringUtils.hasText(id)) throw new BusinessException(VALIDATE_FAIL);
+        AttributeEntity attribute = attributeRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
+        if (attribute.getDeleted())
+            throw new BusinessException(VALIDATE_FAIL);
+        attribute.setActive(!attribute.getActive());
+        attributeRepository.save(attribute);
+    }
+
+    @Override
+    public void revokeAttribute(String id) {
+        if (!StringUtils.hasText(id)) throw new BusinessException(VALIDATE_FAIL);
+        AttributeEntity attribute = attributeRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
+        attribute.setActive(false);
+        attribute.setDeleted(false);
+        attribute.setUpdatedBy(AuthenticationUtils.getUserId());
+        attribute.setUpdatedAt(Instant.now());
+        attributeRepository.save(attribute);
+    }
+
+    @Override
+    public void revokeAttributeOption(String id, RevokeOptionForm form) {
+        if (!StringUtils.hasText(id)
+                || !StringUtils.hasText(form.getAttributeId())
+                || !StringUtils.hasText(form.getOptionId())
+                || !id.equals(form.getAttributeId())) throw new BusinessException(VALIDATE_FAIL);
+        AttributeEntity attribute = attributeRepository.findById(id).orElseThrow(
+                () -> new BusinessException(VALIDATE_FAIL)
+        );
+        if (!(attribute.getDataType() == AttributeDataType.SELECT ||
+                attribute.getDataType() == AttributeDataType.MULTI_SELECT)) {
+            throw new BusinessException(VALIDATE_FAIL);
+        }
+        List<OptionEntity> options = attribute.getOptions();
+
+        OptionEntity option = options.stream().filter(o -> o.getId().equals(form.getOptionId())).findFirst().orElseThrow(
+                () -> new BusinessException(VALIDATE_FAIL)
+        );
+        if (!option.getDeprecated()) throw new BusinessException(VALIDATE_FAIL);
+        int maxOrder = options.stream().filter(o -> !o.getDeprecated())
+                .mapToInt(OptionEntity::getDisplayOrder).max().orElse(-1);
+        attribute.getOptions().forEach(o -> {
+            if (o.getId().equals(form.getOptionId())) {
+                o.setActive(false);
+                o.setDeprecated(false);
+                o.setDisplayOrder(maxOrder + 1);
+            }
+        });
+        attribute.setUpdatedBy(AuthenticationUtils.getUserId());
+        attribute.setUpdatedAt(Instant.now());
+        attributeRepository.save(attribute);
+
     }
 
     private String normalizeUnit(String unit, AttributeDataType type) {

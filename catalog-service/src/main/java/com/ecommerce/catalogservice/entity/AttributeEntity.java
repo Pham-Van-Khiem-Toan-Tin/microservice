@@ -27,11 +27,11 @@ public class AttributeEntity {
     private AttributeDataType dataType;
     private String unit;
     private List<OptionEntity> options;
-    private Boolean active;
-    private Boolean deleted;
+    @Builder.Default
+    private Boolean active = true;
+    @Builder.Default
+    private Boolean deleted = false;
     private String updatedBy;
     private Instant updatedAt;
     private Instant createdAt;
-    private String deletedBy;
-    private Instant deletedAt;
 }

@@ -2,7 +2,8 @@ package com.ecommerce.catalogservice.service;
 
 
 import com.ecommerce.catalogservice.dto.request.attribute.*;
-import com.ecommerce.catalogservice.dto.response.AttributeDTO;
+import com.ecommerce.catalogservice.dto.response.attribute.AttributeDTO;
+import com.ecommerce.catalogservice.dto.response.attribute.AttributeDetailDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,5 +17,7 @@ public interface AttributeService {
     void addAttribute(AttributeCreateForm form);
     void updateAttribute(AttributeEditForm form, String id);
     void deleteAttribute(String id);
-
+    void changeActiveAttribute(String id);
+    void revokeAttribute(String id);
+    void revokeAttributeOption(String id, RevokeOptionForm form);
 }

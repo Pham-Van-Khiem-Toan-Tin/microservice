@@ -1,7 +1,21 @@
 package com.ecommerce.catalogservice.service;
 
+import com.ecommerce.catalogservice.dto.request.category.CategorySearchField;
 import com.ecommerce.catalogservice.dto.request.product.ProductCreateForm;
+import com.ecommerce.catalogservice.dto.request.product.ProductSearchField;
+import com.ecommerce.catalogservice.dto.request.product.ProductUpdateForm;
+import com.ecommerce.catalogservice.dto.response.product.ProductDTO;
+import com.ecommerce.catalogservice.dto.response.product.ProductDetailDTO;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import java.util.List;
 
 public interface ProductService {
-    void addProduct(ProductCreateForm form);
+    Page<ProductDTO> search(String keyword, List<ProductSearchField> fields, Pageable pageable);
+    ProductDetailDTO productDetailDTO(String id);
+    void addProduct(ProductCreateForm form) throws JsonProcessingException;
+    void updateProduct(ProductUpdateForm form, String id) throws JsonProcessingException;
+    void deleteProduct(String id);
 }

@@ -1,6 +1,5 @@
 package com.ecommerce.bffadmin.config;
 
-import com.ecommerce.bffadmin.service.InternalTokenService;
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +17,9 @@ public class BffGatewayRoutes {
                 .route("catalog-service", r -> r.path("/api/admin/catalog/**")
                         .filters(f -> f.stripPrefix(3).tokenRelay())
                         .uri("lb://catalog-service"))
+                .route("catalog-service", r -> r.path("/api/admin/orders/**", "/api/admin/stats/**")
+                        .filters(f -> f.stripPrefix(2).tokenRelay())
+                        .uri("lb://order-service"))
                 .build();
     }
 }

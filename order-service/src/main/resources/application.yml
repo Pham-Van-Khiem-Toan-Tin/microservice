@@ -1,6 +1,36 @@
 spring:
   application:
     name: order-service
+  datasource:
+    url: jdbc:mysql://localhost:3306/order_db
+    username: root
+    password: 271201
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      auto-commit: true
+      transaction-isolation: TRANSACTION_READ_COMMITTED
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8085
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: inventory-group-test-final-1
+
+      # 2. BẮT BUỘC CÓ DÒNG NÀY (để nó đọc lại tin nhắn từ Offset 0)
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
 server:
   port: 8081
 eureka:

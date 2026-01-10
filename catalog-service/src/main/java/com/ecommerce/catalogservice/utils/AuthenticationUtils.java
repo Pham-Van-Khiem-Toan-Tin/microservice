@@ -1,5 +1,7 @@
 package com.ecommerce.catalogservice.utils;
 
+import com.ecommerce.catalogservice.constants.Constants;
+import com.ecommerce.catalogservice.dto.response.BusinessException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -13,6 +15,17 @@ public class AuthenticationUtils {
             Jwt jwt = jwtAuth.getToken();
             userId = jwt.getSubject();
         }
+        if (userId == null) {
+            throw new BusinessException(Constants.VALIDATE_FAIL);
+        }
         return userId;
+    }
+    public static String currentBearerToken() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String bearerToken = null;
+        if (auth instanceof JwtAuthenticationToken jwtAuth) {
+            bearerToken = "Bearer " + jwtAuth.getToken().getTokenValue();
+        }
+        return bearerToken;
     }
 }

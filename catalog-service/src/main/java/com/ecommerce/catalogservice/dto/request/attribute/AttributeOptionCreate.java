@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class AttributeOptionCreate {
-    private String id;
     private String label;
-    private String value;
+    private Integer displayOrder;
+    private Boolean active;
 }

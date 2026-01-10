@@ -2,7 +2,7 @@ spring:
   application:
     name: payment-service
   datasource:
-    url: jdbc:mysql://localhost:3306/ecobazarpayment
+    url: jdbc:mysql://localhost:3306/payment
     username: root
     password: 271201
     driver-class-name: com.mysql.cj.jdbc.Driver

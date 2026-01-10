@@ -11,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProductVariantGroup {
-    private String code;
+    private String id;
     private String label;
     private List<ProductOptionItem> values;
 }

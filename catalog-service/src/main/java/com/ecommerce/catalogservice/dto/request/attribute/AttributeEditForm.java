@@ -13,6 +13,7 @@ public class AttributeEditForm {
     private String id;
     private String code;
     private String label;
+    private Boolean active;
     private AttributeDataType dataType;
     private String unit;
     private List<OptionEntity> options;

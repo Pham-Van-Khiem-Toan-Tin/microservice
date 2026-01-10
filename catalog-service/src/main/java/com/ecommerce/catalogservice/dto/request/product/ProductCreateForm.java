@@ -13,7 +13,8 @@ public class ProductCreateForm {
     private String slug;
     private String brandId;
     private String categoryId;
-    private List<ProductSpecs> specs;
+    private String specs;
+    private Integer warrantyMonth;
     private List<ProductVariantGroup> attributes;
     private String description;
     private String shortDescription;

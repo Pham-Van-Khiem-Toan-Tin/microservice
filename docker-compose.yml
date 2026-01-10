@@ -1,62 +1,79 @@
-version: '3.7'
+version: "3"
 services:
-#  mysql:
-#    image: phamkhiem/ecobazar:mysql-v1.0
-#    container_name: 'mysql'
-#    ports:
-#      - '3307:3306'
-#    environment:
-#      - 'MYSQL_DATABASE=keycloak'
-#      - 'MYSQL_USER=keycloak'
-#      - 'MYSQL_PASSWORD=password'
-#      - 'MYSQL_ROOT_PASSWORD=root_password'
-#    healthcheck:
-#      test: 'mysqladmin ping -u root -p$${MYSQL_ROOT_PASSWORD}'
-#  keycloak:
-#    image: phamkhiem/ecobazar:keycloak-v1.0
-#    container_name: 'keycloak'
-#    environment:
-#      - 'KEYCLOAK_ADMIN=admin'
-#      - 'KEYCLOAK_ADMIN_PASSWORD=admin'
-#      - 'KC_DB=mysql'
-#      - 'KC_DB_URL_HOST=mysql'
-#      - 'KC_DB_URL_DATABASE=keycloak'
-#      - 'KC_DB_USERNAME=keycloak'
-#      - 'KC_DB_PASSWORD=password'
-#      - 'KC_HEALTH_ENABLED=true'
-#    ports:
-#      - '8086:8080'
-#    command: 'start-dev'
-#    depends_on:
-#      - 'mysql'
-#    healthcheck:
-#      test: [ "CMD", "sh", "-c", "[ -z \"$(echo \"\" > /dev/tcp/localhost/9081)\" ] || exit 1" ]
-  zookeeper:
-    image: phamkhiem/ecobazar:zookeeper
-    restart: always
-    hostname: zookeeper
-    ports:
-      - "2181:2181"
-    environment:
-      ZOO_MY_ID: 1
-    networks:
-      - kafka-network
   kafka:
-    image: phamkhiem/ecobazar:kafka
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: kafka
     ports:
       - "9092:9092"
     environment:
-      KAFKA_LISTENERS: INTERNAL://:9093,EXTERNAL://:9092
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_BROKER_ID: 1
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9093,EXTERNAL://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
-      KAFKA_LOG_DIRS: /tmp/kafka-logs
-    depends_on:
-      - zookeeper
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:29093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+      KAFKA_LISTENERS: "PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092"
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_MESSAGE_MAX_BYTES: 10485760
+      KAFKA_SOCKET_REQUEST_MAX_BYTES: 104857600
+      # QUAN TRỌNG: khớp với volume mount
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
+
+      # KRaft cluster id
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
     networks:
-      - kafka-network
+      - ecommerce-net
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "9093:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local-kraft
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
+      - DYNAMIC_CONFIG_ENABLED=true
+    depends_on:
+      - kafka
+    networks:
+      - ecommerce-net
+  debezium:
+    image: debezium/connect:2.5
+    container_name: debezium
+    ports:
+      - "8095:8083"
+    environment:
+      - BOOTSTRAP_SERVERS=kafka:29092
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=my_connect_configs
+      - OFFSET_STORAGE_TOPIC=my_connect_offsets
+      - STATUS_STORAGE_TOPIC=my_connect_statuses
+
+      # Single broker => RF = 1 (quan trọng)
+      - CONFIG_STORAGE_REPLICATION_FACTOR=1
+      - OFFSET_STORAGE_REPLICATION_FACTOR=1
+      - STATUS_STORAGE_REPLICATION_FACTOR=1
+      - CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE=false
+      - CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE=false
+      # JSON schemaless (đỡ lỗi khi message là JSON không kèm schema)
+      - KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - KEY_CONVERTER_SCHEMAS_ENABLE=false
+      - VALUE_CONVERTER_SCHEMAS_ENABLE=false
+    depends_on:
+      - kafka
+    networks:
+      - ecommerce-net
+volumes:
+  kafka_data:
+
 networks:
-  kafka-network:
+  ecommerce-net:
     driver: bridge

@@ -5,31 +5,39 @@ import java.util.Locale;
 import java.util.regex.Pattern;
 
 public class SlugUtils {
-    private static final Pattern NONLATIN = Pattern.compile("[^a-zA-Z0-9-]");
-    private static final Pattern WHITESPACE = Pattern.compile("[\\s]");
+    private static final Pattern NONLATIN = Pattern.compile("[^\\w-]");
+    private static final Pattern WHITESPACE = Pattern.compile("[\\s]+");
+    private static final Pattern DASHES = Pattern.compile("-{2,}");
 
     private SlugUtils() {}
     public static String toSlug(String input) {
-        if (input == null) return null;
+        if (input == null) {
+            return null;
+        }
 
-        // 1️⃣ xử lý riêng cho đ / Đ
-        String processed = input
-                .replace("đ", "d")
-                .replace("Đ", "D");
+        // trim + lowercase
+        String result = input.trim().toLowerCase(Locale.ROOT);
 
-        // 2️⃣ thay whitespace
-        String nowhitespace = WHITESPACE.matcher(processed).replaceAll("-");
+        // normalize unicode (remove accents)
+        result = Normalizer.normalize(result, Normalizer.Form.NFD);
+        result = result.replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
 
-        // 3️⃣ normalize
-        String normalized = Normalizer.normalize(nowhitespace, Normalizer.Form.NFD);
+        // đ/Đ special case
+        result = result.replace("đ", "d");
 
-        // 4️⃣ remove non latin
-        String slug = NONLATIN.matcher(normalized).replaceAll("");
+        // whitespace -> dash
+        result = WHITESPACE.matcher(result).replaceAll("-");
 
-        return slug
-                .toLowerCase(Locale.ENGLISH)
-                .replaceAll("-{2,}", "-")
-                .replaceAll("^-|-$", "");
+        // remove non latin chars
+        result = NONLATIN.matcher(result).replaceAll("");
+
+        // collapse multiple dashes
+        result = DASHES.matcher(result).replaceAll("-");
+
+        // trim dash
+        result = result.replaceAll("^-|-$", "");
+
+        return result;
     }
 
 }

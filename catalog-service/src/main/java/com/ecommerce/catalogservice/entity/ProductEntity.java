@@ -19,7 +19,10 @@ import java.util.List;
 @Data
 @CompoundIndexes({
         @CompoundIndex(name = "idx_variantGroups_id", def = "{'variantGroups.id': 1}"),
-        @CompoundIndex(name = "idx_variantGroups_values_value", def = "{'variantGroups.values.id': 1}")
+        @CompoundIndex(name = "idx_variantGroups_values_value", def = "{'variantGroups.values.id': 1}"),
+        @CompoundIndex(name = "idx_variantGroups_specs_code", def = "{'specs.code': 1}"),
+        @CompoundIndex(name = "idx_variantGroups_specs_valueId", def = "{'specs.valueId': 1}"),
+        @CompoundIndex(name = "idx_variantGroups_specs_valueIds", def = "{'specs.valueIds': 1}")
 })
 public class ProductEntity {
     @Id
@@ -45,7 +48,7 @@ public class ProductEntity {
     @Indexed
     @Field("max_price")
     private Double maxPrice;
-
+    private Integer warrantyMonth;
     private List<ProductSpecs> specs;
 
     private List<ProductVariantGroup> variantGroups;
