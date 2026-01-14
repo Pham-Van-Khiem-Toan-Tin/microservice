@@ -20,7 +20,6 @@ public class BrandEntity {
     private String id;
     @Indexed(unique = true)
     private String name;
-    @Indexed(unique = true)
     private String slug;
     private String description;
     private ImageEntity logo;

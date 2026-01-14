@@ -21,4 +21,5 @@ public interface CategoryService {
     Set<CategoryOptionDTO> getCategoryLeafOptions();
     Set<CategoryOptionDTO> getParentCategories();
     CategoryDetailDTO getCategoryDetailDTO(String id);
+    void toggleActiveCategory(String id);
 }

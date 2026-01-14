@@ -8,7 +8,6 @@ import lombok.Data;
 public class AttributeOptionDTO {
     private Boolean deprecated;
     private boolean active;
-    private String value;
     private String label;
     private String id;
     private boolean selected;

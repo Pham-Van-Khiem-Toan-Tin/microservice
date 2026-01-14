@@ -21,4 +21,5 @@ public interface BrandService {
 
     void deleteBrand(String id);
     List<BrandOptionDTOS> getBrandOptions();
+    void toggleActiveBrand(String id);
 }

@@ -22,6 +22,7 @@
         <module>bff-admin</module>
         <module>inventory-service</module>
         <module>bff-user</module>
+        <module>search-service</module>
     </modules>
     <properties>
         <maven.compiler.source>21</maven.compiler.source>

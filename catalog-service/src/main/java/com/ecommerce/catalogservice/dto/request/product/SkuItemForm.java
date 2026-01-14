@@ -17,6 +17,7 @@ public class SkuItemForm {
     private Double costPrice;
     private Double originalPrice;
     private Integer stock;
+    private Boolean active;
     private MultipartFile image;
     private List<SkuOptionForm> specs;
 

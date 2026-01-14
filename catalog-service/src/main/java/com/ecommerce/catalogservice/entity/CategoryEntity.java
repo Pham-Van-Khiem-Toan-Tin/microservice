@@ -24,7 +24,6 @@ public class CategoryEntity {
     @Id
     private String id;
     private String name;
-    @Indexed(unique = true)
     private String slug;
     private String icon;
     @Indexed

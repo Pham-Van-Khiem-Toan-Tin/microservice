@@ -185,4 +185,19 @@ public class BrandServiceImpl implements BrandService {
                         .build()
         ).toList();
     }
+
+    @Override
+    public void toggleActiveBrand(String id) {
+        if (!StringUtils.hasText(id))
+            throw new BusinessException(VALIDATE_FAIL);
+        BrandEntity brand = brandRepository.findById(id).orElseThrow(
+                () -> new BusinessException(VALIDATE_FAIL)
+        );
+        BrandStatus brandStatus = BrandStatus.active;
+        if (brand.getStatus() == BrandStatus.active) {
+            brandStatus = BrandStatus.hidden;
+        }
+        brand.setStatus(brandStatus);
+        brandRepository.save(brand);
+    }
 }

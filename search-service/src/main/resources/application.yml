@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: search-service
+  data:
+    mongodb:
+      auto-index-creation: true
+      uri: mongodb://localhost:27018/outbox?directConnection=true
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: search-service
+
+      # 2. BẮT BUỘC CÓ DÒNG NÀY (để nó đọc lại tin nhắn từ Offset 0)
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+    listener:
+      ack-mode: manual
+server:
+  port: 8087
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    hostname: localhost
+    prefer-ip-address: true
+    instance-id: ${eureka.instance.hostname}:${server.port}
+app:
+  outbox-topic: ecommerce.ecommerce.outbox_events
+  es:
+    host: localhost
+    port: 9200
+    index: products

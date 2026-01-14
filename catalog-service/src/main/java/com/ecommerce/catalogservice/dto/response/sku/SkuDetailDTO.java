@@ -31,7 +31,7 @@ public class SkuDetailDTO {
     private List<SkuSelect> selections;
 
     // --- MEDIA RIÊNG ---
-    private ImageEntity image; // Ảnh riêng cho SKU này (VD: Ảnh máy màu đen)
+    private ImageEntity thumbnail; // Ảnh riêng cho SKU này (VD: Ảnh máy màu đen)
 
     // --- TRẠNG THÁI ---
     // Lưu ý: Tồn kho THẬT nằm ở Inventory Service.

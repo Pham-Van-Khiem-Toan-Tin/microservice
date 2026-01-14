@@ -12,7 +12,7 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
       KAFKA_LISTENERS: "PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092"
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092"
       KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
 
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -21,10 +21,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_MESSAGE_MAX_BYTES: 10485760
       KAFKA_SOCKET_REQUEST_MAX_BYTES: 104857600
-      # QUAN TRỌNG: khớp với volume mount
       KAFKA_LOG_DIRS: "/var/lib/kafka/data"
-
-      # KRaft cluster id
       CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
     volumes:
       - kafka_data:/var/lib/kafka/data
@@ -44,6 +41,7 @@ services:
       - kafka
     networks:
       - ecommerce-net
+
   debezium:
     image: debezium/connect:2.5
     container_name: debezium
@@ -55,14 +53,9 @@ services:
       - CONFIG_STORAGE_TOPIC=my_connect_configs
       - OFFSET_STORAGE_TOPIC=my_connect_offsets
       - STATUS_STORAGE_TOPIC=my_connect_statuses
-
-      # Single broker => RF = 1 (quan trọng)
       - CONFIG_STORAGE_REPLICATION_FACTOR=1
       - OFFSET_STORAGE_REPLICATION_FACTOR=1
       - STATUS_STORAGE_REPLICATION_FACTOR=1
-      - CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE=false
-      - CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE=false
-      # JSON schemaless (đỡ lỗi khi message là JSON không kèm schema)
       - KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
       - VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
       - KEY_CONVERTER_SCHEMAS_ENABLE=false
@@ -71,9 +64,81 @@ services:
       - kafka
     networks:
       - ecommerce-net
+
+  redis:
+    image: redis:7.2
+    container_name: redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - ecommerce-net
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - ecommerce-net
+
+    # ✅ Kibana (UI)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.2
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - ecommerce-net
+  mongo:
+    image: mongo:7
+    container_name: mongo
+    ports:
+      - "27018:27017"
+    command: [ "mongod", "--replSet", "rs0", "--bind_ip_all" ]
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - ecommerce-net
+
+  mongo-init:
+    image: mongo:7
+    depends_on:
+      - mongo
+    networks:
+      - ecommerce-net
+    entrypoint: >
+      bash -lc '
+      sleep 3;
+      mongosh --host mongo:27017 --eval "
+        rs.initiate({
+          _id: \"rs0\",
+          members: [{ _id: 0, host: \"mongo:27017\" }]
+        })
+      ";
+      '
 volumes:
   kafka_data:
-
+  redis_data:
+  es_data:
+  mongo_data:
 networks:
   ecommerce-net:
     driver: bridge

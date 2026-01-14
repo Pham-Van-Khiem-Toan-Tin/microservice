@@ -10,7 +10,7 @@ spring:
   data:
     mongodb:
       auto-index-creation: true
-      uri: mongodb://localhost:27017/ecommerce?replicaSet=rs0
+      uri: mongodb://localhost:27018/ecommerce?directConnection=true
   security:
     oauth2:
       resourceserver:

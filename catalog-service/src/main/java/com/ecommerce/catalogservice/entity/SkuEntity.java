@@ -61,13 +61,7 @@ public class SkuEntity {
     @Field("discontinued_reason")
     private String discontinuedReason;
 
-    @Field("has_orders")
-    private Boolean hasOrders;
-    @Field("inventory_pushed")
-    private Boolean inventoryPushed;
     private Integer stock;
-    @Field("sold_count")
-    private Long soldCount; // Số lượng đã bán (Cache để sort)
     private String updatedBy;
     private Instant createdAt;
     private Instant updatedAt;

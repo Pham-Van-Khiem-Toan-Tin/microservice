@@ -67,7 +67,12 @@ public class BrandController {
         brandService.updateBrand(form, logo, id);
         return ApiResponse.ok(BRAND_EDIT_SUCCESS);
     }
-
+    @PreAuthorize("hasAuthority('EDIT_BRAND')")
+    @PatchMapping("/{id}")
+    public ApiResponse<Void> changeActive(@PathVariable String id) {
+        brandService.toggleActiveBrand(id);
+        return ApiResponse.ok(BRAND_EDIT_SUCCESS);
+    }
     @PreAuthorize("hasAuthority('DELETE_BRAND')")
     @DeleteMapping("/{id}")
     public ApiResponse<Void> updateBrand(@PathVariable String id) {

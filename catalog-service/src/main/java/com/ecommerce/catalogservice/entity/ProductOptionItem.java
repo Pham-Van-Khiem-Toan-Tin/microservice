@@ -12,5 +12,4 @@ public class ProductOptionItem {
     private String id;
     private String value;
     private Boolean active;
-    private Boolean deprecated;
 }

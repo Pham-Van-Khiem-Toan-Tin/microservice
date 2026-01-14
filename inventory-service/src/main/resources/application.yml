@@ -23,7 +23,7 @@ spring:
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
-      group-id: inventory-group-test-final-1
+      group-id: inventory-service
 
         # 2. BẮT BUỘC CÓ DÒNG NÀY (để nó đọc lại tin nhắn từ Offset 0)
       auto-offset-reset: earliest
@@ -31,6 +31,8 @@ spring:
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       properties:
         spring.json.trusted.packages: "*"
+    listener:
+      ack-mode: manual
 server:
   port: 8086
 eureka:
