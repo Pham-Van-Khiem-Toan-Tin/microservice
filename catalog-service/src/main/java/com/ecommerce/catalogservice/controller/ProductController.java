@@ -47,8 +47,8 @@ public class ProductController {
     }
     @PreAuthorize("hasAuthority('CREATE_PRODUCT')")
     @PostMapping
-    public ApiResponse<Void> create(@ModelAttribute ProductCreateForm form) throws JsonProcessingException {
-        productService.addProduct(form);
+    public ApiResponse<Void> create(@ModelAttribute ProductCreateForm form, @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) throws JsonProcessingException {
+        productService.addProduct(form, idempotencyKey);
         return ApiResponse.ok(PRODUCT_CREATE_SUCCESS);
     }
     @PreAuthorize("hasAuthority('DELETE_PRODUCT')")

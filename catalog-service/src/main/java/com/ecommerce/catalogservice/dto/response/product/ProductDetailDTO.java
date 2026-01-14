@@ -21,7 +21,7 @@ public class ProductDetailDTO {
     private Integer warrantyMonth;
     private Boolean hasVariants;
     private List<ProductVariantGroup> variantGroups;
-    private List<ProductSpecs> specs;
+    private List<ProductSpecDTO> specs;
     private Integer numOfReviews;
     private Double avgRating;
     private ImageEntity thumbnail;

@@ -13,6 +13,7 @@ public interface AttributeRepository extends MongoRepository<AttributeEntity, St
     List<AttributeEntity> findAllByCodeIn(Collection<String> codes);
     boolean existsByCode(String code);
 
+    List<AttributeEntity> findAllByIdIn(Collection<String> ids);
     List<AttributeEntity> findByCodeIn(Collection<String> codes);
 
     List<AttributeEntity> findAllByCode(String code);

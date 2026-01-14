@@ -53,6 +53,8 @@ public class ProductServiceImpl implements ProductService {
     @Autowired
     private BrandRepository brandRepository;
     @Autowired
+    private AttributeRepository attributeRepository;
+    @Autowired
     private CloudinaryService cloudinaryService;
     @Autowired
     private OutboxRepository outboxRepository;
@@ -87,7 +89,7 @@ public class ProductServiceImpl implements ProductService {
         query.with(pageable);
         List<ProductEntity> productEntities = mongoTemplate
                 .find(query, ProductEntity.class);
-        List<String> categoryIds =productEntities.stream()
+        List<String> categoryIds = productEntities.stream()
                 .map(ProductEntity::getCategoryId)
                 .distinct().toList();
         List<String> brandIds = productEntities
@@ -137,6 +139,13 @@ public class ProductServiceImpl implements ProductService {
         BrandEntity brand = brandRepository.findById(productEntity.getBrandId()).orElseThrow(
                 () -> new BusinessException(VALIDATE_FAIL)
         );
+        List<String> specAttributeIds = productEntity.getSpecs()
+                .stream()
+                .map(ProductSpecs::getId)
+                .toList();
+        Map<String, List<OptionEntity>> specs = attributeRepository.findAllByIdIn(specAttributeIds)
+                .stream()
+                .collect(Collectors.toMap(AttributeEntity::getId, AttributeEntity::getOptions));
         List<SkuEntity> skus = skuRepository.findAllBySpuId(productEntity.getId());
         return ProductDetailDTO.builder()
                 .id(productEntity.getId())
@@ -159,7 +168,43 @@ public class ProductServiceImpl implements ProductService {
                 .thumbnail(productEntity.getThumbnail())
 
                 .gallery(productEntity.getGallery())
-                .specs(productEntity.getSpecs())
+                .specs(productEntity.getSpecs().stream()
+                        .map(sp -> {
+
+                                    Map<String, String> optionMultiple = specs.get(sp.getId())
+                                            .stream()
+                                            .collect(Collectors
+                                                    .toMap(OptionEntity::getId, OptionEntity::getLabel));
+                                    return ProductSpecDTO.builder()
+                                            .id(sp.getId())
+                                            .code(sp.getCode())
+                                            .displayOrder(sp.getDisplayOrder())
+                                            .dataType(sp.getDataType())
+                                            .unit(sp.getUnit())
+                                            .value(sp.getValue())
+                                            .valueSelect(specs.get(sp.getId()) != null ? specs.get(sp.getId()).stream()
+                                                    .filter(
+                                                            vs -> vs.getId().equals(sp.getValueId())
+
+                                                    ).map(i -> SpecOptionDTO.builder()
+                                                            .id(i.getId())
+                                                            .label(i.getLabel())
+                                                            .build()).findFirst().orElse(null) : null)
+                                            .valueMultiSelect(sp.getValueIds() != null ? sp.getValueIds().stream()
+                                                    .map(v -> SpecOptionDTO.builder()
+                                                            .id(v)
+                                                            .label(optionMultiple.get(v))
+                                                            .build())
+                                                    .toList()
+                                                    : null)
+                                            .label(sp.getLabel())
+                                            .build();
+
+                                }
+
+                        )
+                        .toList()
+                )
                 .status(productEntity.getStatus())
                 .variantGroups(productEntity.getVariantGroups())
                 .maxPrice(productEntity.getMaxPrice())
@@ -186,7 +231,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Transactional
     @Override
-    public void addProduct(ProductCreateForm form) throws JsonProcessingException {
+    public void addProduct(ProductCreateForm form, String idemKey) throws JsonProcessingException {
         if (!StringUtils.hasText(form.getName())
                 || !StringUtils.hasText(form.getDescription())
                 || !StringUtils.hasText(form.getSlug())
@@ -220,9 +265,24 @@ public class ProductServiceImpl implements ProductService {
             Instant currentTime = Instant.now();
             List<ProductSpecs> specs = objectMapper.readValue(
                     form.getSpecs(),
-                    new TypeReference<List<ProductSpecs>>() {
-                    }
+                    new TypeReference<List<ProductSpecs>>() {}
             );
+            for (ProductSpecs spec : specs) {
+                if (spec.getDataType() == AttributeDataType.SELECT) {
+                    String option = objectMapper.convertValue(
+                            spec.getValue(),
+                            String.class
+                    );
+                    spec.setValueId(option);
+                }
+                if (spec.getDataType() == AttributeDataType.MULTI_SELECT) {
+                    List<String> options = objectMapper.convertValue(
+                            spec.getValue(),
+                            new TypeReference<List<String>>() {}
+                    );
+                    spec.setValueIds(options);
+                }
+            }
             ProductEntity product = ProductEntity.builder()
                     .name(form.getName())
                     .slug(form.getSlug())
@@ -352,6 +412,7 @@ public class ProductServiceImpl implements ProductService {
                             .aggregateType("Product")
                             .aggregateId(savedProduct.getId())
                             .eventType(OutboxEventType.PRODUCT_CREATED)
+                            .idempotencyKey(idemKey + "es")
                             .payloadJson(objectMapper.writeValueAsString(esPayload))
                             .occurredAt(now)
                             .createdAt(now)
@@ -363,6 +424,7 @@ public class ProductServiceImpl implements ProductService {
                             .aggregateType("Product")
                             .aggregateId(savedProduct.getId())
                             .eventType(OutboxEventType.STOCK_CHANGED)
+                            .idempotencyKey(idemKey + "iv")
                             .payloadJson(objectMapper.writeValueAsString(invPayload))
                             .occurredAt(now)
                             .createdAt(now)

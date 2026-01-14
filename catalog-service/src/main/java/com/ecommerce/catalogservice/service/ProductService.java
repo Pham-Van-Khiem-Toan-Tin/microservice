@@ -15,7 +15,7 @@ import java.util.List;
 public interface ProductService {
     Page<ProductDTO> search(String keyword, List<ProductSearchField> fields, Pageable pageable);
     ProductDetailDTO productDetailDTO(String id);
-    void addProduct(ProductCreateForm form) throws JsonProcessingException;
+    void addProduct(ProductCreateForm form, String idemKey) throws JsonProcessingException;
     void updateProduct(ProductUpdateForm form, String id) throws JsonProcessingException;
     void deleteProduct(String id);
 }
