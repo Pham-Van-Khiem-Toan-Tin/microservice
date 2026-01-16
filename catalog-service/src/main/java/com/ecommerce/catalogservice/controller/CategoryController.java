@@ -11,6 +11,7 @@ import com.ecommerce.catalogservice.dto.response.CategoryDTO;
 import com.ecommerce.catalogservice.dto.response.CategoryDetailDTO;
 import com.ecommerce.catalogservice.dto.response.CategoryOptionDTO;
 import com.ecommerce.catalogservice.service.CategoryService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -90,8 +91,9 @@ public class CategoryController {
     public ApiResponse<Void> updateCategory(
             @RequestPart("data") CategoryUpdateForm categoryForm,
             @RequestPart(value = "image", required = false) MultipartFile image,
-            @PathVariable String id) {
-        categoryService.updateCategory(categoryForm, image, id);
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @PathVariable String id) throws JsonProcessingException {
+        categoryService.updateCategory(categoryForm, image, idempotencyKey, id);
         return ApiResponse.ok(UPDATE_CATEGORY_SUCCESS);
     }
     @PreAuthorize("hasAuthority('EDIT_CATEGORY')")

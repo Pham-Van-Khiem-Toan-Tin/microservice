@@ -17,7 +17,7 @@ public interface BrandService {
     BrandDetailDTO getBrand(String id);
     void addBrand(BrandCreateForm form, MultipartFile image);
 
-    void updateBrand(BrandEditForm form, MultipartFile image, String id);
+    void updateBrand(BrandEditForm form, MultipartFile image, String idemKey, String id);
 
     void deleteBrand(String id);
     List<BrandOptionDTOS> getBrandOptions();

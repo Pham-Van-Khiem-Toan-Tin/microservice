@@ -21,7 +21,7 @@ public class ProductUpdateForm {
     private String shortDescription;
     private Boolean hasVariants;
     private MultipartFile thumbnail;
-    private List<MultipartFile> gallery;
-    private ProductStatus status;
+    private List<MultipartFile> newGalleryImages;
+    private List<String> keptGalleryImageIds;
     private List<SkuItemForm> skus;
 }

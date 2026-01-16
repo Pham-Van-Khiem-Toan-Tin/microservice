@@ -2,6 +2,10 @@ package com.ecommerce.inventoryservice.service.impl;
 
 import com.ecommerce.inventoryservice.constants.Constants;
 import com.ecommerce.inventoryservice.dto.exception.BusinessException;
+import com.ecommerce.inventoryservice.dto.request.InventoryAdjustRequest;
+import com.ecommerce.inventoryservice.dto.response.InventoryAdjustResponse;
+import com.ecommerce.inventoryservice.dto.response.InventoryDTO;
+import com.ecommerce.inventoryservice.dto.response.InventoryStatus;
 import com.ecommerce.inventoryservice.entity.InventoryEntity;
 import com.ecommerce.inventoryservice.entity.InventoryHistoryEntity;
 import com.ecommerce.inventoryservice.entity.InventoryType;
@@ -9,8 +13,15 @@ import com.ecommerce.inventoryservice.repository.InventoryHistoryRepository;
 import com.ecommerce.inventoryservice.repository.InventoryRepository;
 import com.ecommerce.inventoryservice.service.InventoryService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Set;
 
 import static com.ecommerce.inventoryservice.constants.Constants.*;
 
@@ -20,6 +31,48 @@ public class InventoryServiceImpl implements InventoryService {
     InventoryHistoryRepository historyRepo;
     @Autowired
     InventoryRepository inventoryRepo;
+
+    @Override
+    public Page<InventoryDTO> search(String keyword, List<String> fields, String sort, int page, int size) {
+        Pageable pageable = PageRequest.of(
+                Math.max(page, 0),
+                Math.max(size, 1),
+                parseSort(sort)
+        );
+
+        String kw = keyword == null ? "" : keyword.trim();
+        Page<InventoryEntity> pageEntity =
+                kw.isBlank()
+                        ? inventoryRepo.findAll(pageable)
+                        : inventoryRepo.findBySkuCodeContainingIgnoreCase(kw, pageable);
+
+        return pageEntity.map(p -> {
+            int total = p.getTotalStock();
+            int reserved = p.getReservedStock();
+            int available = total - reserved;
+
+            int min = p.getMinStockLevel();
+            boolean lowStock = available > 0 && available <= min;
+            InventoryStatus status;
+            if (available <= 0) {
+                status = InventoryStatus.OUT_OF_STOCK;
+            } else if (lowStock) {
+                status = InventoryStatus.LOW_STOCK;
+            } else {
+                status = InventoryStatus.IN_STOCK;
+            }
+            return InventoryDTO.builder()
+                    .id(p.getId().toString())
+                    .skuCode(p.getSkuCode())
+                    .totalStock(total)
+                    .reservedStock(reserved)
+                    .availableStock(available)
+                    .lowStock(lowStock)
+                    .minStockLevel(min)
+                    .status(status)
+                    .build();
+        });
+    }
 
     @Override
     public void createInventory(String skuCode, Integer initialStock) {
@@ -37,6 +90,32 @@ public class InventoryServiceImpl implements InventoryService {
 
         // Log history
         logHistory(skuCode, initialStock, initialStock, InventoryType.IMPORT, "INITIAL_SETUP");
+    }
+
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "skuCode",
+            "totalStock",
+            "reservedStock",
+            "minStockLevel"
+    );
+
+    private Sort parseSort(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return Sort.by(Sort.Direction.ASC, "skuCode");
+        }
+
+        String[] parts = sort.split(":");
+        String field = parts[0].trim();
+        String dir = parts.length > 1 ? parts[1].trim() : "asc";
+
+        if (!ALLOWED_SORT_FIELDS.contains(field)) {
+            field = "skuCode"; // fallback an toàn
+        }
+
+        Sort.Direction direction =
+                "desc".equalsIgnoreCase(dir) ? Sort.Direction.DESC : Sort.Direction.ASC;
+
+        return Sort.by(direction, field);
     }
 
     // 2. Giữ hàng (Khi khách bấm đặt hàng)
@@ -76,5 +155,79 @@ public class InventoryServiceImpl implements InventoryService {
         history.setType(type);
         history.setReferenceId(ref);
         historyRepo.save(history);
+    }
+
+    @Transactional
+    @Override
+    public InventoryAdjustResponse adjustInventory(InventoryAdjustRequest req) {
+        String sku = req.getSkuCode() == null ? "" : req.getSkuCode().trim();
+        Integer qtyObj = req.getQuantity();
+        InventoryType type = req.getType();
+        String ref = (req.getNote() == null || req.getNote().isBlank())
+                ? "MANUAL_ADJUST"
+                : req.getNote().trim();
+        if (sku.isBlank() || type == null || qtyObj == null || qtyObj <= 0)
+            throw new BusinessException(VALIDATE_FAIL);
+
+
+        int qty = qtyObj;
+
+        // snapshot before
+        InventoryEntity before = inventoryRepo.findBySkuCode(sku)
+                .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
+
+        int beforeTotal = safe(before.getTotalStock());
+        int beforeReserved = safe(before.getReservedStock());
+
+        int updated;
+        int change; // quantityChange log history
+
+        switch (type) {
+            case IMPORT -> {
+                updated = inventoryRepo.incTotal(sku, qty);
+                change = qty;
+            }
+            case EXPORT -> {
+                updated = inventoryRepo.decTotalIfAvailable(sku, qty);
+                if (updated == 0) {
+                    throw new BusinessException(VALIDATE_FAIL);
+                }
+                change = -qty;
+            }
+            case ADJUST -> {
+                updated = inventoryRepo.setTotalIfNotBelowReserved(sku, qty);
+                if (updated == 0) {
+                    throw new BusinessException(VALIDATE_FAIL);
+                }
+                change = qty - beforeTotal; // delta
+            }
+            default -> throw new BusinessException(VALIDATE_FAIL);
+        }
+
+        if (updated == 0) {
+            // trường hợp rất hiếm: sku không tồn tại trong câu UPDATE
+            throw new BusinessException(VALIDATE_FAIL);
+        }
+
+        // snapshot after (1 lần thôi)
+        InventoryEntity after = inventoryRepo.findBySkuCode(sku)
+                .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
+
+        int afterTotal = safe(after.getTotalStock());
+        int afterReserved = safe(after.getReservedStock());
+
+        // log history: quantityChange = change, stockAfter = afterTotal
+        logHistory(sku, change, afterTotal, type, ref);
+
+        return InventoryAdjustResponse.builder()
+                .skuCode(sku)
+                .totalStock(afterTotal)
+                .reservedStock(afterReserved)
+                .availableStock(afterTotal - afterReserved)
+                .build();
+    }
+
+    private int safe(Integer v) {
+        return v == null ? 0 : v;
     }
 }

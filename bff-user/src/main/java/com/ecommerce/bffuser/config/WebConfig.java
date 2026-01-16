@@ -37,7 +37,7 @@ public class WebConfig {
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeExchange(auth -> auth
-                        .pathMatchers("/favicon.ico").permitAll()
+                        .pathMatchers("/favicon.ico", "/api/public/**", "/api/search/**").permitAll()
                         .anyExchange().authenticated())
                 .cors(Customizer.withDefaults())
 //                .formLogin(AbstractHttpConfigurer::disable)

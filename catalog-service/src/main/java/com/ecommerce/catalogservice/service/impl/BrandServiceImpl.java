@@ -6,16 +6,15 @@ import com.ecommerce.catalogservice.dto.request.brand.BrandCreateForm;
 import com.ecommerce.catalogservice.dto.request.brand.BrandEditForm;
 import com.ecommerce.catalogservice.dto.request.brand.BrandSearchField;
 import com.ecommerce.catalogservice.dto.response.*;
-import com.ecommerce.catalogservice.entity.BrandEntity;
-import com.ecommerce.catalogservice.entity.BrandStatus;
-import com.ecommerce.catalogservice.entity.CategoryEntity;
-import com.ecommerce.catalogservice.entity.ImageEntity;
+import com.ecommerce.catalogservice.entity.*;
 import com.ecommerce.catalogservice.repository.BrandRepository;
 import com.ecommerce.catalogservice.repository.CategoryRepository;
+import com.ecommerce.catalogservice.repository.OutboxRepository;
 import com.ecommerce.catalogservice.service.BrandService;
 import com.ecommerce.catalogservice.service.CloudinaryService;
 import com.ecommerce.catalogservice.utils.AuthenticationUtils;
 import com.ecommerce.catalogservice.utils.DateTimeUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -41,6 +40,10 @@ public class BrandServiceImpl implements BrandService {
     MongoTemplate mongoTemplate;
     @Autowired
     CategoryRepository categoryRepository;
+    @Autowired
+    OutboxRepository outboxRepository;
+    @Autowired
+    ObjectMapper objectMapper;
 
     @Override
     public Page<BrandDTOS> searchBrands(String keyword, List<BrandSearchField> fields, Pageable pageable) {
@@ -133,7 +136,7 @@ public class BrandServiceImpl implements BrandService {
     }
 
     @Override
-    public void updateBrand(BrandEditForm form, MultipartFile image, String id) {
+    public void updateBrand(BrandEditForm form, MultipartFile image, String idemKey, String id) {
         if (!StringUtils.hasText(form.getName())
                 || !StringUtils.hasText(form.getSlug())
                 || form.getCategories() == null
@@ -147,21 +150,51 @@ public class BrandServiceImpl implements BrandService {
             throw new BusinessException(VALIDATE_FAIL);
         if (!brand.getSlug().equals(form.getSlug()) && brandRepository.existsBySlug(form.getSlug()))
             throw new BusinessException(VALIDATE_FAIL);
-        Instant now = Instant.now();
-        brand.setName(form.getName());
-        brand.setSlug(form.getSlug());
-        brand.setDescription(form.getDescription());
-        brand.setCategories(form.getCategories());
-        brand.setStatus(form.getStatus());
-        if (image != null && !image.isEmpty()) {
-            cloudinaryService.deleteImage(brand.getLogo().getImagePublicId(), "brands");
-            CloudinaryUploadResult uploadResult = cloudinaryService.uploadImage(image, "brands");
-            ImageEntity logo = new ImageEntity(uploadResult.getUrl(), uploadResult.getPublicId());
-            brand.setLogo(logo);
+        String logoChange = null;
+        try {
+            Instant now = Instant.now();
+            brand.setName(form.getName());
+            brand.setSlug(form.getSlug());
+            brand.setDescription(form.getDescription());
+            brand.setCategories(form.getCategories());
+            brand.setStatus(form.getStatus());
+            if (image != null && !image.isEmpty()) {
+                cloudinaryService.deleteImage(brand.getLogo().getImagePublicId(), "brands");
+                CloudinaryUploadResult uploadResult = cloudinaryService.uploadImage(image, "brands");
+                ImageEntity logo = new ImageEntity(uploadResult.getUrl(), uploadResult.getPublicId());
+                brand.setLogo(logo);
+                logoChange = logo.getImagePublicId();
+            }
+            brand.setUpdatedBy(AuthenticationUtils.getUserId());
+            brand.setUpdatedAt(now);
+            BrandEntity saved = brandRepository.save(brand);
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("brandId", saved.getId());
+            payload.put("name", saved.getName());
+            payload.put("slug", saved.getSlug());
+            payload.put("logo", Map.of(
+                    "url", saved.getLogo() != null ? saved.getLogo().getImageUrl() : null,
+                    "publicId", saved.getLogo() != null ? saved.getLogo().getImagePublicId() : null
+            ));
+
+            outboxRepository.save(
+                    OutboxEventEntity.builder()
+                            .aggregateType("Brand")
+                            .aggregateId(saved.getId())
+                            .eventType(OutboxEventType.BRAND_UPSERT)
+                            .idempotencyKey(idemKey + "es")
+                            .payloadJson(objectMapper.writeValueAsString(payload))
+                            .occurredAt(now)
+                            .createdAt(now)
+                            .build()
+            );
+        } catch (Exception e) {
+            if (logoChange != null) {
+                cloudinaryService.deleteImage(brand.getLogo().getImagePublicId(), "brands");
+            }
+            throw new BusinessException(VALIDATE_FAIL);
         }
-        brand.setUpdatedBy(AuthenticationUtils.getUserId());
-        brand.setUpdatedAt(now);
-        brandRepository.save(brand);
+
     }
 
     @Override

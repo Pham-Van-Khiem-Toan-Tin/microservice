@@ -14,6 +14,7 @@ import com.ecommerce.identityservice.service.EmailService;
 import com.ecommerce.identityservice.utils.OtpUtils;
 import jakarta.mail.MessagingException;
 import jakarta.persistence.EntityManager;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,18 +26,13 @@ import java.util.Set;
 
 @Service
 @Slf4j
+@AllArgsConstructor
 public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EntityManager entityManager;
     private final EmailService emailService;
-
-    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, RoleRepository roleRepository, EntityManager entityManager, EmailService emailService) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.entityManager = entityManager;
-        this.emailService = emailService;
-    }
+    private final RoleRepository roleRepository;
 
     @Transactional
     @Override
@@ -59,7 +55,8 @@ public class AuthServiceImpl implements AuthService {
                 .otpEmail(otp)
                 .otpEmailExpiration(Instant.now().plusSeconds(120))
                 .build();
-//        userEntity.setRole(role);
+        RoleEntity role = roleRepository.findByCode("CUSTOMER");
+        userEntity.setRole(role);
         UserEntity createdUser = userRepository.save(userEntity);
         try {
             emailService.sendOtpEmail(createdUser.getEmail(), createdUser.getFirstName() + createdUser.getLastName(), otp, 2);

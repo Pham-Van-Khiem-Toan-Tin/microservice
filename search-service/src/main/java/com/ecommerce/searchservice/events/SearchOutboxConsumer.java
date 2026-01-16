@@ -12,7 +12,9 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
@@ -53,10 +55,13 @@ public class SearchOutboxConsumer {
                 ack.acknowledge();
                 return;
             }
-
+            Set<String> allowed = Set.of(
+                    "PRODUCT_CREATED", "PRODUCT_INSERT", "PRODUCT_UPSERT", "PRODUCT_UPDATED",
+                    "BRAND_UPSERT", "CATEGORY_UPSERT"
+            );
             // ✅ ĐỔI cho khớp eventType bạn đang lưu ở catalog
             // Nếu catalog lưu "PRODUCT_CREATED" thì để vậy
-            if (!"PRODUCT_CREATED".equals(msg.getEventType()) && !"PRODUCT_INSERT".equals(msg.getEventType())) {
+            if (!allowed.contains(msg.getEventType())) {
                 ack.acknowledge();
                 return;
             }
@@ -81,15 +86,47 @@ public class SearchOutboxConsumer {
                     new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}
             );
 
-            String productId = (String) payload.get("productId");
-            if (productId == null || productId.isBlank()) {
-                log.warn("payload missing productId. payload={}", payload);
-                ack.acknowledge();
-                return;
-            }
+            switch (msg.getEventType()) {
+                case "BRAND_UPSERT" -> {
+                    String brandId = (String) payload.get("brandId");
+                    String brandName = (String) payload.get("name");
+                    String brandSlug = (String) payload.get("slug");
+                    if (brandId == null || brandName == null || brandSlug == null) {
+                        log.warn("Invalid brand payload: {}", payload);
+                        ack.acknowledge();
+                        return;
+                    }
 
-            // 6) Upsert ES
-            elasticService.upsertProduct(productId, payload);
+                    elasticService.updateBrandInProducts(brandId, brandName, brandSlug);
+                }
+                case "CATEGORY_UPSERT" -> {
+                    String categoryId = (String) payload.get("id");
+                    String name = (String) payload.get("name");
+                    String slug = (String) payload.get("slug");
+
+                    List<String> ancestorIds = null;
+                    Object raw = payload.get("ancestorIds");
+                    if (raw instanceof List<?> l) {
+                        ancestorIds = l.stream().map(String::valueOf).toList();
+                    }
+
+                    if (categoryId == null || categoryId.isBlank()) {
+                        ack.acknowledge();
+                        return;
+                    }
+
+                    elasticService.updateCategoryInProducts(categoryId, name, slug, ancestorIds);
+                }
+                default -> { // product events
+                    String productId = (String) payload.get("productId");
+                    if (productId == null || productId.isBlank()) {
+                        log.warn("product payload missing productId. payload={}", payload);
+                        ack.acknowledge();
+                        return;
+                    }
+                    elasticService.upsertProduct(productId, payload);
+                }
+            }
 
             ack.acknowledge();
         } catch (Exception e) {

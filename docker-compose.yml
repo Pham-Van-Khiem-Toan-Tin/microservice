@@ -1,4 +1,15 @@
-version: "3"
+version: "3.8"
+
+x-common: &common
+  restart: unless-stopped
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+  networks:
+    - ecommerce-net
+
 services:
   kafka:
     image: confluentinc/cp-kafka:7.6.1
@@ -15,18 +26,30 @@ services:
       KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092"
       KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
 
+      # single node
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+      # bớt “nặng” cho Desktop (nếu bạn không cần message cực to)
       KAFKA_MESSAGE_MAX_BYTES: 10485760
       KAFKA_SOCKET_REQUEST_MAX_BYTES: 104857600
+
       KAFKA_LOG_DIRS: "/var/lib/kafka/data"
       CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+
+      # ✅ giảm rủi ro OOM / GC giật
+      KAFKA_HEAP_OPTS: "-Xms512m -Xmx512m"
     volumes:
       - kafka_data:/var/lib/kafka/data
-    networks:
-      - ecommerce-net
+    <<: *common
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -38,9 +61,15 @@ services:
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
       - DYNAMIC_CONFIG_ENABLED=true
     depends_on:
-      - kafka
-    networks:
-      - ecommerce-net
+      kafka:
+        condition: service_healthy
+    <<: *common
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 
   debezium:
     image: debezium/connect:2.5
@@ -60,21 +89,36 @@ services:
       - VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
       - KEY_CONVERTER_SCHEMAS_ENABLE=false
       - VALUE_CONVERTER_SCHEMAS_ENABLE=false
+
+      # ✅ Debezium/Connect cũng Java -> giới hạn heap để đỡ “đơ”
+      - JAVA_OPTS=-Xms512m -Xmx512m
     depends_on:
-      - kafka
-    networks:
-      - ecommerce-net
+      kafka:
+        condition: service_healthy
+    <<: *common
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/ >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
   redis:
     image: redis:7.2
     container_name: redis
     ports:
       - "6379:6379"
-    command: redis-server --appendonly yes
+    command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis_data:/data
-    networks:
-      - ecommerce-net
+    <<: *common
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
     container_name: elasticsearch
@@ -82,7 +126,12 @@ services:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - xpack.security.http.ssl.enabled=false
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+
+      # ✅ ES hay là “thủ phạm” ngốn RAM -> set rõ heap
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+
+      # ✅ giảm áp lực disk/CPU cho máy dev (tuỳ nhu cầu)
+      - indices.memory.index_buffer_size=10%
     ports:
       - "9200:9200"
       - "9300:9300"
@@ -92,10 +141,17 @@ services:
       memlock:
         soft: -1
         hard: -1
-    networks:
-      - ecommerce-net
+      nofile:
+        soft: 65536
+        hard: 65536
+    <<: *common
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9200 >/dev/null 2>&1 || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 30
+      start_period: 40s
 
-    # ✅ Kibana (UI)
   kibana:
     image: docker.elastic.co/kibana/kibana:8.12.2
     container_name: kibana
@@ -104,41 +160,57 @@ services:
     ports:
       - "5601:5601"
     depends_on:
-      - elasticsearch
-    networks:
-      - ecommerce-net
+      elasticsearch:
+        condition: service_healthy
+    <<: *common
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5601/api/status >/dev/null 2>&1 || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 30
+      start_period: 40s
+
   mongo:
     image: mongo:7
     container_name: mongo
     ports:
       - "27018:27017"
-    command: [ "mongod", "--replSet", "rs0", "--bind_ip_all" ]
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     volumes:
       - mongo_data:/data/db
-    networks:
-      - ecommerce-net
+    <<: *common
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --host localhost:27017 --eval 'db.runCommand({ ping: 1 }).ok' | grep 1 >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
 
   mongo-init:
     image: mongo:7
+    container_name: mongo-init
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     networks:
       - ecommerce-net
+    restart: "no"
     entrypoint: >
       bash -lc '
-      sleep 3;
       mongosh --host mongo:27017 --eval "
         rs.initiate({
           _id: \"rs0\",
           members: [{ _id: 0, host: \"mongo:27017\" }]
         })
-      ";
+      " || true;
       '
+
 volumes:
   kafka_data:
   redis_data:
   es_data:
   mongo_data:
+
 networks:
   ecommerce-net:
     driver: bridge

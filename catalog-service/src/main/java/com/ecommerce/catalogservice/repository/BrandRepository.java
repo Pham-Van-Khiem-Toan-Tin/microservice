@@ -2,9 +2,11 @@ package com.ecommerce.catalogservice.repository;
 
 import com.ecommerce.catalogservice.entity.BrandEntity;
 import com.ecommerce.catalogservice.entity.BrandStatus;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,4 +21,6 @@ public interface BrandRepository extends MongoRepository<BrandEntity, String> {
     boolean existsBySlug(String slug);
 
     List<BrandEntity> findAllByStatus(BrandStatus status);
+
+    List<BrandEntity> findByStatusAndCategoriesIn(BrandStatus status, Collection<String> categories, Sort sort);
 }

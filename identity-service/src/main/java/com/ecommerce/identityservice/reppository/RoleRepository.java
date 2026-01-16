@@ -11,4 +11,6 @@ import java.util.UUID;
 public interface RoleRepository extends JpaRepository<RoleEntity, UUID>, JpaSpecificationExecutor<RoleEntity>, RoleRepositoryCustom {
 
     boolean existsByCode(String code);
+
+    RoleEntity findByCode(String code);
 }

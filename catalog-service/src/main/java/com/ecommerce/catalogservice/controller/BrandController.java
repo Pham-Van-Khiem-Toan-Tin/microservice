@@ -63,8 +63,9 @@ public class BrandController {
     public ApiResponse<Void> updateBrand(
             @RequestPart("data") BrandEditForm form,
             @RequestPart(value = "logo", required = false) MultipartFile logo,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @PathVariable String id) {
-        brandService.updateBrand(form, logo, id);
+        brandService.updateBrand(form, logo, idempotencyKey, id);
         return ApiResponse.ok(BRAND_EDIT_SUCCESS);
     }
     @PreAuthorize("hasAuthority('EDIT_BRAND')")

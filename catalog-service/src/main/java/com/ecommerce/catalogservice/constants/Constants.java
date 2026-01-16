@@ -11,7 +11,8 @@ public enum Constants {
     VALIDATE_FAIL(4001, "Dữ liệu không hợp lệ."),
 
     //product
-    PRODUCT_DELETE_SUCCESS(200, "Xóa sản phẩm thành công"),
+    PRODUCT_EDIT_SUCCESS(1011, "Cập nhật sản phẩm thành công"),
+    PRODUCT_DELETE_SUCCESS(1010, "Xóa sản phẩm thành công"),
     PRODUCT_CREATE_SUCCESS(1009, "Thêm mới sản phẩm thành công"),
 
     //brand

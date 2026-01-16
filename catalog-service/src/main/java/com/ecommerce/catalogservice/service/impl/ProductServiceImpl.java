@@ -40,6 +40,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.ecommerce.catalogservice.constants.Constants.*;
 
@@ -265,7 +266,8 @@ public class ProductServiceImpl implements ProductService {
             Instant currentTime = Instant.now();
             List<ProductSpecs> specs = objectMapper.readValue(
                     form.getSpecs(),
-                    new TypeReference<List<ProductSpecs>>() {}
+                    new TypeReference<List<ProductSpecs>>() {
+                    }
             );
             for (ProductSpecs spec : specs) {
                 if (spec.getDataType() == AttributeDataType.SELECT) {
@@ -278,7 +280,8 @@ public class ProductServiceImpl implements ProductService {
                 if (spec.getDataType() == AttributeDataType.MULTI_SELECT) {
                     List<String> options = objectMapper.convertValue(
                             spec.getValue(),
-                            new TypeReference<List<String>>() {}
+                            new TypeReference<List<String>>() {
+                            }
                     );
                     spec.setValueIds(options);
                 }
@@ -320,11 +323,11 @@ public class ProductServiceImpl implements ProductService {
                         .name(sku.getName())
                         .thumbnail(skuImageItem)
                         .price(sku.getPrice())
-                        .originalPrice(sku.getPrice())
+                        .originalPrice(sku.getOriginalPrice())
                         .costPrice(sku.getCostPrice())
                         .stock(sku.getStock())
-                        .active(sku.getActive())
-                        .discontinued(false)
+                        .active(sku.getActive() ? SkuStatus.ACTIVE : SkuStatus.INACTIVE)
+                        .discontinued(null)
                         .createdAt(updatedProduct.getCreatedAt())
                         .selections(sku.getSpecs()
                                 .stream()
@@ -353,41 +356,8 @@ public class ProductServiceImpl implements ProductService {
              * 1. Payload cho Elasticsearch
              * Event: PRODUCT_UPSERT
              * ========================= */
-            Map<String, Object> esPayload = new HashMap<>();
-            esPayload.put("productId", savedProduct.getId());
-            esPayload.put("name", savedProduct.getName());
-            esPayload.put("slug", savedProduct.getSlug());
-            esPayload.put("brandId", savedProduct.getBrandId());
-            esPayload.put("categoryId", savedProduct.getCategoryId());
-            esPayload.put("status", savedProduct.getStatus().name());
-            esPayload.put("minPrice", savedProduct.getMinPrice());
-            esPayload.put("maxPrice", savedProduct.getMaxPrice());
-            esPayload.put("shortDescription", savedProduct.getShortDescription());
+            Map<String, Object> esPayload = buildProductEsPayload(savedProduct, skuEntityList, brandEntity, categoryEntity);
 
-            esPayload.put("thumbnail", Map.of(
-                    "url", savedProduct.getThumbnail().getImageUrl(),
-                    "publicId", savedProduct.getThumbnail().getImagePublicId()
-            ));
-
-            esPayload.put("gallery", savedProduct.getGallery().stream()
-                    .map(img -> Map.of(
-                            "url", img.getImageUrl(),
-                            "publicId", img.getImagePublicId()
-                    ))
-                    .toList());
-
-            esPayload.put("specs", savedProduct.getSpecs());
-
-            esPayload.put("skus", skuEntityList.stream()
-                    .map(sku -> Map.of(
-                            "skuId", sku.getId(),
-                            "skuCode", sku.getSkuCode(),
-                            "name", sku.getName(),
-                            "price", sku.getPrice(),
-                            "originalPrice", sku.getOriginalPrice(),
-                            "active", sku.getActive()
-                    ))
-                    .toList());
 
             /* =========================
              * 2. Payload cho Inventory
@@ -449,156 +419,197 @@ public class ProductServiceImpl implements ProductService {
 
     @Transactional
     @Override
-    public void updateProduct(ProductUpdateForm form, String id) throws JsonProcessingException {
-        if (!StringUtils.hasText(id)) {
-            throw new BusinessException(VALIDATE_FAIL);
-        }
-        ProductEntity product = productRepository.findById(id).orElseThrow(
+    public void updateProduct(ProductUpdateForm form, String id, String idemKey) throws JsonProcessingException {
+        if (!StringUtils.hasText(form.getName())
+                || !StringUtils.hasText(form.getDescription())
+                || !StringUtils.hasText(form.getSlug())
+                || !StringUtils.hasText(form.getShortDescription())
+                || !StringUtils.hasText(form.getBrandId())
+                || !StringUtils.hasText(form.getCategoryId())
+                || form.getSpecs() == null || form.getSpecs().isEmpty()
+                || !id.equals(form.getId())
+        ) throw new BusinessException(VALIDATE_FAIL);
+        String thumbnailId = null;
+        List<String> galleryIds = null;
+        List<String> skuImageIds = new ArrayList<>();
+        ProductEntity product = productRepository.findById(form.getId()).orElseThrow(
                 () -> new BusinessException(VALIDATE_FAIL)
         );
-        if (StringUtils.hasText(form.getCategoryId())) {
-            categoryRepository.findById(form.getCategoryId()).orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
-            product.setCategoryId(form.getCategoryId());
-        }
-        if (StringUtils.hasText(form.getBrandId())) {
-            brandRepository.findById(form.getBrandId()).orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
-            product.setBrandId(form.getBrandId());
-        }
-        if (StringUtils.hasText(form.getName())) product.setName(form.getName());
-        if (StringUtils.hasText(form.getSlug())) product.setSlug(form.getSlug());
-        if (StringUtils.hasText(form.getDescription())) product.setDescription(form.getDescription());
-        if (StringUtils.hasText(form.getShortDescription())) product.setShortDescription(form.getShortDescription());
-        if (form.getWarrantyMonth() != null) product.setWarrantyMonth(form.getWarrantyMonth());
-        if (form.getStatus() != null) product.setStatus(form.getStatus());
-        if (form.getHasVariants() != null) product.setHasVariant(form.getHasVariants());
-        if (form.getAttributes() != null) product.setVariantGroups(form.getAttributes());
-        if (StringUtils.hasText(form.getSpecs())) {
+        try {
+            if (form.getThumbnail() != null) {
+                CloudinaryUploadResult thumbnailResult = cloudinaryService.uploadImage(form.getThumbnail(), "products");
+                thumbnailId = thumbnailResult.getPublicId();
+                cloudinaryService.deleteImage(product.getThumbnail().getImagePublicId(), "products");
+                product.setThumbnail(new ImageEntity(thumbnailResult.getUrl(), thumbnailResult.getPublicId()));
+            }
+            List<String> galleryImageIds = product.getGallery().stream()
+                    .map(ImageEntity::getImagePublicId)
+                    .toList();
+            List<String> galleryIdsDelete = galleryImageIds.stream()
+                    .filter(url -> !form.getKeptGalleryImageIds().contains(url))
+                    .toList();
+            if (!galleryIdsDelete.isEmpty()) {
+                cloudinaryService.deleteManyImage(galleryIdsDelete);
+                List<ImageEntity> newGallery = product.getGallery()
+                        .stream()
+                        .filter(gl -> !galleryIdsDelete.contains(gl.getImagePublicId()))
+                        .toList();
+                product.setGallery(newGallery);
+            }
+            List<ImageEntity> galleryImages = new ArrayList<>();
+            if (form.getNewGalleryImages() != null && !form.getNewGalleryImages().isEmpty()) {
+                for (MultipartFile imageFile : form.getNewGalleryImages()) {
+                    CloudinaryUploadResult galleryResult = cloudinaryService.uploadImage(imageFile, "products");
+                    ImageEntity galleryItem = new ImageEntity(galleryResult.getUrl(), galleryResult.getPublicId());
+                    galleryImages.add(galleryItem);
+                }
+                product.setGallery(Stream.concat(product.getGallery().stream(), galleryImages.stream()).toList());
+                galleryIds = galleryImages.stream().map(ImageEntity::getImagePublicId).toList();
+            }
+            if (!form.getCategoryId().equals(product.getCategoryId())) {
+                CategoryEntity categoryEntity = categoryRepository.findById(form.getCategoryId()).orElseThrow(
+                        () -> new BusinessException(VALIDATE_FAIL)
+                );
+                product.setCategoryId(categoryEntity.getId());
+            }
+            if (!form.getBrandId().equals(product.getBrandId())) {
+                BrandEntity brandEntity = brandRepository.findById(form.getBrandId()).orElseThrow(
+                        () -> new BusinessException(VALIDATE_FAIL)
+                );
+                product.setBrandId(brandEntity.getId());
+            }
+            Instant currentTime = Instant.now();
             List<ProductSpecs> specs = objectMapper.readValue(
                     form.getSpecs(),
                     new TypeReference<List<ProductSpecs>>() {
                     }
             );
-            product.setSpecs(specs);
-        }
-        product.setUpdatedAt(Instant.now());
-        if (form.getThumbnail() != null && !form.getThumbnail().isEmpty()) {
-            // Upload ảnh mới
-            CloudinaryUploadResult newThumbResult = cloudinaryService.uploadImage(form.getThumbnail(), "products");
-
-            // Xóa ảnh cũ trên Cloudinary (nếu tồn tại)
-            if (product.getThumbnail() != null && StringUtils.hasText(product.getThumbnail().getImagePublicId())) {
-                cloudinaryService.deleteImage(product.getThumbnail().getImagePublicId(), "products");
+            for (ProductSpecs spec : specs) {
+                if (spec.getDataType() == AttributeDataType.SELECT) {
+                    String option = objectMapper.convertValue(
+                            spec.getValue(),
+                            String.class
+                    );
+                    spec.setValueId(option);
+                }
+                if (spec.getDataType() == AttributeDataType.MULTI_SELECT) {
+                    List<String> options = objectMapper.convertValue(
+                            spec.getValue(),
+                            new TypeReference<List<String>>() {
+                            }
+                    );
+                    spec.setValueIds(options);
+                }
             }
+            product.setName(form.getName());
+            product.setSlug(form.getSlug());
+            product.setHasVariant(form.getHasVariants());
+            product.setWarrantyMonth(form.getWarrantyMonth());
+            product.setDescription(form.getDescription());
+            product.setShortDescription(form.getShortDescription());
+            product.setUpdatedAt(currentTime);
+            product.setUpdatedBy(AuthenticationUtils.getUserId());
+            product.setVariantGroups(form.getAttributes());
+            List<SkuEntity> skus = skuRepository.findAllBySpuId(product.getId());
+            List<String> skuUpdateIds = form.getSkus().stream().map(SkuItemForm::getId)
+                    .filter(StringUtils::hasText)
+                    .toList();
+            boolean validateIds = skus.stream().allMatch(sku -> skuUpdateIds.contains(sku.getId()));
+            if (!validateIds)
+                throw new BusinessException(VALIDATE_FAIL);
+            if (form.getSkus().size() < skus.size())
+                throw new BusinessException(VALIDATE_FAIL);
+            List<SkuEntity> skuEntityList = new ArrayList<>();
+            for (SkuItemForm skuItemForm : form.getSkus()) {
+                if (!StringUtils.hasText(skuItemForm.getId())) {
+                    if (skuItemForm.getImage() == null)
+                        throw new BusinessException(VALIDATE_FAIL);
+                    CloudinaryUploadResult skuResult = cloudinaryService.uploadImage(skuItemForm.getImage(), "skus");
+                    ImageEntity skuImage = new ImageEntity(skuResult.getUrl(), skuResult.getPublicId());
+                    skuImageIds.add(skuImage.getImagePublicId());
+                    SkuEntity skuEntity = SkuEntity.builder()
+                            .name(skuItemForm.getName())
+                            .spuId(product.getId())
+                            .stock(0)
+                            .active(skuItemForm.getActive() ? SkuStatus.ACTIVE : SkuStatus.INACTIVE)
+                            .selections(skuItemForm.getSpecs().stream()
+                                    .map(sko -> SkuSelect
+                                            .builder()
+                                            .groupId(sko.getGroupId())
+                                            .valueId(sko.getId())
+                                            .build())
+                                    .toList())
+                            .thumbnail(skuImage)
+                            .createdAt(Instant.now())
+                            .originalPrice(skuItemForm.getOriginalPrice())
+                            .price(skuItemForm.getPrice())
+                            .skuCode(skuItemForm.getCode())
+                            .costPrice(skuItemForm.getCostPrice())
+                            .build();
+                    skuEntityList.add(skuEntity);
+                } else {
+                    SkuEntity skuEntity = skus.stream().filter(sk -> sk.getId()
+                                    .equals(skuItemForm.getId()))
+                            .findFirst()
+                            .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
+                    if (skuItemForm.getImage() != null) {
+                        CloudinaryUploadResult skuResult = cloudinaryService.uploadImage(skuItemForm.getImage(), "skus");
+                        skuImageIds.add(skuResult.getPublicId());
+                        cloudinaryService.deleteImage(skuEntity.getThumbnail().getImagePublicId(), "skus");
+                        skuEntity.setThumbnail(new ImageEntity(skuResult.getUrl(), skuResult.getPublicId()));
+                    }
+                    skuEntity.setName(skuItemForm.getName());
+                    skuEntity.setUpdatedAt(Instant.now());
+                    skuEntity.setActive(skuItemForm.getActive() ? SkuStatus.ACTIVE : SkuStatus.INACTIVE);
 
-            // Set ảnh mới
-            product.setThumbnail(new ImageEntity(newThumbResult.getUrl(), newThumbResult.getPublicId()));
+                    skuEntity.setUpdatedBy(AuthenticationUtils.getUserId());
+                    skuEntity.setOriginalPrice(skuItemForm.getOriginalPrice());
+                    skuEntity.setPrice(skuItemForm.getPrice());
+                    skuEntity.setCostPrice(skuItemForm.getCostPrice());
+                    skuEntity.setPrice(skuItemForm.getPrice());
+                    skuEntityList.add(skuEntity);
+                }
+            }
+            double min = skuEntityList.stream().mapToDouble(SkuEntity::getPrice).min().orElse(0);
+            double max = skuEntityList.stream().mapToDouble(SkuEntity::getPrice).max().orElse(0);
+            product.setMinPrice(min);
+            product.setMaxPrice(max);
+            ProductEntity saved = productRepository.save(product);
+            List<SkuEntity> finalSkus = skuRepository.saveAll(skuEntityList);
+            CategoryEntity categoryEntity = categoryRepository.findById(saved.getCategoryId())
+                    .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
+            BrandEntity brandEntity = brandRepository.findById(saved.getBrandId())
+                    .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
+            Map<String, Object> esPayload = buildProductEsPayload(saved, finalSkus, brandEntity, categoryEntity);
+            Instant now = Instant.now();
+
+
+            outboxRepository.save(
+                    OutboxEventEntity.builder()
+                            .aggregateType("Product")
+                            .aggregateId(saved.getId())
+                            .eventType(OutboxEventType.PRODUCT_UPSERT) // hoặc PRODUCT_UPDATED
+                            .idempotencyKey(idemKey + "es")           // ensure unique
+                            .payloadJson(objectMapper.writeValueAsString(esPayload))
+                            .occurredAt(now)
+                            .createdAt(now)
+                            .build()
+            );
+        } catch (Exception e) {
+            if (StringUtils.hasText(thumbnailId)) {
+                cloudinaryService.deleteImage(thumbnailId, "products");
+            }
+            if (galleryIds != null) {
+                cloudinaryService.deleteManyImage(galleryIds);
+            }
+            if (!skuImageIds.isEmpty()) {
+                cloudinaryService.deleteManyImage(skuImageIds);
+            }
+            if (e instanceof JsonProcessingException) {
+                throw new BusinessException(VALIDATE_FAIL);
+            }
+            throw e;
         }
-
-        // 5. Xử lý Gallery
-        List<ImageEntity> currentGallery = product.getGallery() != null ? product.getGallery() : new ArrayList<>();
-
-        // 5a. Xóa ảnh cũ theo request
-//        if (form.getGallery() != null && !form.getGallery().isEmpty()) {
-//            // Lọc ra các ảnh cần xóa để gọi Cloudinary delete
-//            List<String> idsToDelete = form.getDeletedGalleryIds();
-//            cloudinaryService.deleteManyImage(idsToDelete); // Xóa trên Cloud
-//
-//            // Xóa trong List object
-//            currentGallery.removeIf(img -> idsToDelete.contains(img.getImagePublicId()));
-//        }
-//
-//        // 5b. Thêm ảnh mới vào Gallery
-//        if (form.getNewGalleryImages() != null && !form.getNewGalleryImages().isEmpty()) {
-//            for (MultipartFile file : form.getNewGalleryImages()) {
-//                CloudinaryUploadResult galleryResult = cloudinaryService.uploadImage(file, "products");
-//                currentGallery.add(new ImageEntity(galleryResult.getUrl(), galleryResult.getPublicId()));
-//            }
-//        }
-//        product.setGallery(currentGallery);
-//
-//        // Lưu Product trước để lấy ID (dù ID đã có, nhưng để chắc chắn transaction flow)
-//        ProductEntity savedProduct = productRepository.save(product);
-//
-//        // 6. Xử lý SKU
-//        if (form.getSkus() != null && !form.getSkus().isEmpty()) {
-//            List<SkuEntity> skuEntitiesToSave = new ArrayList<>();
-//
-//            for (ProductUpdateForm.SkuUpdateItem skuItemForm : form.getSkus()) {
-//                SkuEntity skuEntity;
-//
-//                // Case A: Update SKU cũ
-//                if (StringUtils.hasText(skuItemForm.getId())) {
-//                    skuEntity = skuRepository.findById(skuItemForm.getId()).orElse(null);
-//                    if (skuEntity == null) continue; // Skip nếu ID rác
-//
-//                    if (StringUtils.hasText(skuItemForm.getName())) skuEntity.setName(skuItemForm.getName());
-//                    if (StringUtils.hasText(skuItemForm.getCode())) skuEntity.setSkuCode(skuItemForm.getCode());
-//                    if (skuItemForm.getPrice() != null) skuEntity.setPrice(skuItemForm.getPrice());
-//                    if (skuItemForm.getStock() != null) skuEntity.setStock(skuItemForm.getStock());
-//                    if (skuItemForm.getActive() != null) skuEntity.setActive(skuItemForm.getActive());
-//                    if (skuItemForm.getSelections() != null) skuEntity.setSelections(skuItemForm.getSelections());
-//
-//                    // Update ảnh SKU nếu có file mới
-//                    if (skuItemForm.getImage() != null && !skuItemForm.getImage().isEmpty()) {
-//                        // Xóa ảnh cũ SKU nếu khác ảnh thumbnail gốc
-//                        if (skuEntity.getImage() != null
-//                                && !skuEntity.getImage().getImagePublicId().equals(savedProduct.getThumbnail().getImagePublicId())) {
-//                            cloudinaryService.deleteImage(skuEntity.getImage().getImagePublicId(), "skus");
-//                        }
-//                        CloudinaryUploadResult skuResult = cloudinaryService.uploadImage(skuItemForm.getImage(), "skus");
-//                        skuEntity.setImage(new ImageEntity(skuResult.getUrl(), skuResult.getPublicId()));
-//                    }
-//
-//                } else {
-//                    // Case B: Tạo SKU Mới
-//                    ImageEntity skuImageItem;
-//                    if (skuItemForm.getImage() != null && !skuItemForm.getImage().isEmpty()) {
-//                        CloudinaryUploadResult skuResult = cloudinaryService.uploadImage(skuItemForm.getImage(), "skus");
-//                        skuImageItem = new ImageEntity(skuResult.getUrl(), skuResult.getPublicId());
-//                    } else {
-//                        // Nếu không up ảnh riêng, dùng thumbnail của Product
-//                        skuImageItem = new ImageEntity(savedProduct.getThumbnail().getImageUrl(), savedProduct.getThumbnail().getImagePublicId());
-//                    }
-//
-//                    skuEntity = SkuEntity.builder()
-//                            .spuId(savedProduct.getId())
-//                            .skuCode(skuItemForm.getCode())
-//                            .name(skuItemForm.getName())
-//                            .image(skuImageItem)
-//                            .price(skuItemForm.getPrice() != null ? skuItemForm.getPrice() : 0.0)
-//                            .originalPrice(skuItemForm.getPrice() != null ? skuItemForm.getPrice() : 0.0)
-//                            .stock(skuItemForm.getStock() != null ? skuItemForm.getStock() : 0)
-//                            .active(true)
-//                            .discontinued(false)
-//                            .soldCount(0L)
-//                            .createdAt(Instant.now())
-//                            .build();
-//                }
-//                skuEntity.setUpdatedAt(Instant.now());
-//                skuEntitiesToSave.add(skuEntity);
-//            }
-
-//            List<SkuEntity> savedSkus = skuRepository.saveAll(skuEntitiesToSave);
-//
-//            // Cập nhật lại Min/Max price cho Product
-//            double min = savedSkus.stream().mapToDouble(SkuEntity::getPrice).min().orElse(0);
-//            double max = savedSkus.stream().mapToDouble(SkuEntity::getPrice).max().orElse(0);
-//            savedProduct.setMinPrice(min);
-//            savedProduct.setMaxPrice(max);
-//            productRepository.save(savedProduct);
-//
-//            // Gửi Kafka Event (Product Updated)
-//            // Lưu ý: Có thể bạn cần tạo event class riêng hoặc dùng lại cấu trúc map
-//            // Ở đây mình tái sử dụng ProductCreatedEvent.SkuInitData cho đơn giản, hoặc bạn gửi full DTO
-//            List<ProductCreatedEvent.SkuInitData> skuDataList = savedSkus.stream()
-//                    .map(sku -> new ProductCreatedEvent.SkuInitData(
-//                            sku.getSkuCode(),
-//                            sku.getStock()
-//                    )).toList();
-//            ProductCreatedEvent event = new ProductCreatedEvent(savedProduct.getId(), skuDataList);
-//            // Kafka topic: có thể dùng chung created hoặc topic update riêng
-//            kafkaTemplate.send("catalog.product.updated", savedProduct.getId(), event);
-//        }
     }
 
     @Override
@@ -625,7 +636,7 @@ public class ProductServiceImpl implements ProductService {
             if (body != null && Boolean.TRUE.equals(body.getExists())) {
                 product.setStatus(ProductStatus.archived);
                 skus.forEach(sku -> {
-                    sku.setActive(false);
+                    sku.setActive(SkuStatus.ARCHIVED);
                 });
                 skuRepository.saveAll(skus);
             } else {
@@ -645,4 +656,232 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
+    @Transactional
+    @Override
+    public String discontinuedSku(String skuId, String idemKey, DiscontinuedForm form) throws JsonProcessingException {
+        if (!StringUtils.hasText(form.getReason()))
+            throw new BusinessException(VALIDATE_FAIL);
+        SkuEntity sku = skuRepository.findById(skuId).orElseThrow(
+                () -> new BusinessException(VALIDATE_FAIL)
+        );
+        sku.setDiscontinued(DiscontinuedType.TEMPORARY);
+        sku.setActive(SkuStatus.DISCONTINUED);
+        sku.setUpdatedAt(Instant.now());
+        sku.setUpdatedBy(AuthenticationUtils.getUserId());
+        SkuEntity savedSku = skuRepository.save(sku);
+        ProductEntity product = productRepository.findById(savedSku.getSpuId())
+                .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
+        List<SkuEntity> activeSkus = skuRepository
+                .findAllBySpuIdAndActive(product.getId(), SkuStatus.ACTIVE);
+        double min = activeSkus.stream().mapToDouble(SkuEntity::getPrice).min().orElse(0);
+        double max = activeSkus.stream().mapToDouble(SkuEntity::getPrice).max().orElse(0);
+        product.setMinPrice(min);
+        product.setMaxPrice(max);
+        productRepository.save(product);
+        CategoryEntity category = categoryRepository.findById(product.getCategoryId())
+                .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
+        BrandEntity brand = brandRepository.findById(product.getBrandId())
+                .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
+        Map<String, Object> esPayload = buildProductEsPayload(product, activeSkus, brand, category);
+        Instant now = Instant.now();
+
+        outboxRepository.save(
+                OutboxEventEntity.builder()
+                        .aggregateType("Product")
+                        .aggregateId(product.getId())
+                        .eventType(OutboxEventType.PRODUCT_UPSERT)
+                        .idempotencyKey(idemKey + ":sku-discontinued")
+                        .payloadJson(objectMapper.writeValueAsString(esPayload))
+                        .occurredAt(now)
+                        .createdAt(now)
+                        .build()
+        );
+        return product.getId();
+    }
+
+    @Override
+    public ProductPdpDTO productDetail(String id) {
+        if (!StringUtils.hasText(id))
+            throw new BusinessException(VALIDATE_FAIL);
+        ProductEntity product = productRepository.findById(id).orElseThrow(
+                () -> new BusinessException(VALIDATE_FAIL)
+        );
+        List<SkuEntity> skus = skuRepository.findAllBySpuIdAndActive(product.getId(), SkuStatus.ACTIVE);
+        CategoryEntity category = categoryRepository.findById(product.getCategoryId())
+                .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
+        List<String> ancestorIds = category.getAncestor().stream()
+                .map(Ancestors::getId).toList();
+
+        Map<String,CategoryEntity> ancestorMap  = categoryRepository.findByIdIn(ancestorIds)
+                .stream()
+                .collect(Collectors.toMap(CategoryEntity::getId, ca -> ca));
+        BrandEntity brand = brandRepository.findById(product.getBrandId())
+                .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
+        List<String> attributeIds = product.getSpecs().stream().map(ProductSpecs::getId).toList();
+        Map<String, AttributeEntity> attributesMap = attributeRepository.findAllByIdIn(attributeIds)
+                .stream().collect(Collectors.toMap(AttributeEntity::getId, attribute -> attribute));
+
+        List<AncestorDTO> ancestorDTOS = new ArrayList<>(category.getAncestor().stream().map(
+                ca -> AncestorDTO.builder()
+                        .id(ancestorMap.get(ca.getId()).getId())
+                        .name(ancestorMap.get(ca.getId()).getName())
+                        .slug(ancestorMap.get(ca.getId()).getSlug())
+                        .build()
+        ).toList());
+
+        ancestorDTOS.add(AncestorDTO.builder()
+                        .id(category.getId())
+                        .name(category.getName())
+                        .slug(category.getSlug())
+                .build());
+        List<ProductPdpSpecDTO> specs = product.getSpecs().stream()
+                .map(sp -> {
+                    AttributeDataType dataType = sp.getDataType();
+                    String value = null;
+                    if (dataType == AttributeDataType.SELECT || dataType == AttributeDataType.MULTI_SELECT)
+                        value = attributesMap.get(sp.getId()).getOptions()
+                                .stream().filter(o -> o.getId().equals(sp.getValue().toString()))
+                                .findFirst().orElse(null).getLabel();
+                    else {
+                        value = sp.getValue().toString();
+                    }
+                    return ProductPdpSpecDTO.builder()
+                            .id(sp.getId())
+                            .label(sp.getLabel())
+                            .unit(sp.getUnit())
+                            .displayOrder(sp.getDisplayOrder())
+                            .value(value)
+                            .build();
+                })
+                .toList();
+        return ProductPdpDTO.builder()
+                .id(product.getId())
+                .slug(product.getSlug())
+                .name(product.getName())
+                .description(product.getDescription())
+                .shortDescription(product.getShortDescription())
+                .thumbnail(product.getThumbnail())
+                .gallery(product.getGallery())
+                .category(ancestorDTOS)
+                .brand(BrandPdpDTO.builder()
+                        .id(brand.getId())
+                        .name(brand.getName())
+                        .slug(brand.getSlug())
+                        .build())
+                .specs(specs)
+                .minPrice(product.getMinPrice())
+                .maxPrice(product.getMaxPrice())
+                .numberOfReviews(product.getNumberOfReviews())
+                .averageRating(product.getAverageRating())
+                .variantGroups(product.getVariantGroups())
+                .warrantyMonth(product.getWarrantyMonth())
+                .defaultSkuId(skus.get(0).getId())
+                .skus(skus.stream().map(
+                        sk -> SkuDTO.builder()
+                                .id(sk.getId())
+                                .name(sk.getName())
+                                .skuCode(sk.getSkuCode())
+                                .price(sk.getPrice())
+                                .originalPrice(sk.getOriginalPrice())
+                                .selections(sk.getSelections())
+                                .thumbnail(sk.getThumbnail())
+                                .build()
+                ).toList())
+                .build();
+    }
+
+    private Map<String, Object> buildProductEsPayload(ProductEntity product, List<SkuEntity> skuEntities, BrandEntity brandEntity, CategoryEntity categoryEntity) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("productId", product.getId());
+        payload.put("name", product.getName());
+        payload.put("slug", product.getSlug());
+        payload.put("brand", Map.of(
+                "id", brandEntity.getId(),
+                "name", brandEntity.getName(),
+                "slug", brandEntity.getSlug()
+        ));
+        List<String> ancestorIds = new ArrayList<>();
+        if (categoryEntity.getAncestor() != null) {
+            // TODO: sửa getter theo field thực tế của Ancestors (id/categoryId)
+            for (Ancestors a : categoryEntity.getAncestor()) {
+                if (a != null && StringUtils.hasText(a.getId())) {
+                    ancestorIds.add(a.getId());
+                }
+            }
+        }
+        if (!ancestorIds.contains(categoryEntity.getId())) ancestorIds.add(categoryEntity.getId());
+
+        payload.put("category", Map.of(
+                "id", categoryEntity.getId(),
+                "name", categoryEntity.getName(),
+                "slug", categoryEntity.getSlug(),
+                "ancestorIds", ancestorIds
+        ));
+        payload.put("status", product.getStatus().name());
+        payload.put("minPrice", product.getMinPrice());
+        payload.put("maxPrice", product.getMaxPrice());
+        payload.put("shortDescription", product.getShortDescription());
+        payload.put("description", product.getDescription()); // nếu ES cần
+
+        if (product.getThumbnail() != null) {
+            payload.put("thumbnail", Map.of(
+                    "url", product.getThumbnail().getImageUrl(),
+                    "publicId", product.getThumbnail().getImagePublicId()
+            ));
+        } else {
+            payload.put("thumbnail", null);
+        }
+
+        if (product.getGallery() != null) {
+            payload.put("gallery", product.getGallery().stream()
+                    .map(img -> Map.of(
+                            "url", img.getImageUrl(),
+                            "publicId", img.getImagePublicId()
+                    ))
+                    .toList());
+        } else {
+            payload.put("gallery", List.of());
+        }
+
+        payload.put("specs", product.getSpecs());           // bạn đang lưu specs dạng List<ProductSpecs>
+        payload.put("variantGroups", product.getVariantGroups()); // nếu ES đang dùng
+        payload.put("hasVariant", product.getHasVariant());
+        payload.put("warrantyMonth", product.getWarrantyMonth());
+        payload.put("averageRating", product.getAverageRating());
+        payload.put("numberOfReviews", product.getNumberOfReviews());
+
+        // SKU list
+        payload.put("skus", skuEntities.stream()
+                .map(sku -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("skuId", sku.getId());
+                    m.put("skuCode", sku.getSkuCode());
+                    m.put("name", sku.getName());
+                    m.put("price", sku.getPrice());
+                    m.put("originalPrice", sku.getOriginalPrice());
+                    m.put("costPrice", sku.getCostPrice());
+                    // ✅ boolean để khớp mapping
+                    m.put("active", sku.getActive() == SkuStatus.ACTIVE);
+                    // ✅ lưu thêm status enum nếu muốn filter/debug
+                    m.put("status", sku.getActive().name());
+
+                    if (sku.getThumbnail() != null) {
+                        m.put("thumbnail", Map.of(
+                                "url", sku.getThumbnail().getImageUrl(),
+                                "publicId", sku.getThumbnail().getImagePublicId()
+                        ));
+                    } else {
+                        m.put("thumbnail", null);
+                    }
+
+                    // nếu ES cần selections
+                    m.put("selections", sku.getSelections());
+
+                    // nếu bạn có discontinuedAt
+                    return m;
+                })
+                .toList());
+
+        return payload;
+    }
 }

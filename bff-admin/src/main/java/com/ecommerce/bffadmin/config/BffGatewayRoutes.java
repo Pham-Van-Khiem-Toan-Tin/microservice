@@ -20,6 +20,9 @@ public class BffGatewayRoutes {
                 .route("catalog-service", r -> r.path("/api/admin/orders/**", "/api/admin/stats/**")
                         .filters(f -> f.stripPrefix(2).tokenRelay())
                         .uri("lb://order-service"))
+                .route("inventory-service", r -> r.path("/api/admin/inventories/**", "/api/admin/inventory/**")
+                        .filters(f -> f.stripPrefix(2).tokenRelay())
+                        .uri("lb://inventory-service"))
                 .build();
     }
 }

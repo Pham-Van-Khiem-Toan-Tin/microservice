@@ -6,14 +6,20 @@ import com.ecommerce.catalogservice.dto.request.category.CategoryCreateForm;
 import com.ecommerce.catalogservice.dto.request.category.CategorySearchField;
 import com.ecommerce.catalogservice.dto.request.category.CategoryUpdateForm;
 import com.ecommerce.catalogservice.dto.response.*;
+import com.ecommerce.catalogservice.dto.response.menu.BrandDTO;
+import com.ecommerce.catalogservice.dto.response.menu.MenuDTO;
 import com.ecommerce.catalogservice.entity.*;
 import com.ecommerce.catalogservice.repository.AttributeRepository;
+import com.ecommerce.catalogservice.repository.BrandRepository;
 import com.ecommerce.catalogservice.repository.CategoryRepository;
+import com.ecommerce.catalogservice.repository.OutboxRepository;
 import com.ecommerce.catalogservice.service.CategoryService;
 
 import com.ecommerce.catalogservice.service.CloudinaryService;
 import com.ecommerce.catalogservice.utils.AuthenticationUtils;
 import com.ecommerce.catalogservice.utils.SlugUtils;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.data.domain.Page;
@@ -41,9 +47,15 @@ public class CategoryServiceImpl implements CategoryService {
     @Autowired
     private AttributeRepository attributeRepository;
     @Autowired
+    private BrandRepository brandRepository;
+    @Autowired
     private MongoTemplate mongoTemplate;
     @Autowired
     private CloudinaryService cloudinaryService;
+    @Autowired
+    private OutboxRepository  outboxRepository;
+    @Autowired
+    private ObjectMapper  objectMapper;
 
     @Override
     public Page<CategoryDTO> search(String keyword, List<CategorySearchField> fields, Pageable pageable) {
@@ -229,7 +241,7 @@ public class CategoryServiceImpl implements CategoryService {
 
 
     @Override
-    public void updateCategory(CategoryUpdateForm categoryForm, MultipartFile image, String id) {
+    public void updateCategory(CategoryUpdateForm categoryForm, MultipartFile image, String idemKey, String id) throws JsonProcessingException {
         if (!StringUtils.hasText(categoryForm.getName())
                 || !StringUtils.hasText(categoryForm.getIcon())
                 || !StringUtils.hasText(categoryForm.getName())
@@ -296,7 +308,41 @@ public class CategoryServiceImpl implements CategoryService {
         }
         category.setUpdatedBy(AuthenticationUtils.getUserId());
         category.setUpdatedAt(Instant.now());
-        categoryRepository.save(category);
+        CategoryEntity saved = categoryRepository.save(category);
+        Instant now = Instant.now();
+
+// build ancestorIds
+        List<String> ancestorIds = new ArrayList<>();
+        if (saved.getAncestor() != null) {
+            for (Ancestors a : saved.getAncestor()) {
+                if (a != null && StringUtils.hasText(a.getId())) {
+                    ancestorIds.add(a.getId());
+                }
+            }
+        }
+
+// đảm bảo có chính nó
+        if (!ancestorIds.contains(saved.getId())) {
+            ancestorIds.add(saved.getId());
+        }
+
+// payload đúng format product index đang dùng
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("id", saved.getId());
+        payload.put("name", saved.getName());
+        payload.put("slug", saved.getSlug());
+        payload.put("ancestorIds", ancestorIds);
+        outboxRepository.save(
+                OutboxEventEntity.builder()
+                        .aggregateType("Category")
+                        .aggregateId(saved.getId())
+                        .eventType(OutboxEventType.CATEGORY_UPSERT)
+                        .idempotencyKey(idemKey + ":es")
+                        .payloadJson(objectMapper.writeValueAsString(payload))
+                        .occurredAt(now)
+                        .createdAt(now)
+                        .build()
+        );
     }
 
     @Override
@@ -439,5 +485,73 @@ public class CategoryServiceImpl implements CategoryService {
         );
         categoryEntity.setActive(!categoryEntity.isActive());
         categoryRepository.save(categoryEntity);
+    }
+
+    @Override
+    public List<MenuDTO> getMenus() {
+        Sort sort = Sort.by(
+                Sort.Order.asc("name")
+        );
+        List<CategoryEntity> categories = categoryRepository.findByActive(true, sort);
+        Map<String, MenuDTO> map = new HashMap<>(categories.size());
+        for (CategoryEntity categoryEntity : categories) {
+            MenuDTO dto = MenuDTO.builder()
+                    .id(categoryEntity.getId())
+                    .parentId(categoryEntity.getParentId())
+                    .name(categoryEntity.getName())
+                    .slug(categoryEntity.getSlug())
+                    .icon(categoryEntity.getIcon())
+                    .build();
+            map.put(categoryEntity.getId(), dto);
+        }
+        List<MenuDTO> roots = new ArrayList<>();
+        for (CategoryEntity d : categories) {
+            MenuDTO node = map.get(d.getId());
+            String parentId = d.getParentId();
+
+            if (parentId == null || parentId.isBlank()) {
+                roots.add(node);
+            } else {
+                MenuDTO parent = map.get(parentId);
+                if (parent != null) {
+                    parent.getChildren().add(node);
+                } else {
+                    roots.add(node); // fallback nếu data lỗi
+                }
+            }
+        }
+        for (MenuDTO root : roots) {
+            List<CategoryEntity> leafCats = categoryRepository
+                    .findByActiveTrueAndIsLeafTrueAndAncestor_Id(root.getId(), Sort.by(Sort.Order.asc("name")));
+
+            List<String> leafIds = leafCats.stream()
+                    .map(CategoryEntity::getId)
+                    .toList();
+
+            if (leafIds.isEmpty()) continue;
+
+            List<BrandEntity> brands = brandRepository.findByStatusAndCategoriesIn(
+                    BrandStatus.active,
+                    leafIds,
+                    Sort.by(Sort.Order.asc("name"))
+            );
+
+            // dedup theo brandId (vì 1 brand có thể thuộc nhiều leaf)
+            Map<String, BrandDTO> uniq = new LinkedHashMap<>();
+            for (BrandEntity b : brands) {
+                uniq.putIfAbsent(
+                        b.getId(),
+                        BrandDTO.builder()
+                                .id(b.getId())
+                                .name(b.getName())
+                                .slug(b.getSlug())
+                                .logo(b.getLogo()) // nếu muốn
+                                .build()
+                );
+            }
+
+            root.setBrands(new ArrayList<>(uniq.values()));
+        }
+        return roots;
     }
 }

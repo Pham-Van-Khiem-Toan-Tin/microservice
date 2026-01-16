@@ -15,8 +15,11 @@ public class BffGatewayRoutes {
                         .filters(f -> f.stripPrefix(1).tokenRelay())
                         .uri("lb://identity-service"))
                 .route("catalog-service", r -> r.path("/api/public/catalog/**")
-                        .filters(f -> f.stripPrefix(3).tokenRelay())
+                        .filters(f -> f.stripPrefix(3))
                         .uri("lb://catalog-service"))
+                .route("search-service", r -> r.path("/api/search/**")
+                        .filters(f -> f.stripPrefix(2))
+                        .uri("lb://search-service"))
                 .build();
     }
 }

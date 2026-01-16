@@ -1,7 +1,9 @@
 package com.ecommerce.catalogservice.dto.response.sku;
 
+import com.ecommerce.catalogservice.entity.DiscontinuedType;
 import com.ecommerce.catalogservice.entity.ImageEntity;
 import com.ecommerce.catalogservice.entity.SkuSelect;
+import com.ecommerce.catalogservice.entity.SkuStatus;
 import lombok.Builder;
 import lombok.Data;
 import org.springframework.data.mongodb.core.index.Indexed;
@@ -36,9 +38,9 @@ public class SkuDetailDTO {
     // --- TRẠNG THÁI ---
     // Lưu ý: Tồn kho THẬT nằm ở Inventory Service.
     // Field này chỉ cache để hiển thị nhanh "Còn hàng" hay không.
-    private Boolean active;
+    private SkuStatus active;
 
-    private Boolean discontinued;
+    private DiscontinuedType discontinued;
     private String discontinuedReason;
 
     private Integer stock;

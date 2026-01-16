@@ -1,11 +1,14 @@
 package com.ecommerce.catalogservice.repository;
 
 import com.ecommerce.catalogservice.entity.CategoryEntity;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Repository
@@ -26,4 +29,9 @@ public interface CategoryRepository extends MongoRepository<CategoryEntity, Stri
     Boolean existsBySlug(String slug);
 
     List<CategoryEntity> findAllByIsLeaf(Boolean isLeaf);
+
+    List<CategoryEntity> findByActive(boolean active, Sort sort);
+    List<CategoryEntity> findByActiveTrueAndIsLeafTrueAndAncestor_Id(String ancestor, Sort sort);
+
+    List<CategoryEntity> findByIdIn(Collection<String> ids);
 }

@@ -6,12 +6,16 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "inventory_histories")
 @Data
+@Table(name="inventory_histories", indexes = {
+        @Index(name="idx_inv_his_sku", columnList="sku_code"),
+        @Index(name="idx_inv_his_ref_type", columnList="reference_id,type")
+})
 public class InventoryHistoryEntity {
     @Id
     @GeneratedValue
@@ -36,10 +40,10 @@ public class InventoryHistoryEntity {
     private String referenceId; // Order ID hoặc Import Ticket ID
 
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @PrePersist
     public void prePersist() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = Instant.now();
     }
 }

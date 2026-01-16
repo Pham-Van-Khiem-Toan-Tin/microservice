@@ -10,5 +10,4 @@ import lombok.NoArgsConstructor;
 public class SkuOptionForm {
     private String id;
     private String groupId;
-    private String value;
 }

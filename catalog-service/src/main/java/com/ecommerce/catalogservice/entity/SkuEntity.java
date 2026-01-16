@@ -55,9 +55,9 @@ public class SkuEntity {
     // Lưu ý: Tồn kho THẬT nằm ở Inventory Service.
     // Field này chỉ cache để hiển thị nhanh "Còn hàng" hay không.
     @Indexed
-    private Boolean active;
+    private SkuStatus active;
 
-    private Boolean discontinued;
+    private DiscontinuedType discontinued;
     @Field("discontinued_reason")
     private String discontinuedReason;
 
