@@ -1,10 +1,13 @@
 package com.ecommerce.identityservice.config;
 
+import com.ecommerce.identityservice.entity.UserEntity;
+import com.ecommerce.identityservice.reppository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.web.DefaultRedirectStrategy;
@@ -16,18 +19,19 @@ import org.springframework.security.web.savedrequest.SavedRequest;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.Set;
+import java.util.*;
 
 @Slf4j
 @Component
 public class IdpLoginSuccessHandler implements AuthenticationSuccessHandler {
     private static final String ADMIN_INIT_URL = "http://localhost:8088/oauth2/authorization/admin-idp";
-    private static final String CUSTOMER_INIT_URL = "http://localhost:8088/oauth2/authorization/user-idp";
+    private static final String CUSTOMER_INIT_URL = "http://localhost:8081/oauth2/authorization/user-idp";
 
     // Mặc định Spring dùng cái này để lưu request trước khi bị đá sang trang login
     private final RequestCache requestCache = new HttpSessionRequestCache();
     private final RedirectStrategy redirectStrategy = new DefaultRedirectStrategy();
-
+    @Autowired
+    private UserRepository userRepository;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
@@ -38,19 +42,17 @@ public class IdpLoginSuccessHandler implements AuthenticationSuccessHandler {
         }
         log.debug(String.valueOf(savedRequest));
         Set<String> roles = AuthorityUtils.authorityListToSet(authentication.getAuthorities());
-        if (roles.contains("SUPER_ADMIN") || roles.contains("ADMIN") || roles.contains("EMPLOYEE")) {
+        CustomUserDetail userDetail = (CustomUserDetail) authentication.getPrincipal();
+        UserEntity user = userRepository.findById(userDetail.getId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+        Set<String> adminRoles = Set.of("SUPER_ADMIN", "ADMIN", "EMPLOYEE");
+        if (adminRoles.contains(user.getRole().getCode())) {
             // Nếu là Admin -> Đẩy sang luồng khởi tạo Admin của BFF
             // BFF sẽ tạo State -> Redirect lại IdP (Silent) -> Về trang Admin Dashboard
             redirectStrategy.sendRedirect(request, response, ADMIN_INIT_URL);
         }
-        else if (roles.contains("CUSTOMER")) {
-            // Tương tự với Customer
-            redirectStrategy.sendRedirect(request, response, CUSTOMER_INIT_URL);
-        }
-        else {
-            // Trường hợp user không có quyền gì (hoặc role lạ)
-            // Đưa về trang thông tin tài khoản hoặc trang lỗi của IDP
-            redirectStrategy.sendRedirect(request, response, "/terms");
-        }
+        // Tương tự với Customer
+        redirectStrategy.sendRedirect(request, response, CUSTOMER_INIT_URL);
+
     }
 }

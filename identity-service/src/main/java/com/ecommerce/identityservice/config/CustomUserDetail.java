@@ -55,7 +55,7 @@ public class CustomUserDetail implements UserDetails, Serializable {
     @JsonIgnore
     @Override
     public String getUsername() {
-        return this.email;
+        return this.id.toString();
     }
     @JsonIgnore
     @Override

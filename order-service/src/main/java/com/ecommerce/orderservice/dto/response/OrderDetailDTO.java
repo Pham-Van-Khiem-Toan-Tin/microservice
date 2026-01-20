@@ -1,6 +1,7 @@
 package com.ecommerce.orderservice.dto.response;
 
 import com.ecommerce.orderservice.entity.OrderStatus;
+import com.ecommerce.orderservice.entity.PaymentMethod;
 import com.ecommerce.orderservice.entity.PaymentStatus;
 import lombok.Builder;
 import lombok.Data;
@@ -21,7 +22,7 @@ public class OrderDetailDTO {
     private BigDecimal finalAmount;
     private OrderStatus status;
     private PaymentStatus paymentStatus;
-    private String paymentMethod;
+    private PaymentMethod paymentMethod;
     private String note;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

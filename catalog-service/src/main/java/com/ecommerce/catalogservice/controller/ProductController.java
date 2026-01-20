@@ -1,15 +1,13 @@
 package com.ecommerce.catalogservice.controller;
 
 import com.ecommerce.catalogservice.dto.request.category.CategorySearchField;
-import com.ecommerce.catalogservice.dto.request.product.DiscontinuedForm;
-import com.ecommerce.catalogservice.dto.request.product.ProductCreateForm;
-import com.ecommerce.catalogservice.dto.request.product.ProductSearchField;
-import com.ecommerce.catalogservice.dto.request.product.ProductUpdateForm;
+import com.ecommerce.catalogservice.dto.request.product.*;
 import com.ecommerce.catalogservice.dto.response.ApiResponse;
 import com.ecommerce.catalogservice.dto.response.product.ProductDTO;
 import com.ecommerce.catalogservice.dto.response.product.ProductDetailDTO;
 import com.ecommerce.catalogservice.dto.response.product.ProductPdpDTO;
 import com.ecommerce.catalogservice.entity.SkuEntity;
+import com.ecommerce.catalogservice.service.ProductReviewService;
 import com.ecommerce.catalogservice.service.ProductService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +27,8 @@ import static com.ecommerce.catalogservice.constants.Constants.*;
 public class ProductController {
     @Autowired
     ProductService productService;
+    @Autowired
+    ProductReviewService  productReviewService;
 
     @PreAuthorize("hasAuthority('VIEW_PRODUCT_LIST')")
     @GetMapping
@@ -62,7 +62,13 @@ public class ProductController {
         productService.addProduct(form, idempotencyKey);
         return ApiResponse.ok(PRODUCT_CREATE_SUCCESS);
     }
+    @PostMapping("/submit")
+    public ApiResponse<Void> submitReviews(@RequestBody List<ReviewForm> requestList) throws JsonProcessingException {
+            productReviewService.createReviews(requestList);
 
+            return ApiResponse.ok(REVIEW_SUCCESS);
+
+    }
     @PreAuthorize("hasAuthority('DELETE_PRODUCT')")
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable String id) throws JsonProcessingException {

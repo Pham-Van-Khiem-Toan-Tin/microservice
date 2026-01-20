@@ -6,10 +6,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Repository
 public interface CategoryRepository extends MongoRepository<CategoryEntity, String> {
@@ -34,4 +31,6 @@ public interface CategoryRepository extends MongoRepository<CategoryEntity, Stri
     List<CategoryEntity> findByActiveTrueAndIsLeafTrueAndAncestor_Id(String ancestor, Sort sort);
 
     List<CategoryEntity> findByIdIn(Collection<String> ids);
+
+    List<CategoryEntity> findAllByIdIn(Collection<String> ids);
 }

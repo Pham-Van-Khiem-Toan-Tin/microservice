@@ -3,7 +3,9 @@ package com.ecommerce.orderservice.repository;
 import com.ecommerce.orderservice.entity.OrderStatsDaily;
 import com.ecommerce.orderservice.repository.projection.DailyProjection;
 import com.ecommerce.orderservice.repository.projection.OverviewProjection;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -50,4 +52,29 @@ public interface OrderStatsDailyRepository extends JpaRepository<OrderStatsDaily
         ORDER BY stat_date
         """, nativeQuery = true)
     List<DailyProjection> daily(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @Modifying
+    @Transactional
+    @Query(value = """
+        INSERT INTO order_stats_daily (
+            stat_date, total_orders, delivered_orders, cancelled_orders, 
+            revenue, gross_amount, discount_amount, items_sold, 
+            cod_orders, vnpay_orders, bank_transfer_orders
+        ) VALUES (
+            :#{#s.statDate}, :#{#s.totalOrders}, :#{#s.deliveredOrders}, :#{#s.cancelledOrders}, 
+            :#{#s.revenue}, :#{#s.grossAmount}, :#{#s.discountAmount}, :#{#s.itemsSold}, 
+            :#{#s.codOrders}, :#{#s.vnpayOrders}, :#{#s.bankTransferOrders}
+        ) ON DUPLICATE KEY UPDATE 
+            total_orders = total_orders + VALUES(total_orders),
+            revenue = revenue + VALUES(revenue),
+            gross_amount = gross_amount + VALUES(gross_amount),
+            discount_amount = discount_amount + VALUES(discount_amount),
+            items_sold = items_sold + VALUES(items_sold),
+            cod_orders = cod_orders + VALUES(cod_orders),
+            vnpay_orders = vnpay_orders + VALUES(vnpay_orders),
+            bank_transfer_orders = bank_transfer_orders + VALUES(bank_transfer_orders),
+            delivered_orders = delivered_orders + VALUES(delivered_orders),
+            cancelled_orders = cancelled_orders + VALUES(cancelled_orders)
+    """, nativeQuery = true)
+    void upsertStats(OrderStatsDaily s);
 }

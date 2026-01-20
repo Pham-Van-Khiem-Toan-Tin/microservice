@@ -55,3 +55,6 @@ eureka:
     hostname: localhost
     prefer-ip-address: true
     instance-id: ${eureka.instance.hostname}:${server.port}
+application:
+  config:
+    identity-url: http://localhost:8085

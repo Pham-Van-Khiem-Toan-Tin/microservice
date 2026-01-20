@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
@@ -37,11 +38,11 @@ public class SkuEntity {
 
     // --- GIÁ BÁN (Transaction Data) ---
     @Indexed
-    private Double price;
+    private BigDecimal price;
     @Field("original_price")// Giá bán thực tế
-    private Double originalPrice; // Giá niêm yết (để gạch đi)
+    private BigDecimal originalPrice; // Giá niêm yết (để gạch đi)
     @Field("cost_price")// Giá bán thực tế
-    private Double costPrice;
+    private BigDecimal costPrice;
     // --- ĐỊNH DANH BIẾN THỂ (Mapping) ---
 
     // Cách 2: Attribute List (Dùng cho Query/Filter chính xác)

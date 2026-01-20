@@ -10,6 +10,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -70,6 +72,22 @@ public interface InventoryRepository extends JpaRepository<InventoryEntity, UUID
     @Query("UPDATE InventoryEntity i SET i.reservedStock = i.reservedStock - :qty " +
             "WHERE i.skuCode = :skuCode")
     void cancelReservation(String skuCode, Integer qty);
+    @Modifying
+    @Transactional
+    @Query("UPDATE InventoryEntity i SET i.reservedStock = i.reservedStock - :qty " +
+            "WHERE i.skuCode = :skuCode AND i.reservedStock >= :qty")
+    int restoreStock(@Param("skuCode") String skuCode, @Param("qty") int qty);
 
+    // 2. Xác nhận trừ kho thật (Khi đơn hàng Delivered/Shipped)
+    @Modifying
+    @Transactional
+    @Query("UPDATE InventoryEntity i SET i.totalStock = i.totalStock - :qty, " +
+            "i.reservedStock = i.reservedStock - :qty " +
+            "WHERE i.skuCode = :skuCode AND i.totalStock >= :qty AND i.reservedStock >= :qty")
+    int confirmDeduction(@Param("skuCode") String skuCode, @Param("qty") int qty);
     Optional<InventoryEntity> findBySkuCode(String skuCode);
+
+    List<InventoryEntity> findAllBySkuCodeIn(Collection<String> skuCodes);
+
+    List<InventoryEntity> findBySkuCodeIn(Collection<String> skuCodes);
 }

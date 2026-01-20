@@ -1,6 +1,8 @@
 package com.ecommerce.paymentservice.entity;
 
 
+import com.ecommerce.paymentservice.enums.TransactionStatus;
+import com.ecommerce.paymentservice.enums.TransactionType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -33,7 +35,10 @@ public class WalletTransactionEntity {
     // Số tiền giao dịch (Dương là nạp/hoàn, Âm là rút/mua)
     @Column(name = "amount", nullable = false)
     private BigDecimal amount;
-
+    @Column(name = "balance_before")
+    private BigDecimal balanceBefore;
+    @Column(name = "balance_after")
+    private BigDecimal balanceAfter;
     // Loại giao dịch
     @Enumerated(EnumType.STRING)
     @Column(name = "type")

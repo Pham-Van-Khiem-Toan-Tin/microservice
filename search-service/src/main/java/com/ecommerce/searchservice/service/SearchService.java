@@ -4,8 +4,10 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import com.ecommerce.searchservice.dto.RelatedProductItem;
+import com.ecommerce.searchservice.dto.WishlistProductDto;
 import com.ecommerce.searchservice.utils.AggParsers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,84 +54,165 @@ public class SearchService {
 
     // ✅ Search results (Enter)
     public SearchResponse<Map> searchProducts(
-            String q,
-            List<String> brandIds,
-            String categoryId,
-            String categoryAncestorId,
-            Long minPrice,
-            Long maxPrice,
-            int page,
-            int size,
-            String sort
+            String q, List<String> brandIds, String categoryId, String categoryAncestorId,
+            Long minPrice, Long maxPrice,
+            Double minRating, List<String> specs,
+            int page, int size, String sort,
+            Double minDiscount
     ) throws IOException {
 
         int from = Math.max(page, 0) * Math.max(size, 1);
+        Query categoryQuery = Query.of(qu -> qu.bool(b -> {
+            if (categoryId != null && !categoryId.isBlank()) {
+                b.filter(f -> f.term(t -> t.field("category.id.keyword").value(categoryId)));
+            }
+            if (categoryAncestorId != null && !categoryAncestorId.isBlank()) {
+                b.filter(f -> f.term(t -> t.field("category.ancestorIds.keyword").value(categoryAncestorId)));
+            }
+            return b;
+        }));
+        Query baseQuery = Query.of(qb -> qb.bool(b -> {
+            if (q != null && !q.isBlank()) {
+                String query = q.trim();
+                b.must(m -> m.bool(bb -> bb
+                        .minimumShouldMatch("1")
+                        .should(sh -> sh.match(ma -> ma.field("name").query(query)))
+                        .should(sh -> sh.matchPhrasePrefix(mpp -> mpp.field("name").query(query)))
+                        .should(sh -> sh.matchPhrasePrefix(mpp -> mpp.field("brand.name").query(query)))
+                        .should(sh -> sh.matchPhrasePrefix(mpp -> mpp.field("category.name").query(query)))
+                        .should(sh -> sh.matchPhrasePrefix(mpp -> mpp.field("skus.name").query(query)))
+                ));
+            } else {
+                b.must(m -> m.matchAll(ma -> ma));
+            }
 
+            if (categoryId != null && !categoryId.isBlank()) {
+                b.filter(f -> f.term(t -> t.field("category.id.keyword").value(categoryId)));
+            }
+            if (categoryAncestorId != null && !categoryAncestorId.isBlank()) {
+                b.filter(f -> f.term(t -> t.field("category.ancestorIds.keyword").value(categoryAncestorId)));
+            }
+            return b;
+        }));
+
+        Query postFilterQuery = Query.of(qf -> qf.bool(b -> {
+
+            if (minRating != null && minRating > 0) {
+                b.filter(f -> f.range(r -> r.number(n -> n.field("averageRating").gte(minRating))));
+            }
+
+            if (specs != null && !specs.isEmpty()) {
+                for (String spec : specs) {
+                    String[] parts = spec.split(":");
+                    if (parts.length < 2) continue;
+                    String key = parts[0];
+                    String value = parts[1];
+
+                    b.filter(f -> f.bool(bool -> bool
+                            .must(m -> m.term(t -> t.field("specs.code.keyword").value(key)))
+                            .must(m -> m.bool(sub -> sub
+                                    .should(sh -> sh.term(t -> t.field("specs.value.keyword").value(value)))
+                                    .should(sh -> sh.term(t -> t.field("specs.valueId.keyword").value(value)))
+                            ))
+                    ));
+                }
+            }
+
+            if (minPrice != null || maxPrice != null) {
+                b.filter(f -> f.range(r -> r.number(n -> n.field("minPrice")
+                        .gte(minPrice != null ? minPrice.doubleValue() : null)
+                        .lte(maxPrice != null ? maxPrice.doubleValue() : null))));
+            }
+
+            if (brandIds != null) {
+                var cleaned = brandIds.stream().filter(x -> x != null && !x.isBlank()).toList();
+                if (!cleaned.isEmpty()) {
+                    b.filter(f -> f.terms(t -> t.field("brand.id.keyword")
+                            .terms(ts -> ts.value(cleaned.stream().map(FieldValue::of).toList()))
+                    ));
+                }
+            }
+            if (minDiscount != null && minDiscount > 0) {
+                b.filter(f -> f.range(r -> r.number(n -> n
+                        .field("max_discount_rate")
+                        .gte(minDiscount)
+                )));
+            }
+            return b;
+        }));
+        boolean needDiscountRuntime =
+                (minDiscount != null && minDiscount > 0)
+                        || "discount_desc".equalsIgnoreCase(sort);
         return es.search(s -> {
             s.index(index);
             s.from(from).size(size);
-
+            s.query(baseQuery);
+            s.postFilter(postFilterQuery);
+            // 2. POST FILTER: Chỉ dùng để lọc BrandIds
+            // Cái này chạy SAU khi Aggregation đã tính toán xong
+            if (needDiscountRuntime) {
+                s.runtimeMappings("max_discount_rate", rm -> rm
+                        .type(co.elastic.clients.elasticsearch._types.mapping.RuntimeFieldType.Double)
+                        .script(sc -> sc.source(
+                                "if (params._source == null || params._source.skus == null) return; " +
+                                        "double best = 0.0; " +
+                                        "for (def item : params._source.skus) { " +
+                                        "  if (item == null) continue; " +
+                                        "  def op = item.originalPrice; def p = item.price; " +
+                                        "  if (op != null && p != null && op > 0 && op > p) { " +
+                                        "    double rate = (double)(op - p) / (double)op; " +
+                                        "    if (rate > best) best = rate; " +
+                                        "  } " +
+                                        "} " +
+                                        "emit(best);"
+                        ))
+                );
+            }
+            // 3. SOURCE FILTER (Dữ liệu trả về cho client)
             s.source(src -> src.filter(f -> f.includes(List.of(
-                    "name", "slug", "thumbnail.url",
-                    "minPrice", "maxPrice",
-                    "brand.id", "brand.name", "brand.slug",
-                    "category.id", "category.name", "category.slug"
+                    "name", "slug", "thumbnail.url", "productId", "numberOfReviews", "averageRating",
+                    "minPrice", "maxPrice", "brand.id", "brand.name", "brand.slug",
+                    "category.id", "category.name", "category.slug",
+                    "variantGroups", "skus"
             ))));
+            s.aggregations("global_stats", a -> a
+                    .global(g -> g) // 1. Global: Reset context về toàn bộ documents trong index
+                    .aggregations("category_scope", sub -> sub
+                            .filter(categoryQuery) // 2. Filter: Chỉ giữ lại documents thuộc Category hiện tại
+                            .aggregations("min_price_all", m -> m.min(mn -> mn.field("minPrice"))) // 3. Tính Min
+                            .aggregations("max_price_all", m -> m.max(mx -> mx.field("maxPrice"))) // 4. Tính Max
+                    )
+            );
+            s.aggregations("brands", a -> a
+                    .terms(t -> t.field("brand.id.keyword").size(200))
+                    .aggregations("info", aa -> aa
+                            .topHits(th -> th.size(1)
+                                    .source(src -> src.filter(f -> f.includes(List.of("brand.id", "brand.name", "brand.slug")))))
+                    )
+            );
 
-            s.query(qb -> qb.bool(b -> {
-                if (q != null && !q.isBlank()) {
-                    b.must(m -> m.multiMatch(mm -> mm
-                            .query(q)
-                            .fields(
-                                    "name^3",
-                                    "brand.name^2",
-                                    "category.name"
-                            )
-                            .fuzziness("AUTO")
-                    ));
-                } else {
-                    b.must(m -> m.matchAll(ma -> ma));
-                }
-
-                if (brandIds != null && !brandIds.isEmpty()) {
-                    b.filter(f -> f.terms(t -> t
-                            .field("brand.id.keyword")
-                            .terms(ts -> ts.value(brandIds.stream().map(FieldValue::of).toList()))
-                    ));
-                }
-
-                if (categoryId != null && !categoryId.isBlank()) {
-                    b.filter(f -> f.term(t -> t.field("category.id.keyword").value(categoryId)));
-                }
-
-                if (categoryAncestorId != null && !categoryAncestorId.isBlank()) {
-                    b.filter(f -> f.term(t -> t.field("category.ancestorIds.keyword").value(categoryAncestorId)));
-                }
-
-                if (minPrice != null || maxPrice != null) {
-                    b.filter(f -> f.range(r -> r
-                            .number(n -> n
-                                    .field("minPrice")
-                                    .gte(minPrice != null ? minPrice.doubleValue() : null)
-                                    .lte(maxPrice != null ? maxPrice.doubleValue() : null)
-                            )
-                    ));
-                }
-
-                return b;
-            }));
-
+            // 5. SORT
             if ("price_asc".equalsIgnoreCase(sort)) {
                 s.sort(so -> so.field(f -> f.field("minPrice").order(SortOrder.Asc)));
             } else if ("price_desc".equalsIgnoreCase(sort)) {
                 s.sort(so -> so.field(f -> f.field("minPrice").order(SortOrder.Desc)));
             } else if ("newest".equalsIgnoreCase(sort)) {
                 s.sort(so -> so.field(f -> f.field("updatedAt").order(SortOrder.Desc)));
+            } else if ("rating_desc".equalsIgnoreCase(sort)) {
+                s.sort(so -> so.field(f -> f.field("averageRating").order(SortOrder.Desc)));
+                s.sort(so -> so.field(f -> f.field("numberOfReviews").order(SortOrder.Desc)));
+            } else if ("discount_desc".equalsIgnoreCase(sort)) {
+                // sort theo runtime field giảm giá
+                s.sort(so -> so.field(f -> f.field("max_discount_rate").order(SortOrder.Desc)));
+            } else {
+                // relevance mặc định: ES score
+                s.sort(so -> so.score(sc -> sc.order(SortOrder.Desc)));
             }
 
             return s;
         }, Map.class);
     }
+
 
     // ✅ Suggest khi gõ (trả SKU + brand + category)
     public SuggestResult suggest(String q, int limit) throws IOException {
@@ -329,7 +412,9 @@ public class SearchService {
             s.source(src -> src.filter(f -> f.includes(List.of(
                     "productId", "name", "slug", "thumbnail.url",
                     "minPrice", "maxPrice",
-                    "brand.name", "brand.slug"
+                    "brand.name", "brand.slug",
+                    "averageRating", "numberOfReviews",
+                    "variantGroups", "skus"
             ))));
 
             s.query(qb -> qb.bool(b -> {
@@ -384,17 +469,75 @@ public class SearchService {
                     }
                     Long minPrice = (src.get("minPrice") instanceof Number n) ? n.longValue() : null;
                     Long maxPrice = (src.get("maxPrice") instanceof Number n) ? n.longValue() : null;
+                    Double rating = 0.0;
+                    if (src.get("averageRating") instanceof Number n) {
+                        rating = n.doubleValue();
+                    }
 
+                    Integer ratingCount = 0;
+                    if (src.get("numberOfReviews") instanceof Number n) {
+                        ratingCount = n.intValue();
+                    }
                     String brandName = null, brandSlug = null;
                     Object bObj = src.get("brand");
                     if (bObj instanceof Map<?, ?> bm) {
                         if (bm.get("name") != null) brandName = String.valueOf(bm.get("name"));
                         if (bm.get("slug") != null) brandSlug = String.valueOf(bm.get("slug"));
                     }
+                    List<Map<String, Object>> variantGroups = null;
+                    if (src.get("variantGroups") instanceof List<?>) {
+                        variantGroups = (List<Map<String, Object>>) src.get("variantGroups");
+                    }
 
-                    return new RelatedProductItem(id, name, slug, imageUrl, minPrice, maxPrice, brandName, brandSlug);
+                    List<Map<String, Object>> skus = null;
+                    if (src.get("skus") instanceof List<?>) {
+                        skus = (List<Map<String, Object>>) src.get("skus");
+                    }
+                    return new RelatedProductItem(id, name, slug, imageUrl, minPrice, maxPrice, brandName, brandSlug, rating, ratingCount, variantGroups, skus);
                 })
                 .toList();
+    }
+
+    public List<Map<String, Object>> getProductsByIds(List<String> productIds) throws IOException {
+        if (productIds == null || productIds.isEmpty()) {
+            return List.of();
+        }
+
+        SearchResponse<Map> response = es.search(s -> {
+            s.index(index);
+            s.size(productIds.size());
+
+            // Lấy Full các trường theo yêu cầu Frontend
+            s.source(src -> src.filter(f -> f.includes(List.of(
+                    "productId", "name", "slug",
+                    "numberOfReviews", "averageRating",
+                    "thumbnail", // Lấy cả object thumbnail
+                    "minPrice", "maxPrice",
+                    "brand", "category",
+                    "variantGroups", "skus"
+            ))));
+
+            // Query theo ID
+            s.query(q -> q.terms(t -> t
+                    .field("productId.keyword")
+                    .terms(ts -> ts.value(productIds.stream().map(FieldValue::of).toList()))
+            ));
+
+            return s;
+        }, Map.class);
+
+        // Trả về Source Map trực tiếp
+        return response.hits().hits().stream()
+                .filter(h -> h.source() != null)
+                .map(h -> {
+                    Map<String, Object> source = h.source();
+                    // Đảm bảo productId luôn có (nếu trong source k có thì lấy từ _id)
+                    if (!source.containsKey("productId")) {
+                        source.put("productId", h.id());
+                    }
+                    return source;
+                })
+                .collect(Collectors.toList());
     }
 
 }

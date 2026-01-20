@@ -1,5 +1,6 @@
-package com.ecommerce.catalogservice.dto.response;
+package com.ecommerce.catalogservice.dto.response.category;
 
+import com.ecommerce.catalogservice.dto.response.AttributeConfigDTO;
 import com.ecommerce.catalogservice.entity.ImageEntity;
 import lombok.Builder;
 import lombok.Data;

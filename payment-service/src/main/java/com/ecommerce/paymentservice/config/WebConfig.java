@@ -26,7 +26,10 @@ public class WebConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth ->
-                        auth.anyRequest().authenticated())
+                        auth
+                                .requestMatchers("/api/sepay/webhook",
+                                        "/vnpay/vnpay_ipn", "/vnpay/vnpay-return").permitAll()
+                                .anyRequest().authenticated())
                 .cors(Customizer.withDefaults())
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))

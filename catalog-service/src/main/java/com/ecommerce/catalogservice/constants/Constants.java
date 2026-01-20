@@ -9,7 +9,9 @@ public enum Constants {
     INTERNAL_ERROR(500, "Không thể xử lí yêu cầu"),
     DATA_FORMAT(400, "Dữ liệu không hợp lệ"),
     VALIDATE_FAIL(4001, "Dữ liệu không hợp lệ."),
-
+    //review
+    REVIEW_SUCCESS(1016, "Đánh giá thành công"),
+    REVIEW_VALIDATE(1015, "Danh sách đánh giá không được để trống"),
     //product
     PRODUCT_EDIT_SUCCESS(1011, "Cập nhật sản phẩm thành công"),
     PRODUCT_DELETE_SUCCESS(1010, "Xóa sản phẩm thành công"),

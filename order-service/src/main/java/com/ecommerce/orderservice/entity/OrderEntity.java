@@ -38,18 +38,20 @@ public class OrderEntity {
 
     // --- CÁC CỘT VỀ TIỀN (QUAN TRỌNG) ---
     // Tổng tiền hàng chưa tính ship/giảm giá
+    @Builder.Default
     @Column(name = "sub_total_amount")
-    private BigDecimal subTotalAmount;
-
+    private BigDecimal subTotalAmount = BigDecimal.ZERO;
+    @Builder.Default
     @Column(name = "shipping_fee")
-    private BigDecimal shippingFee;
-
+    private BigDecimal shippingFee = BigDecimal.ZERO;
+    @Builder.Default
     @Column(name = "discount_amount")
-    private BigDecimal discountAmount;
+    private BigDecimal discountAmount = BigDecimal.ZERO;
 
     // Số tiền khách phải trả cuối cùng (= sub + ship - discount)
+    @Builder.Default
     @Column(name = "final_amount", nullable = false)
-    private BigDecimal finalAmount;
+    private BigDecimal finalAmount = BigDecimal.ZERO;
 
     // --- TRẠNG THÁI ---
     @Enumerated(EnumType.STRING)
@@ -59,10 +61,11 @@ public class OrderEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status")
     private PaymentStatus paymentStatus; // UNPAID, PAID, REFUNDED
-
+    @Enumerated(EnumType.STRING)
     @Column(name = "payment_method")
-    private String paymentMethod; // COD, VNPAY, BANK_TRANSFER
-
+    private PaymentMethod paymentMethod; // COD, VNPAY, BANK_TRANSFER
+    @Column(name = "cancel_reason")
+    private String cancelReason;
     @Column(name = "note")
     private String note;
 
@@ -71,7 +74,8 @@ public class OrderEntity {
 
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private OrderAddressEntity shippingAddress;
-
+    @Column(name = "paid_at")
+    private LocalDateTime paidAt;
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

@@ -1,4 +1,4 @@
-package com.ecommerce.paymentservice.entity;
+package com.ecommerce.paymentservice.enums;
 
 public enum TransactionStatus {
     PENDING, SUCCESS, FAILED

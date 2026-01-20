@@ -52,7 +52,12 @@ public class UserEntity implements Serializable {
     private String secureAvatarUrl;
     @Column(name = "avatar_url")
     private String avatarUrl;
-//    @JsonIgnore
+    @Column(name = "phone")
+    private String phone;
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JsonIgnore
+    private List<UserAddressEntity> addresses;
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", referencedColumnName = "id")
     private RoleEntity role;
@@ -62,14 +67,14 @@ public class UserEntity implements Serializable {
     private Instant createdAt;
     @Column(nullable = false, name = "updated_at")
     private Instant updatedAt;
-//    @JsonIgnore
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "updated_by")
     private UserEntity updatedBy;
-//    @JsonIgnore
+    @JsonIgnore
     @OneToMany(mappedBy = "updatedBy", fetch = FetchType.LAZY)
     private List<UserEntity> updatedUsers = new ArrayList<>();
-//    @JsonIgnore
+    @JsonIgnore
     public String getFullName() {
         return firstName + " " + lastName;
 

@@ -3,9 +3,10 @@ package com.ecommerce.catalogservice.service;
 import com.ecommerce.catalogservice.dto.request.category.CategoryCreateForm;
 import com.ecommerce.catalogservice.dto.request.category.CategorySearchField;
 import com.ecommerce.catalogservice.dto.request.category.CategoryUpdateForm;
-import com.ecommerce.catalogservice.dto.response.CategoryDTO;
-import com.ecommerce.catalogservice.dto.response.CategoryDetailDTO;
+import com.ecommerce.catalogservice.dto.response.category.CategoryDTO;
+import com.ecommerce.catalogservice.dto.response.category.CategoryDetailDTO;
 import com.ecommerce.catalogservice.dto.response.CategoryOptionDTO;
+import com.ecommerce.catalogservice.dto.response.category.FilterDTO;
 import com.ecommerce.catalogservice.dto.response.menu.MenuDTO;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.data.domain.Page;
@@ -25,4 +26,5 @@ public interface CategoryService {
     CategoryDetailDTO getCategoryDetailDTO(String id);
     void toggleActiveCategory(String id);
     List<MenuDTO> getMenus();
+    FilterDTO getFilterDTO(String id);
 }

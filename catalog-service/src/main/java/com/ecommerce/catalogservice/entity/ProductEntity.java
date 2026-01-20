@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
@@ -44,10 +45,10 @@ public class ProductEntity {
 
     @Indexed
     @Field("min_price")
-    private Double minPrice;
+    private BigDecimal minPrice;
     @Indexed
     @Field("max_price")
-    private Double maxPrice;
+    private BigDecimal maxPrice;
     private Integer warrantyMonth;
     private List<ProductSpecs> specs;
 
@@ -55,7 +56,7 @@ public class ProductEntity {
     @Field("number_of_reviews")
     private Integer numberOfReviews;
     @Field("average_rating")
-    private Double averageRating;
+    private BigDecimal averageRating;
 
     private ImageEntity thumbnail;
     private List<ImageEntity> gallery;

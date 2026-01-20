@@ -7,34 +7,21 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum Constants {
     INTERNAL_ERROR(500, "Không thể xử lí yêu cầu"),
+    ACCESS_DENIED(403, "Không có quyền truy cập tài nguyên"),
     DATA_FORMAT(400, "Dữ liệu không hợp lệ"),
     VALIDATE_FAIL(4001, "Dữ liệu không hợp lệ."),
-
-    //product
-    PRODUCT_CREATE_SUCCESS(1009, "Thêm mới sản phẩm thành công"),
-
-    //brand
-    BRAND_CREATE_SUCCESS(1008, "Thêm thương hiệu thành công"),
-    BRAND_EDIT_SUCCESS(1007, "Cập nhật thương hiệu thành công"),
-
-    //attribute
-    ATTRIBUTE_CREATE_SUCCESS(1006, "Thêm mới thuộc tính thành công."),
-    ATTRIBUTE_EDIT_SUCCESS(1006, "Cập nhật thuộc tính thành công."),
-    ATTRIBUTE_DELETE_SUCCESS(1006, "Xóa thuộc tính thành công."),
-
-
-    //category
-    SLUG_EXIST(409, "Slug đã tồn tại"),
-    DELETE_CATEGORY_SUCESS(1005, "Xóa danh mục thành công."),
-    UPDATE_CATEGORY_SUCCESS(1004, "Cập nhật danh mục thành công"),
-
-    UPDATE_CATEGORY_FAIL(1003, "Cập nhật danh mục không thành công"),
-    CREATE_CATEGORY_FAIL(1002, "Thêm mới danh mục thất bại. Vui lòng thử lại sau"),
-    CREATE_CATEGORY_SUCCESS(1001, "Thêm mới danh mục thành công"),
-    //product
+    REMOVE_CART_SUCCESS(1021, "Xóa sản phẩm thành công."),
+    ADD_CART_SUCCESS(1020,"Thêm sản phẩm vào giỏ hàng thành công."),
     UPDATE_ORDER_SUCCESS(200, "Cập nhật đơn hàng sản phẩm thành công"),
-    CREATE_PRODUCT_SUCCESS(201, "Thêm mới sản phẩm thành công"),
-    DELETE_PRODUCT_SUCCESS(200, "Xoá sản phẩm thành công");
+    //order
+    CANCEL_REASON_REQUIRED(2008, "Thiếu lý do hủy đơn hàng"),
+    ORDER_NOT_FOUND(2007, "Không tìm thấy đơn hàng"),
+    CREATE_ORDER_SUCCESS(2006, "Đặt hàng thành công"),
+    CART_NOT_FOUND(2005, "Không tìm thấy giỏ hàng"),
+    ORDER_EVENT_FAIL(2004, "Lỗi xử lý dữ liệu sự kiện"),
+    PRODUCT_ERROR(2003, "Một số sản phẩm không đủ tồn kho, vui lòng kiểm tra lại"),
+    CART_IS_EMPTY(2002,"Giỏ hàng của bạn đang trống"),
+    CART_INVALID(2001, "Không tìm thấy giỏ hàng");
 
     private final int code;
     private final String message;

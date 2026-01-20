@@ -84,5 +84,7 @@ resilience4j:
         permittedNumberOfCallsInHalfOpenState: 3
         slidingWindowSize: 10
         slidingWindowType: COUNT_BASED
-jwt:
-  privateKey: 2md90kaOT7/BvajX6NVcPjr3kznZfvIUDnmtAurhoAb=
+application:
+  config:
+    payment-url: http://localhost:8090
+    search-url: http://localhost:8087

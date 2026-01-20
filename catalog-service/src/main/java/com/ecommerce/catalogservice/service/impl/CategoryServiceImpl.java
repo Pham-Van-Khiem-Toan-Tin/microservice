@@ -6,6 +6,7 @@ import com.ecommerce.catalogservice.dto.request.category.CategoryCreateForm;
 import com.ecommerce.catalogservice.dto.request.category.CategorySearchField;
 import com.ecommerce.catalogservice.dto.request.category.CategoryUpdateForm;
 import com.ecommerce.catalogservice.dto.response.*;
+import com.ecommerce.catalogservice.dto.response.category.*;
 import com.ecommerce.catalogservice.dto.response.menu.BrandDTO;
 import com.ecommerce.catalogservice.dto.response.menu.MenuDTO;
 import com.ecommerce.catalogservice.entity.*;
@@ -17,7 +18,6 @@ import com.ecommerce.catalogservice.service.CategoryService;
 
 import com.ecommerce.catalogservice.service.CloudinaryService;
 import com.ecommerce.catalogservice.utils.AuthenticationUtils;
-import com.ecommerce.catalogservice.utils.SlugUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,9 +53,9 @@ public class CategoryServiceImpl implements CategoryService {
     @Autowired
     private CloudinaryService cloudinaryService;
     @Autowired
-    private OutboxRepository  outboxRepository;
+    private OutboxRepository outboxRepository;
     @Autowired
-    private ObjectMapper  objectMapper;
+    private ObjectMapper objectMapper;
 
     @Override
     public Page<CategoryDTO> search(String keyword, List<CategorySearchField> fields, Pageable pageable) {
@@ -553,5 +553,51 @@ public class CategoryServiceImpl implements CategoryService {
             root.setBrands(new ArrayList<>(uniq.values()));
         }
         return roots;
+    }
+
+    @Override
+    public FilterDTO getFilterDTO(String id) {
+        if (!StringUtils.hasText(id)) throw new BusinessException(VALIDATE_FAIL);
+        CategoryEntity categoryEntity = categoryRepository.findById(id).orElseThrow(
+                () -> new BusinessException(VALIDATE_FAIL)
+        );
+        List<AttributeConfig> attributeConfigs = categoryEntity.getAttributeConfigs().stream()
+                .toList();
+        Map<String, AttributeEntity> attributeEntityMap = attributeRepository
+                .findByCodeIn(attributeConfigs.stream().map(AttributeConfig::getCode).toList())
+                .stream()
+                .filter(a -> a.getDataType().equals(AttributeDataType.SELECT)
+                        || a.getDataType().equals(AttributeDataType.MULTI_SELECT)
+                        || a.getDataType().equals(AttributeDataType.BOOLEAN))
+                .collect(Collectors.toMap(AttributeEntity::getCode, e -> e));
+        List<AttributeConfig> attributeFilter = attributeConfigs.stream()
+                .filter(a -> attributeEntityMap.containsKey(a.getCode()))
+                .toList();
+        return FilterDTO.builder()
+                .id(categoryEntity.getId())
+                .filters(attributeFilter.stream().map(
+                        a -> FilterSpecDTO
+                                .builder()
+                                .code(a.getCode())
+                                .label(attributeEntityMap.get(a.getCode()).getLabel())
+                                .dataType(attributeEntityMap.get(a.getCode()).getDataType())
+                                .displayOrder(a.getDisplayOrder())
+                                .options(a.getAllowedOptionIds()
+                                        .stream().map(
+                                                o -> attributeEntityMap.get(a.getCode())
+                                                        .getOptions()
+                                                        .stream().filter(
+                                                                oa -> oa.getId().equals(o)
+                                                        )
+                                                        .findFirst()
+                                                        .map(oa -> FilterOptionDTO.builder()
+                                                                .id(oa.getId())
+                                                                .label(oa.getLabel())
+                                                                .build())
+                                                        .orElse(null)
+                                        ).toList())
+                                .build()
+                ).toList())
+                .build();
     }
 }

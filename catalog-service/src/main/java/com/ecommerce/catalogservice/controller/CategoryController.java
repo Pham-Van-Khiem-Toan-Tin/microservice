@@ -7,9 +7,10 @@ import com.ecommerce.catalogservice.dto.request.category.CategoryCreateForm;
 import com.ecommerce.catalogservice.dto.request.category.CategorySearchField;
 import com.ecommerce.catalogservice.dto.request.category.CategoryUpdateForm;
 import com.ecommerce.catalogservice.dto.response.ApiResponse;
-import com.ecommerce.catalogservice.dto.response.CategoryDTO;
-import com.ecommerce.catalogservice.dto.response.CategoryDetailDTO;
+import com.ecommerce.catalogservice.dto.response.category.CategoryDTO;
+import com.ecommerce.catalogservice.dto.response.category.CategoryDetailDTO;
 import com.ecommerce.catalogservice.dto.response.CategoryOptionDTO;
+import com.ecommerce.catalogservice.dto.response.category.FilterDTO;
 import com.ecommerce.catalogservice.service.CategoryService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +31,10 @@ import java.util.Set;
 public class CategoryController {
     @Autowired
     private CategoryService categoryService;
-
+    @GetMapping("/filters/{categoryId}")
+    public FilterDTO getFilter(@PathVariable String categoryId) {
+        return categoryService.getFilterDTO(categoryId);
+    }
     @PreAuthorize("hasAuthority('VIEW_CATEGORY_LIST')")
     @GetMapping
     public Page<CategoryDTO> findAllCategories(

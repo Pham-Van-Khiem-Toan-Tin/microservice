@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -22,7 +23,11 @@ public interface OrderRepository extends JpaRepository<OrderEntity, UUID>, JpaSp
 
     List<OrderEntity> findAllByUserId(String userId);
 
+    Page<OrderEntity> findByUserId(String userId, Pageable pageable);
+
     List<OrderEntity> findAllByUserIdAndId(String userId, UUID id);
 
     List<OrderEntity> findByUserIdAndId(String userId, UUID id);
+
+    Optional<OrderEntity> findByOrderNumber(String orderNumber);
 }

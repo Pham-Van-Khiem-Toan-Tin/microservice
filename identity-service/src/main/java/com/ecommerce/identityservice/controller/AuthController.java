@@ -95,7 +95,7 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok(REGISTER_SUCCESS));
     }
 
-    @PreAuthorize("hasAuthority('VIEW_PROFILE')")
+    @PreAuthorize("hasAnyAuthority('VIEW_PROFILE', 'VIEW_CUSTOMER_PROFILE')")
     @GetMapping("/me")
     public ResponseEntity<AuthDTO> authenticatedProfile(@AuthenticationPrincipal Jwt jwt, Authentication authentication) {
 //        Authentication authenticationToken = (Authentication) authentication;

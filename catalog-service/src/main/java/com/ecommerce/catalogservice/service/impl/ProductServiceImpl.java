@@ -1,9 +1,7 @@
 package com.ecommerce.catalogservice.service.impl;
 
-import com.ecommerce.catalogservice.dto.request.category.CategorySearchField;
 import com.ecommerce.catalogservice.dto.request.product.*;
 import com.ecommerce.catalogservice.dto.response.BusinessException;
-import com.ecommerce.catalogservice.dto.response.CategoryDTO;
 import com.ecommerce.catalogservice.dto.response.CloudinaryUploadResult;
 import com.ecommerce.catalogservice.dto.response.product.*;
 import com.ecommerce.catalogservice.dto.response.sku.SkuDetailDTO;
@@ -37,6 +35,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -294,7 +293,7 @@ public class ProductServiceImpl implements ProductService {
                     .brandId(brandEntity.getId())
                     .hasVariant(form.getHasVariants())
                     .numberOfReviews(0)
-                    .averageRating(0.0)
+                    .averageRating(BigDecimal.ZERO)
                     .specs(specs)
                     .variantGroups(form.getAttributes())
                     .warrantyMonth(form.getWarrantyMonth())
@@ -340,8 +339,8 @@ public class ProductServiceImpl implements ProductService {
                         .build();
                 skuEntities.add(skuItem);
             }
-            double min = skuEntities.stream().mapToDouble(SkuEntity::getPrice).min().orElse(0);
-            double max = skuEntities.stream().mapToDouble(SkuEntity::getPrice).max().orElse(0);
+            BigDecimal min = skuEntities.stream().map(SkuEntity::getPrice).min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+            BigDecimal max = skuEntities.stream().map(SkuEntity::getPrice).max(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
             updatedProduct.setMinPrice(min);
             updatedProduct.setMaxPrice(max);
             ProductEntity savedProduct = productRepository.save(updatedProduct);
@@ -570,8 +569,8 @@ public class ProductServiceImpl implements ProductService {
                     skuEntityList.add(skuEntity);
                 }
             }
-            double min = skuEntityList.stream().mapToDouble(SkuEntity::getPrice).min().orElse(0);
-            double max = skuEntityList.stream().mapToDouble(SkuEntity::getPrice).max().orElse(0);
+            BigDecimal min = skuEntityList.stream().map(SkuEntity::getPrice).min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+            BigDecimal max = skuEntityList.stream().map(SkuEntity::getPrice).max(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
             product.setMinPrice(min);
             product.setMaxPrice(max);
             ProductEntity saved = productRepository.save(product);
@@ -673,8 +672,8 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
         List<SkuEntity> activeSkus = skuRepository
                 .findAllBySpuIdAndActive(product.getId(), SkuStatus.ACTIVE);
-        double min = activeSkus.stream().mapToDouble(SkuEntity::getPrice).min().orElse(0);
-        double max = activeSkus.stream().mapToDouble(SkuEntity::getPrice).max().orElse(0);
+        BigDecimal min = activeSkus.stream().map(SkuEntity::getPrice).min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+        BigDecimal max = activeSkus.stream().map(SkuEntity::getPrice).max(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
         product.setMinPrice(min);
         product.setMaxPrice(max);
         productRepository.save(product);
@@ -798,7 +797,8 @@ public class ProductServiceImpl implements ProductService {
         payload.put("brand", Map.of(
                 "id", brandEntity.getId(),
                 "name", brandEntity.getName(),
-                "slug", brandEntity.getSlug()
+                "slug", brandEntity.getSlug(),
+                "thumbnail", brandEntity.getLogo().getImageUrl()
         ));
         List<String> ancestorIds = new ArrayList<>();
         if (categoryEntity.getAncestor() != null) {
@@ -815,7 +815,8 @@ public class ProductServiceImpl implements ProductService {
                 "id", categoryEntity.getId(),
                 "name", categoryEntity.getName(),
                 "slug", categoryEntity.getSlug(),
-                "ancestorIds", ancestorIds
+                "ancestorIds", ancestorIds,
+                "thumbnail", categoryEntity.getImage().getImageUrl()
         ));
         payload.put("status", product.getStatus().name());
         payload.put("minPrice", product.getMinPrice());

@@ -6,12 +6,22 @@ spring:
     username: root
     password: 271201
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      auto-commit: true
+      transaction-isolation: TRANSACTION_READ_COMMITTED
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8085
 server:
-  port: 8084
+  port: 8090
   forward-headers-strategy: FRAMEWORK
 eureka:
   client:
@@ -21,5 +31,19 @@ eureka:
     hostname: localhost
     prefer-ip-address: true
     instance-id: ${eureka.instance.hostname}:${server.port}
-jwt:
-  privateKey: 2md90kaOT7/BvajX6NVcPjr3kznZfvIUDnmtAurhoAb=
+application:
+  sepay:
+    api-key: ${SEPAY_APIKEY}
+sepay:
+  bank-name: ${BANK_NAME}
+  bank-number: ${BANK_NUMBER}
+  content: ${SEPAY_CONTENT}
+vnpay:
+  url: ${VNPAY_URL}
+  returnUrl: ${VNPAY_RETURN}
+  tmnCode: ${VNPAY_TMNCODE}
+  secretKey: ${VNPAY_SECRET}
+  apiUrl: ${VNPAY_APIURL}
+  version: 2.1.0
+  command: pay
+

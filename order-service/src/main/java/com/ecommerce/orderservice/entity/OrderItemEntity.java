@@ -35,7 +35,8 @@ public class OrderItemEntity {
 
     @Column(name = "sku_code", nullable = false)
     private String skuCode; // Để trừ kho bên Inventory
-
+    @Column(name = "sku_id", nullable = false)
+    private String skuId;
     @Column(name = "product_id", nullable = false)
     private String productId; // Để review hoặc click xem lại
 
@@ -47,7 +48,9 @@ public class OrderItemEntity {
 
     @Column(name = "product_thumbnail")
     private String productThumbnail;
-
+    @Builder.Default
+    @Column(name = "is_reviewed", nullable = false)
+    private boolean reviewed = false;
     // --- GIÁ VÀ SỐ LƯỢNG ---
     @Column(name = "quantity", nullable = false)
     private Integer quantity;

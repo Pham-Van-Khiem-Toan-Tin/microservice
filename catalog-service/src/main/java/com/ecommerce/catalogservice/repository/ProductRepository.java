@@ -5,6 +5,8 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -17,4 +19,6 @@ public interface ProductRepository extends MongoRepository<ProductEntity, String
 
     @Query(value = "{ 'specs.code': ?0 }", exists = true)
     boolean existsUsingSpecCode(String code);
+
+    List<ProductEntity> findAllByIdIn(Collection<String> ids);
 }

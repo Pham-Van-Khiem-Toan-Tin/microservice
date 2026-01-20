@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import org.springframework.data.mongodb.core.index.Indexed;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
@@ -23,9 +24,9 @@ public class SkuDetailDTO {
     private String name; // Tên đầy đủ (VD: iPhone 15 Pro Max - Đen - 256GB)
 
     // --- GIÁ BÁN (Transaction Data) ---
-    private Double price;         // Giá bán thực tế
-    private Double originalPrice; // Giá niêm yết (để gạch đi)
-    private Double costPrice;
+    private BigDecimal price;         // Giá bán thực tế
+    private BigDecimal originalPrice; // Giá niêm yết (để gạch đi)
+    private BigDecimal costPrice;
     // --- ĐỊNH DANH BIẾN THỂ (Mapping) ---
 
     // Cách 2: Attribute List (Dùng cho Query/Filter chính xác)

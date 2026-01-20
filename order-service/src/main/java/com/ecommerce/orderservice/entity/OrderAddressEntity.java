@@ -37,8 +37,8 @@ public class OrderAddressEntity {
     @Column(name = "address_detail")
     private String addressDetail; // Số nhà, đường...
 
-    @Column(name = "city")
-    private String city;     // Tỉnh/Thành
+    @Column(name = "province")
+    private String province;     // Tỉnh/Thành
 
     @Column(name = "district")
     private String district; // Quận/Huyện

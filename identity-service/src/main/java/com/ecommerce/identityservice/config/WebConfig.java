@@ -1,7 +1,5 @@
 package com.ecommerce.identityservice.config;
 
-import com.ecommerce.identityservice.reppository.ClientRepository;
-import com.ecommerce.identityservice.reppository.JpaRegisteredClientRepository;
 import com.ecommerce.identityservice.service.impl.CustomUserDetailService;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -13,10 +11,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.authentication.RememberMeAuthenticationProvider;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -24,7 +18,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -38,8 +31,6 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
-import org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationFilter;
-import org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.client.RestTemplate;
@@ -58,8 +49,6 @@ import java.util.stream.Collectors;
 public class WebConfig {
     @Autowired
     private IdpLoginSuccessHandler idpLoginSuccessHandler;
-    @Autowired
-    private CustomUserDetailService userDetailsService;
     @Bean
     @Order(1)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -103,7 +92,7 @@ public class WebConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
-                        .requestMatchers("/register", "/terms", "/privacy", "/login", "/verify-email", "forgot-password", "new-password", "/role/**","/favicon.ico",
+                        .requestMatchers("/register", "/terms", "/privacy", "/login","/locations/**", "/verify-email", "forgot-password", "new-password", "/role/**","/favicon.ico",
                                 "/css/**", "/js/**", "/images/**", "/fontawesome/**", "/error", "/webjars/**", "/favicon.ico", "/.well-known/appspecific/com.chrome.devtools.json")
                         .permitAll()
                         .anyRequest().authenticated())
@@ -115,37 +104,9 @@ public class WebConfig {
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
                 );
-//                .rememberMe(rm -> rm
-//                        .rememberMeParameter("remember-me")
-//                        .tokenValiditySeconds(60 * 60 * 24 * 30)
-//                        .key("chuoi-bi-mat-nao-do")
-//                        .rememberMeCookieName("RM_ID")
-//                        .userDetailsService(userDetailsService)
-//                );
         return http.build();
     }
-//    @Bean
-//    RememberMeAuthenticationFilter rememberMeFilter() {
-//        RememberMeAuthenticationFilter rememberMeFilter = new RememberMeAuthenticationFilter();
-//        rememberMeFilter.setRememberMeServices(rememberMeServices());
-//        rememberMeFilter.setAuthenticationManager(theAuthenticationManager);
-//        return rememberMeFilter;
-//    }
-//
-//    @Bean
-//    TokenBasedRememberMeServices rememberMeServices() {
-//        TokenBasedRememberMeServices rememberMeServices = new TokenBasedRememberMeServices();
-//        rememberMeServices.setUserDetailsService(myUserDetailsService);
-//        rememberMeServices.setKey("springRocks");
-//        return rememberMeServices;
-//    }
-//
-//    @Bean
-//    RememberMeAuthenticationProvider rememberMeAuthenticationProvider() {
-//        RememberMeAuthenticationProvider rememberMeAuthenticationProvider = new RememberMeAuthenticationProvider();
-//        rememberMeAuthenticationProvider.setKey("springRocks");
-//        return rememberMeAuthenticationProvider;
-//    }
+
     @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer() {
         return context -> {
@@ -153,7 +114,7 @@ public class WebConfig {
                 context.getClaims().claims((claims) -> {
                    Authentication principal = context.getPrincipal();
                    CustomUserDetail principalCustomUserDetail = (CustomUserDetail) principal.getPrincipal();
-                   claims.put("uid", principalCustomUserDetail.getId().toString());
+                   claims.put("email", principalCustomUserDetail.getEmail());
                    Set<String> authorities = principal.getAuthorities().stream()
                            .map(GrantedAuthority::getAuthority)
                            .collect(Collectors.toSet());

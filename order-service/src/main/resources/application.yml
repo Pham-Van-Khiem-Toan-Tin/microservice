@@ -23,7 +23,7 @@ spring:
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
-      group-id: inventory-group-test-final-1
+      group-id: order-group
 
       # 2. BẮT BUỘC CÓ DÒNG NÀY (để nó đọc lại tin nhắn từ Offset 0)
       auto-offset-reset: earliest
@@ -31,8 +31,10 @@ spring:
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       properties:
         spring.json.trusted.packages: "*"
+    listener:
+      ack-mode: manual
 server:
-  port: 8081
+  port: 8084
 eureka:
   client:
     serviceUrl:
@@ -41,3 +43,13 @@ eureka:
     hostname: localhost
     prefer-ip-address: true
     instance-id: ${eureka.instance.hostname}:${server.port}
+logging:
+  level:
+    root: INFO
+application:
+  config:
+    catalog-url: http://localhost:8083
+    inventory-url: http://localhost:8086
+    identity-url: http://localhost:8085
+    payment-url: http://localhost:8090
+

@@ -1,9 +1,13 @@
 package com.ecommerce.orderservice.service;
 
+import com.ecommerce.orderservice.dto.request.OrderCreateForm;
 import com.ecommerce.orderservice.dto.request.UpdateOrderRequest;
 import com.ecommerce.orderservice.dto.response.OrderDTO;
 import com.ecommerce.orderservice.dto.response.OrderDetailDTO;
 import com.ecommerce.orderservice.dto.response.OrderExistenceDTO;
+import com.ecommerce.orderservice.dto.response.order.OrderCustomerResponse;
+import com.ecommerce.orderservice.dto.response.order.OrderDetailsResponse;
+import com.ecommerce.orderservice.dto.response.order.OrderResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -16,4 +20,7 @@ public interface OrderService {
     OrderDetailDTO findOrderDetail(String orderId);
     List<OrderDTO> findAllMyOrder();
     OrderDetailDTO findMyOrderDetail(String id);
+    OrderResponse createOrder(OrderCreateForm form);
+    OrderDetailsResponse getOrderByNumber(String orderNumber);
+    Page<OrderCustomerResponse> getMyOrders(Pageable pageable);
 }

@@ -9,6 +9,13 @@ public enum Constants {
     SUCCESS(200, "Đăng nhập thành công"),
     UNAUTHORIZED(4001, "Tài khoản chưa xác thực"),
     TOKEN_FAIL(4002, "Mã xác thực không hợp lệ."),
+    //user
+
+    //address
+    DELETE_LOCATION_SUCCESS(5004, "Xóa địa chỉ thành công"),
+    LOCATION_INVALID(5003, "Địa chỉ không tồn tại"),
+    UPDATE_ADDRESS_SUCCESS(5001, "Cập nhật địa chỉ thành công"),
+    CREATE_ADDRESS_SUCCESS(5001, "Thêm mới địa chỉ thành công"),
     //server
     INTERNAL_SERVER(5000, "Không thể xử lí yêu cầu.Vui lòng thử lại sau."),
     //token
@@ -20,7 +27,9 @@ public enum Constants {
     EXISTS_USER(4006, "Email đã tồn tại trong hệ thống"),
     REGISTER_VALIDATE(4007, "Dữ liệu không hợp lệ"),
     REGISTER_SUCCESS(4008, "Đăng kí người dùng thành công"),
-
+    //wish-list
+    WISH_LIST_UPDATE_SUCCESS(4011, "Cập nhật danh sách yêu thích thành công"),
+    WISH_LIST_PRODUCT_EXIST(4010, "Sản phẩm đã có trong danh sách yêu thích"),
     //verify-email
     OTP_EXIST(4009, "OTP không tồn tại."),
     OTP_FAIL(4010, "OTP không hợp lệ"),

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -37,7 +38,7 @@ public class OrderProductStatsDaily {
 
     // tiện dùng hơn khi mapping DTO
     @Transient
-    public java.time.LocalDate getStatDate() {
+    public LocalDate getStatDate() {
         return id != null ? id.getStatDate() : null;
     }
 

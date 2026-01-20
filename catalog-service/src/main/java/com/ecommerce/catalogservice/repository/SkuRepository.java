@@ -5,6 +5,7 @@ import com.ecommerce.catalogservice.entity.SkuStatus;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -12,4 +13,8 @@ public interface SkuRepository extends MongoRepository<SkuEntity, String> {
     List<SkuEntity> findAllBySpuId(String spuId);
 
     List<SkuEntity> findAllBySpuIdAndActive(String spuId, SkuStatus active);
+
+    List<SkuEntity> findAllByIdIn(Collection<String> ids);
+
+    List<SkuEntity> findAllBySpuIdIn(Collection<String> spuIds);
 }

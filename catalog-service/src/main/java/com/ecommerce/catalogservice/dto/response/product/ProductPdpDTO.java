@@ -5,6 +5,7 @@ import com.ecommerce.catalogservice.entity.ProductVariantGroup;
 import lombok.Builder;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Data
@@ -19,11 +20,11 @@ public class ProductPdpDTO {
     private Integer warrantyMonth;
     private BrandPdpDTO brand;
     private List<AncestorDTO> category;
-    private Double minPrice;
-    private Double maxPrice;
+    private BigDecimal minPrice;
+    private BigDecimal maxPrice;
     private String defaultSkuId;
     private Integer numberOfReviews;
-    private Double averageRating;
+    private BigDecimal averageRating;
     private List<ImageEntity> gallery;
     private List<ProductPdpSpecDTO> specs;
     private List<ProductVariantGroup> variantGroups;
