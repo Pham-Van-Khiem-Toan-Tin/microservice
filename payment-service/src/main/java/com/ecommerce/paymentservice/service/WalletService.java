@@ -14,6 +14,6 @@ import java.util.UUID;
 public interface WalletService {
     BigDecimal getBalanceByUserId();
     WalletDto getWalletInfo();
-    void processWalletPayment(InternalPaymentForm form) throws JsonProcessingException;
+    String processWalletPayment(InternalPaymentForm form) throws JsonProcessingException;
     Page<TransactionDto> getTransactionHistory(String userId, int page, int size);
 }

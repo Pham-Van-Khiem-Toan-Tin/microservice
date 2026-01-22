@@ -90,4 +90,28 @@ public interface InventoryRepository extends JpaRepository<InventoryEntity, UUID
     List<InventoryEntity> findAllBySkuCodeIn(Collection<String> skuCodes);
 
     List<InventoryEntity> findBySkuCodeIn(Collection<String> skuCodes);
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+        UPDATE inventories
+        SET reserved_stock = reserved_stock - :qty
+        WHERE sku_code = :skuCode
+          AND reserved_stock >= :qty
+    """, nativeQuery = true)
+    int release(@Param("skuCode") String skuCode, @Param("qty") int qty);
+    @Query(value = """
+        SELECT * FROM inventories
+        WHERE sku_code IN (:skuCodes)
+        FOR UPDATE
+    """, nativeQuery = true)
+    List<InventoryEntity> findBySkuCodeInForUpdate(@Param("skuCodes") List<String> skuCodes);
+    @Query(
+            value = """
+            SELECT *
+            FROM inventories
+            WHERE sku_code = :skuCode
+            FOR UPDATE
+        """,
+            nativeQuery = true
+    )
+    InventoryEntity findBySkuCodeForUpdate(@Param("skuCode") String skuCode);
 }

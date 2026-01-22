@@ -1,11 +1,15 @@
 package com.ecommerce.orderservice.entity;
 
 public enum OrderStatus {
-    PENDING,        // Mới tạo, chờ thanh toán hoặc xác nhận
-    CONFIRMED,      // Đã xác nhận (Kho đã trừ)
-    SHIPPING,       // Đang giao
-    DELIVERED,      // Giao thành công
-    CANCELLED,      // Đã hủy
-    RETURNED,
-    PAID// Trả hàng
+    CREATED,            // Tạo order, chưa giữ hàng
+    RESERVED,           // Đã giữ hàng (Inventory.Reserved)
+    AWAITING_PAYMENT,   // Chờ thanh toán
+    PAID,               // Thanh toán thành công
+    CONFIRMED,          // Kho đã trừ / đã xuất (commit stock)
+    SHIPPING,           // Đang giao
+    DELIVERED,          // Giao thành công
+    COMPLETED,          // Hoàn tất nghiệp vụ (hết thời gian đổi trả)
+    CANCELLED,          // Hủy trước khi ship
+    EXPIRED,            // Hết hạn thanh toán/giữ hàng
+    RETURNED            // Trả hàng
 }

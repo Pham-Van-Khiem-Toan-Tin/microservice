@@ -1,15 +1,12 @@
 package com.ecommerce.paymentservice.service;
 
-import com.ecommerce.paymentservice.dto.event.PaymentSuccessEvent;
+import com.ecommerce.paymentservice.dto.event.PaymentSuccessResult;
 import com.ecommerce.paymentservice.dto.response.SePayWebhookDto;
 import com.ecommerce.paymentservice.entity.OutboxEvent;
 import com.ecommerce.paymentservice.entity.PaymentTransactionEntity;
 import com.ecommerce.paymentservice.entity.WalletEntity;
 import com.ecommerce.paymentservice.entity.WalletTransactionEntity;
-import com.ecommerce.paymentservice.enums.PaymentStatus;
-import com.ecommerce.paymentservice.enums.PaymentType;
-import com.ecommerce.paymentservice.enums.TransactionStatus;
-import com.ecommerce.paymentservice.enums.TransactionType;
+import com.ecommerce.paymentservice.enums.*;
 import com.ecommerce.paymentservice.repository.OutboxRepository;
 import com.ecommerce.paymentservice.repository.PaymentTransactionRepository;
 import com.ecommerce.paymentservice.repository.WalletRepository;
@@ -123,12 +120,12 @@ public class SeaPayService {
         paymentTransactionRepository.save(tx);
         try {
             // 3. Xây dựng Payload sự kiện (Khớp format với VNPAY của bạn)
-            PaymentSuccessEvent payload = PaymentSuccessEvent.builder()
+            PaymentSuccessResult payload = PaymentSuccessResult.builder()
                     .orderNumber(tx.getReferenceId())
-                    .amount(data.getTransferAmount()) // Lấy số tiền thực tế nhận được từ SePay
-                    .transactionNo(String.valueOf(data.getId())) // Mã tham chiếu của SePay
-                    .paymentStatus(PaymentStatus.PAID)
-                    .paymentMethod("SEPAY") // Để phân biệt với VNPAY/CASH
+                    .amount(data.getTransferAmount())
+                    .providerRef(String.valueOf(data.getId()))
+                    .method(PaymentMethod.BANK)
+                    .paidAt(LocalDateTime.now())
                     .build();
 
             // 4. Lưu vào bảng t_outbox_events (Transactional Outbox)
@@ -136,7 +133,7 @@ public class SeaPayService {
                     .id(UUID.randomUUID().toString())
                     .aggregateType("payment") // Sẽ sinh ra topic: payment-service.payment.events
                     .aggregateId(tx.getReferenceId())
-                    .type("PAYMENT_SUCCESS")
+                    .type("Payment.Succeeded")
                     .payload(objectMapper.writeValueAsString(payload))
                     .createdAt(LocalDateTime.now())
                     .build();

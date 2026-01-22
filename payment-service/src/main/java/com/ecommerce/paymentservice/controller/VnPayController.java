@@ -34,7 +34,7 @@ public class VnPayController {
                                              @RequestParam(required = false) String referenceId,
                                              @RequestParam(required = false) String ipAddress) {
         PaymentType paymentType = PaymentType.valueOf(type.toUpperCase());
-        String paymentUrl = vnPayService.createVnPayPayment(req, amount, bankCode, paymentType, referenceId);
+        String paymentUrl = vnPayService.createVnPayPayment(req.getRemoteAddr(), amount, bankCode, paymentType, referenceId);
 
         Map<String, String> result = new HashMap<>();
         result.put("status", "ok");

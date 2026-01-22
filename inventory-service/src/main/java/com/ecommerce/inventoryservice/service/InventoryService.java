@@ -1,6 +1,7 @@
 package com.ecommerce.inventoryservice.service;
 
-import com.ecommerce.inventoryservice.dto.event.OrderEventPayload;
+import com.ecommerce.inventoryservice.dto.event.InventoryReserveRequestedPayload;
+import com.ecommerce.inventoryservice.dto.event.OrderCreatedPayload;
 import com.ecommerce.inventoryservice.dto.event.StockUpdatePayload;
 import com.ecommerce.inventoryservice.dto.request.InventoryAdjustRequest;
 import com.ecommerce.inventoryservice.dto.request.OrderItemCheckForm;
@@ -14,9 +15,10 @@ import org.springframework.data.domain.Page;
 import java.util.List;
 
 public interface InventoryService {
+    void releaseForOrder(InventoryReserveRequestedPayload p) throws JsonProcessingException;
     Page<InventoryDTO> search(String keyword, List<String> fields, String sort, int page, int size);
     void createInventory(String skuCode, Integer initialStock);
-    void reserveStock(OrderEventPayload  payload) throws JsonProcessingException;
+    void reserveStock(OrderCreatedPayload payload) throws JsonProcessingException;
     void confirmOrder(String skuCode, Integer quantity, String orderId);
     void logHistory(String sku, int change, int stockAfter, InventoryType type, String ref);
     InventoryAdjustResponse adjustInventory(InventoryAdjustRequest req);

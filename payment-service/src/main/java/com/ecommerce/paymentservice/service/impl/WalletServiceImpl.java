@@ -1,7 +1,7 @@
 package com.ecommerce.paymentservice.service.impl;
 
-import com.ecommerce.paymentservice.constants.Constants;
-import com.ecommerce.paymentservice.dto.event.PaymentSuccessEvent;
+import com.ecommerce.paymentservice.dto.event.PaymentFailedResult;
+import com.ecommerce.paymentservice.dto.event.PaymentSuccessResult;
 import com.ecommerce.paymentservice.dto.exception.BusinessException;
 import com.ecommerce.paymentservice.dto.request.InternalPaymentForm;
 import com.ecommerce.paymentservice.dto.response.TransactionDto;
@@ -21,7 +21,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,7 +28,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 import static com.ecommerce.paymentservice.constants.Constants.WALLET_INVALID;
@@ -43,7 +41,7 @@ public class WalletServiceImpl implements WalletService {
     @Autowired
     private PaymentTransactionRepository paymentTransactionRepository;
     @Autowired
-    private OutboxRepository  outboxRepository;
+    private OutboxRepository outboxRepository;
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -64,15 +62,25 @@ public class WalletServiceImpl implements WalletService {
                 .status(wallet.getStatus())
                 .build();
     }
+
     @Transactional
     @Override
-    public void processWalletPayment(InternalPaymentForm form) throws JsonProcessingException {
-        String userId = AuthenticationUtils.getUserId();
+    public String processWalletPayment(InternalPaymentForm form) throws JsonProcessingException {
+        String userId = form.getUserId();
         WalletEntity wallet = walletRepository.findByUserIdWithLock(userId)
                 .orElseThrow(() -> new BusinessException(WALLET_INVALID));
         BigDecimal amount = BigDecimal.valueOf(form.getAmount());
         BigDecimal oldBalance = wallet.getBalance();
-        BigDecimal newBalance = oldBalance.subtract(oldBalance.subtract(amount));
+        boolean isAvaiable = oldBalance.compareTo(amount) > 0;
+        TransactionStatus txs = null;
+        BigDecimal newBalance = null;
+        if (!isAvaiable) {
+            txs = TransactionStatus.FAILED;
+            newBalance = oldBalance;
+        } else {
+            txs = TransactionStatus.SUCCESS;
+            newBalance = oldBalance.subtract(amount);
+        }
         wallet.setBalance(newBalance);
         walletRepository.save(wallet);
         WalletTransactionEntity wtx = transactionRepository.save(WalletTransactionEntity.builder()
@@ -81,7 +89,7 @@ public class WalletServiceImpl implements WalletService {
                 .balanceBefore(oldBalance)
                 .balanceAfter(newBalance)
                 .type(TransactionType.PAYMENT)
-                .status(TransactionStatus.SUCCESS)
+                .status(txs)
                 .description("Thanh toán đơn hàng: " + form.getOrderNumber())
                 .createdAt(LocalDateTime.now())
                 .build());
@@ -90,29 +98,47 @@ public class WalletServiceImpl implements WalletService {
                 .amount(amount)
                 .referenceId(form.getOrderNumber())
                 .gateway("WALLET")
-                .status("SUCCESS") // Thành công ngay lập tức
+                .status(isAvaiable ? "SUCCESS" : "FAIL") // Thành công ngay lập tức
                 .type(PaymentType.ORDER)
                 .createdAt(LocalDateTime.now())
                 .build();
         paymentTransactionRepository.save(tx);
-        PaymentSuccessEvent payload = PaymentSuccessEvent.builder()
-                .orderNumber(form.getOrderNumber())
-                .amount(tx.getAmount())
-                .transactionNo(UUID.randomUUID().toString())
-                .paymentStatus(PaymentStatus.PAID)
-                .paidAt(LocalDateTime.now())
-                .paymentMethod("WALLET")
-                .build();
+        OutboxEvent outboxEvent = null;
+        if (isAvaiable) {
+            outboxEvent = OutboxEvent.builder()
+                    .id(UUID.randomUUID().toString())
+                    .aggregateType("payment") // Sẽ sinh ra topic: payment-service.payment.events
+                    .aggregateId("WTX-" + wtx.getId())
+                    .type("Payment.Succeeded")
+                    .payload(objectMapper.writeValueAsString(PaymentSuccessResult.builder()
+                            .orderNumber(form.getOrderNumber())
+                            .amount(tx.getAmount())
+                            .providerRef("WTX-" + wtx.getId())
+                            .paidAt(LocalDateTime.now())
+                            .method(PaymentMethod.WALLET)
+                            .build()))
+                    .createdAt(LocalDateTime.now())
+                    .build();
+        } else {
+            outboxEvent = OutboxEvent.builder()
+                    .id(UUID.randomUUID().toString())
+                    .aggregateType("payment") // Sẽ sinh ra topic: payment-service.payment.events
+                    .aggregateId("WTX-" + wtx.getId())
+                    .type("Payment.Failed")
+                    .payload(objectMapper.writeValueAsString(PaymentFailedResult.builder()
+                            .orderNumber(form.getOrderNumber())
+                            .amount(tx.getAmount())
+                            .failedAt(LocalDateTime.now())
+                            .method(PaymentMethod.WALLET)
+                            .reason("Ví không đủ số dư")
+                            .build()))
+                    .createdAt(LocalDateTime.now())
+                    .build();
+        }
         // 6. Bắn Outbox Event để Order Service cập nhật trạng thái PAID
-        OutboxEvent outbox = OutboxEvent.builder()
-                .id(UUID.randomUUID().toString())
-                .aggregateType("payment") // Sẽ sinh ra topic: payment-service.payment.events
-                .aggregateId("WTX-" + wtx.getId())
-                .type("PAYMENT_SUCCESS")
-                .payload(objectMapper.writeValueAsString(payload))
-                .createdAt(LocalDateTime.now())
-                .build();
-        outboxRepository.save(outbox);
+
+        outboxRepository.save(outboxEvent);
+        return "WTX-" + wtx.getId();
     }
 
     private WalletEntity getOrCreateWallet() {

@@ -56,8 +56,11 @@ public class OrderEntity {
     // --- TRẠNG THÁI ---
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private OrderStatus status; // PENDING, CONFIRMED, SHIPPING, DELIVERED, CANCELLED
-
+    private OrderStatus status;
+    @Column(name = "reservation_id")
+    private String reservationId;
+    @Column(name = "pay_provider")
+    private String payProvider;
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status")
     private PaymentStatus paymentStatus; // UNPAID, PAID, REFUNDED
@@ -68,26 +71,32 @@ public class OrderEntity {
     private String cancelReason;
     @Column(name = "note")
     private String note;
-
+    @Column(name = "payment_id")
+    private String paymentId;
+    @Column(name = "payment_url", length = 2048)
+    private String paymentUrl;
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<OrderItemEntity> orderItems;
 
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private OrderAddressEntity shippingAddress;
+    @Column(name = "client_ip")
+    private String clientIp;
     @Column(name = "paid_at")
     private LocalDateTime paidAt;
     @Column(name = "created_at")
     private LocalDateTime createdAt;
-
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
 
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-        if (this.status == null) this.status = OrderStatus.PENDING;
-        if (this.paymentStatus == null) this.paymentStatus = PaymentStatus.UNPAID;
+        if (this.status == null) this.status = OrderStatus.CREATED;
+        if (this.paymentStatus == null) this.paymentStatus = PaymentStatus.INIT;
     }
 
     @PreUpdate

@@ -1,8 +1,7 @@
 package com.ecommerce.paymentservice.service;
 
 import com.ecommerce.paymentservice.config.VnPayConfig;
-import com.ecommerce.paymentservice.dto.event.PaymentSuccessEvent;
-import com.ecommerce.paymentservice.dto.request.PaymentDTO;
+import com.ecommerce.paymentservice.dto.event.PaymentSuccessResult;
 import com.ecommerce.paymentservice.dto.response.IpnResponse;
 import com.ecommerce.paymentservice.dto.response.VNPayReturnResponse;
 import com.ecommerce.paymentservice.entity.OutboxEvent;
@@ -46,7 +45,7 @@ public class VnPayService {
     @Autowired
     private ObjectMapper objectMapper;
     @Transactional
-    public String createVnPayPayment(HttpServletRequest req, long amount, String bankCode, PaymentType paymentType, String referenceId) {
+    public String createVnPayPayment(String req, long amount, String bankCode, PaymentType paymentType, String referenceId) {
         // 1. Lưu giao dịch PENDING (Giữ nguyên của bạn)
         PaymentTransactionEntity tx = new PaymentTransactionEntity();
         tx.setAmount(BigDecimal.valueOf(amount));
@@ -82,7 +81,7 @@ public class VnPayService {
         vnp_Params.put("vnp_OrderType", "other");
         vnp_Params.put("vnp_Locale", "vn");
         vnp_Params.put("vnp_ReturnUrl", vnPayConfig.getVnp_ReturnUrl());
-        vnp_Params.put("vnp_IpAddr", VnPayConfig.getIpAddress(req));
+        vnp_Params.put("vnp_IpAddr", req);
 
         Calendar cld = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
@@ -223,13 +222,12 @@ public class VnPayService {
     }
     private void processOrderPayment(PaymentTransactionEntity tx, String vnp_TransactionNo) throws JsonProcessingException {
         // 1. Chuẩn bị nội dung gửi đi (Payload)
-        PaymentSuccessEvent payload = PaymentSuccessEvent.builder()
+        PaymentSuccessResult payload = PaymentSuccessResult.builder()
                 .orderNumber(tx.getReferenceId())
                 .amount(tx.getAmount())
-                .transactionNo(vnp_TransactionNo)
-                .paymentStatus(PaymentStatus.PAID)
+                .providerRef(vnp_TransactionNo)
                 .paidAt(LocalDateTime.now())
-                .paymentMethod("VNPAY")
+                .method(PaymentMethod.VNPAY)
                 .build();
 
         // 2. Lưu vào bảng t_outbox_events của Payment Service
@@ -237,7 +235,7 @@ public class VnPayService {
                 .id(UUID.randomUUID().toString())
                 .aggregateType("payment") // Sẽ sinh ra topic: payment-service.payment.events
                 .aggregateId(tx.getReferenceId())
-                .type("PAYMENT_SUCCESS")
+                .type("Payment.Succeeded")
                 .payload(objectMapper.writeValueAsString(payload))
                 .createdAt(LocalDateTime.now())
                 .build();

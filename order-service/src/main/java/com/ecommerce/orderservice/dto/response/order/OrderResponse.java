@@ -1,5 +1,6 @@
 package com.ecommerce.orderservice.dto.response.order;
 
+import com.ecommerce.orderservice.entity.OrderStatus;
 import com.ecommerce.orderservice.entity.PaymentMethod;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,6 +13,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class OrderResponse {
     private String orderNumber;
-    private String paymentUrl;
     private PaymentMethod paymentMethod;
+    private OrderStatus orderStatus;
 }

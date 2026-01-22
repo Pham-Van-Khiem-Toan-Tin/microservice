@@ -13,6 +13,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Service
 public class InventoryHistoryServiceImpl implements InventoryHistoryService {
@@ -56,7 +57,7 @@ public class InventoryHistoryServiceImpl implements InventoryHistoryService {
                 .quantityChange(h.getQuantityChange())
                 .stockAfter(h.getStockAfter())
                 .type(h.getType())
-                .referenceId(h.getReferenceId())
+                .referenceId(h.getReferenceId().toString())
                 .createdAt(h.getCreatedAt())
                 .build();
     }

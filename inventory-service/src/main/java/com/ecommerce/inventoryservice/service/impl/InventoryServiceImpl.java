@@ -1,8 +1,6 @@
 package com.ecommerce.inventoryservice.service.impl;
 
-import com.ecommerce.inventoryservice.constants.Constants;
-import com.ecommerce.inventoryservice.dto.event.OrderEventPayload;
-import com.ecommerce.inventoryservice.dto.event.StockUpdatePayload;
+import com.ecommerce.inventoryservice.dto.event.*;
 import com.ecommerce.inventoryservice.dto.exception.BusinessException;
 import com.ecommerce.inventoryservice.dto.request.InventoryAdjustRequest;
 import com.ecommerce.inventoryservice.dto.request.OrderItemCheckForm;
@@ -12,15 +10,13 @@ import com.ecommerce.inventoryservice.dto.response.InventoryDTO;
 import com.ecommerce.inventoryservice.dto.response.InventoryStatus;
 import com.ecommerce.inventoryservice.dto.response.cart.InventoryCartDto;
 import com.ecommerce.inventoryservice.entity.*;
-import com.ecommerce.inventoryservice.repository.InventoryHistoryRepository;
-import com.ecommerce.inventoryservice.repository.InventoryRepository;
-import com.ecommerce.inventoryservice.repository.OutboxRepository;
-import com.ecommerce.inventoryservice.repository.ProcessedEventRepository;
+import com.ecommerce.inventoryservice.repository.*;
 import com.ecommerce.inventoryservice.service.InventoryService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -48,6 +44,8 @@ public class InventoryServiceImpl implements InventoryService {
     private OutboxRepository outboxRepo;
     @Autowired
     private ObjectMapper objectMapper;
+    @Autowired
+    private InventoryReservationRepository reservationRepo;
 
     @Override
     public Page<InventoryDTO> search(String keyword, List<String> fields, String sort, int page, int size) {
@@ -134,60 +132,122 @@ public class InventoryServiceImpl implements InventoryService {
 
         return Sort.by(direction, field);
     }
-
+    //new
     // 2. Giữ hàng (Khi khách bấm đặt hàng)
     @Transactional
     @Override
-    public void reserveStock(OrderEventPayload payload) throws JsonProcessingException {
-        String idempotencyKey = "ORDER_RESERVE:" + payload.getOrderId();
-        if (processedEventRepository.existsById(idempotencyKey)) return;
-        boolean allItemsReserved = true;
-        List<InventoryHistoryEntity> allHistory = new ArrayList<>();
-        for (var item : payload.getItems()) {
+    public void reserveStock(OrderCreatedPayload payload) throws JsonProcessingException {
+        UUID orderId = UUID.fromString(payload.getOrderId());
+        if (reservationRepo.existsByOrderId(orderId)) {
+            return;
+        }
+        List<String> skuCodes = payload.getItems().stream().map(OrderCreatedPayload.OrderItemPayload::getSkuCode).toList();
+        Map<String, InventoryEntity> stockMap = inventoryRepo.findBySkuCodeInForUpdate(skuCodes)
+                .stream().collect(Collectors.toMap(InventoryEntity::getSkuCode, s -> s));
+        List<InventoryReserveFailedPayload.FailedItem> failed = new ArrayList<>();
+        for (var it : payload.getItems()) {
             // 2. Thực hiện Atomic Update để giữ chỗ
-            int updatedRows = inventoryRepo.reserveStock(item.getSkuCode(), item.getQuantity());
-
-
-// Lưu vào cột payload của bảng t_outbox_events
-            if (updatedRows == 0) {
-                log.error("Sản phẩm {} hết hàng", item.getSkuCode());
-                allItemsReserved = false;
-                break;
+            InventoryEntity s = stockMap.get(it.getSkuCode());
+            long available = (s == null) ? 0L : s.getTotalStock() - s.getReservedStock();
+            if (available < it.getQuantity()) {
+                failed.add(InventoryReserveFailedPayload.FailedItem.builder()
+                        .skuCode(it.getSkuCode())
+                        .requested(it.getQuantity())
+                        .available(available)
+                        .build());
             }
-
-            // 3. Lấy thông tin kho sau khi update để ghi lịch sử (stockAfter)
-            // Lưu ý: stockAfter ở đây thường là số lượng "Có thể bán" (Available = Total - Reserved)
-            InventoryEntity updatedInv = inventoryRepo.findBySkuCode(item.getSkuCode())
-                    .orElseThrow();
-            int availableAfter = updatedInv.getTotalStock() - updatedInv.getReservedStock();
-
-            // 4. Lưu lịch sử biến động
+        }
+        if (!failed.isEmpty()) {
+            emitReserveFailed(payload.getOrderId(), failed);
+            return;
+        }
+        List<InventoryHistoryEntity> allHistory = new ArrayList<>();
+        for (var it : payload.getItems()) {
+            InventoryEntity s = stockMap.get(it.getSkuCode());
+            s.setReservedStock(s.getReservedStock() + it.getQuantity());
             InventoryHistoryEntity history = new InventoryHistoryEntity();
-            history.setSkuCode(item.getSkuCode());
-            history.setQuantityChange(-item.getQuantity()); // Giảm lượng có thể bán nên để âm
-            history.setStockAfter(availableAfter);
-            history.setType(InventoryType.RESERVED); // Enum bạn đã định nghĩa
-            history.setReferenceId(payload.getOrderId());
+            history.setSkuCode(it.getSkuCode());
+            history.setQuantityChange(-it.getQuantity());
+            history.setType(InventoryType.RESERVED);
+            history.setReferenceId(orderId);
             allHistory.add(history);
         }
         historyRepo.saveAll(allHistory);
-        StockResultPayload response = StockResultPayload.builder()
-                .orderId(payload.getOrderId())
-                .userId(payload.getUserId())
-                .status(allItemsReserved ? "SUCCESS" : "FAILED")
-                .build();
-        OutboxEvent outbox = OutboxEvent.builder()
-                .id(UUID.randomUUID().toString())
-                .aggregateType("stock") // Sẽ sinh ra topic inventory-service.stock.events
-                .aggregateId(payload.getOrderId())
-                .type(allItemsReserved ? "STOCK_RESERVED" : "STOCK_FAILED")
-                .payload(objectMapper.writeValueAsString(response))
+        inventoryRepo.saveAll(stockMap.values());
+        UUID reservationId = UUID.randomUUID();
+        LocalDateTime expireAt = LocalDateTime.now().plusMinutes(15);
+        ReservationEntity reservation = ReservationEntity.builder()
+                .id(reservationId)
+                .orderId(orderId)
+                .status(ReservationStatus.ACTIVE)
+                .expireAt(expireAt)
                 .createdAt(LocalDateTime.now())
                 .build();
+        for (var it : payload.getItems()) {
+            reservation.addItem(ReservationItemEntity.builder()
+                    .skuCode(it.getSkuCode())
+                    .qty(it.getQuantity())
+                    .build());
+        }
+        try {
+            reservationRepo.save(reservation);
+        } catch (DataIntegrityViolationException dup) {
+            throw dup;
+        }
 
-        outboxRepo.save(outbox);
+        // 4) Emit Inventory.Reserved (OUTBOX)
+        emitReserved(payload.getOrderId(), reservationId.toString(), expireAt, payload.getItems());
+
         // 5. Đánh dấu đã xử lý xong event
-        processedEventRepository.save(new ProcessedEvent(idempotencyKey, Instant.now()));
+    }
+    //new
+    private void emitReserved(String orderId, String reservationId, LocalDateTime expireAt,
+                              List<OrderCreatedPayload.OrderItemPayload> items) {
+        try {
+            InventoryReservedPayload payload = InventoryReservedPayload.builder()
+                    .orderId(orderId)
+                    .reservationId(reservationId)
+                    .expireAt(expireAt)
+                    .items(items.stream()
+                            .map(i -> InventoryReservedPayload.Item.builder()
+                                    .skuCode(i.getSkuCode())
+                                    .qty(i.getQuantity())
+                                    .build())
+                            .toList())
+                    .build();
+
+            outboxRepo.save(OutboxEvent.builder()
+                    .id(UUID.randomUUID().toString())
+                    .aggregateType("inventory")
+                    .aggregateId(orderId)                  // correlate theo orderId
+                    .type("Inventory.Reserved")            // eventType
+                    .payload(objectMapper.writeValueAsString(payload))
+                    .createdAt(LocalDateTime.now())
+                    .build());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+    //new
+    private void emitReserveFailed(String orderId, List<InventoryReserveFailedPayload.FailedItem> failed) {
+        try {
+            InventoryReserveFailedPayload payload = InventoryReserveFailedPayload.builder()
+                    .orderId(orderId)
+                    .reason("OUT_OF_STOCK")
+                    .failedItems(failed)
+                    .build();
+
+            outboxRepo.save(OutboxEvent.builder()
+                    .id(UUID.randomUUID().toString())
+                    .aggregateType("inventory")
+                    .aggregateId(orderId)
+                    .type("Inventory.ReserveFailed")
+                    .payload(objectMapper.writeValueAsString(payload))
+                    .createdAt(LocalDateTime.now())
+                    .build());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     // 3. Thanh toán thành công -> Trừ kho thật
@@ -211,7 +271,7 @@ public class InventoryServiceImpl implements InventoryService {
         history.setQuantityChange(change);
         history.setStockAfter(stockAfter);
         history.setType(type);
-        history.setReferenceId(ref);
+        history.setReferenceId(UUID.fromString(ref));
         historyRepo.save(history);
     }
 
@@ -324,6 +384,7 @@ public class InventoryServiceImpl implements InventoryService {
 
         return true; // Tất cả các món đều đủ hàng
     }
+
     @Transactional
     @Override
     public void restoreStock(List<StockUpdatePayload.StockItem> items) {
@@ -354,6 +415,34 @@ public class InventoryServiceImpl implements InventoryService {
             logHistory(item.getSkuCode(), -item.getQuantity(), current.getTotalStock(), InventoryType.SOLD, orderId);
             log.info("Finalized deduction for Order: {} | SKU: {}", orderId, item.getSkuCode());
         }
+    }
+
+    @Transactional
+    public void releaseForOrder(InventoryReserveRequestedPayload p) throws JsonProcessingException {
+
+        for (var item : p.getItems()) {
+            int updated = inventoryRepo.release(item.getSkuCode(), item.getQty());
+            if (updated == 0) {
+                log.warn("Release skipped sku={} qty={} for orderId={} (maybe already released or not reserved)",
+                        item.getSkuCode(), item.getQty(), p.getOrderId());
+            }
+        }
+
+        // (Optional) bắn event báo order biết đã nhả xong
+        StockReleasedPayload ok = StockReleasedPayload.builder()
+                .orderId(p.getOrderId())
+                .orderNumber(p.getOrderNumber())
+                .releasedAt(LocalDateTime.now())
+                .build();
+
+        outboxRepo.save(OutboxEvent.builder()
+                .id(UUID.randomUUID().toString())
+                .aggregateType("order")          // => inventory-service.order.events
+                .aggregateId(p.getOrderId())
+                .type("STOCK_RELEASED")
+                .payload(objectMapper.writeValueAsString(ok))
+                .createdAt(LocalDateTime.now())
+                .build());
     }
 
     private int safe(Integer v) {

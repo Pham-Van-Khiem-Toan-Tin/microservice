@@ -28,6 +28,7 @@ import com.ecommerce.orderservice.specs.OrderSpecification;
 import com.ecommerce.orderservice.utils.AuthenticationUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -61,9 +62,9 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private InventoryFeignClient inventoryFeignClient;
     @Autowired
-    private CatalogFeignClient  catalogFeignClient;
+    private CatalogFeignClient catalogFeignClient;
     @Autowired
-    private IdentityFeignClient  identityFeignClient;
+    private IdentityFeignClient identityFeignClient;
     @Autowired
     private PaymentFeignClient paymentFeignClient;
     @Autowired
@@ -71,7 +72,7 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private OutboxRepository outboxRepository;
     @Autowired
-    private OrderStatisticsService  orderStatisticsService;
+    private OrderStatisticsService orderStatisticsService;
 
     @Override
     public Page<OrderDTO> search(String keyword, List<String> fields, String sort, int page, int size) {
@@ -96,6 +97,7 @@ public class OrderServiceImpl implements OrderService {
     private static final Set<String> ALLOWED_SEARCH_FIELDS = Set.of("order_number", "user_id");
     private static final Set<String> ALLOWED_SORT_FIELDS =
             Set.of("order_number", "user_id", "created_at", "final_amount");
+
     private Sort parseSort(String sort) {
         if (sort == null || sort.isBlank()) {
             return Sort.by(Sort.Direction.DESC, "orderNumber"); // ✅ camelCase
@@ -148,41 +150,75 @@ public class OrderServiceImpl implements OrderService {
         Boolean existed = orderItemRepository.existsByProductId(productId);
         return OrderExistenceDTO.builder().exists(existed).build();
     }
+
     @Transactional
     @Override
     public void updateOrder(String orderId, UpdateOrderRequest req) {
         OrderEntity order = orderRepository.findById(UUID.fromString(orderId))
                 .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
 
-        OrderStatus current = order.getStatus();
-        OrderStatus next = req.getStatus();
+        OrderStatus from = order.getStatus();
+        OrderStatus to = req.getStatus();
+        if (to == null) throw new BusinessException(VALIDATE_FAIL);
 
-        if (!isValidTransition(current, next)) {
+        if (!isValidTransitionForAdmin(from, to)) {
             throw new BusinessException(VALIDATE_FAIL);
         }
 
-        order.setStatus(next);
-
-        // Xử lý logic nghiệp vụ
-        if (next == OrderStatus.DELIVERED && order.getPaymentStatus() == PaymentStatus.UNPAID) {
-            order.setPaymentStatus(PaymentStatus.PAID);
-        }
-
-        // Phát sự kiện dựa trên trạng thái mới
-        if (next == OrderStatus.CANCELLED) {
+        // Require reason for sensitive admin operations
+        if (to == OrderStatus.CANCELLED || to == OrderStatus.EXPIRED || to == OrderStatus.RETURNED) {
             if (req.getReason() == null || req.getReason().isBlank()) {
                 throw new BusinessException(VALIDATE_FAIL);
             }
-            order.setCancelReason(req.getReason());
-            emitStockEvent(order, "RESTORE_STOCK");
         }
-        else if (next == OrderStatus.DELIVERED) {
-            emitStockEvent(order, "CONFIRM_DEDUCTION");
+
+        // Apply status
+        order.setStatus(to);
+
+        // --- Payment rules with new statuses ---
+        // Admin should NOT arbitrarily mark paid for online methods.
+        // For COD: if delivered, you MAY mark payment succeeded (if your business says cash is collected at door).
+        if (to == OrderStatus.DELIVERED) {
+            if (order.getPaymentMethod() == PaymentMethod.COD
+                    && order.getPaymentStatus() != PaymentStatus.SUCCEEDED) {
+                order.setPaymentStatus(PaymentStatus.SUCCEEDED);
+
+                // optional: emit payment event if Payment service is not doing this
+                // emitPaymentOutbox(order, "Payment.Succeeded");
+            }
+        }
+
+        // If admin sets PAID, enforce payment status consistency
+        if (to == OrderStatus.PAID) {
+            // Only allow if payment already succeeded, or admin explicitly passes override flag
+            if (order.getPaymentStatus() != PaymentStatus.SUCCEEDED) {
+                throw new BusinessException(VALIDATE_FAIL);
+            }
+        }
+
+        // --- Inventory/Stock events using new eventType ---
+        if (to == OrderStatus.CANCELLED) {
+            order.setCancelReason(req.getReason());
+
+            // Release reservation / restore stock depending on what stage it is.
+            // Best: single event and Inventory decides idempotently.
+            emitStockEvent(order, "Inventory.ReleaseRequested");
+        }
+
+        if (to == OrderStatus.CONFIRMED) {
+            // This is the right place to commit/deduct stock (most common design)
+            emitStockEvent(order, "Inventory.CommitRequested");
+        }
+
+        // DELIVERED normally should NOT trigger stock deduction (already done at CONFIRMED)
+        // RETURNED might trigger restock event:
+        if (to == OrderStatus.RETURNED) {
+            emitStockEvent(order, "Inventory.RestockRequested");
         }
 
         orderRepository.save(order);
-
     }
+
     private void emitStockEvent(OrderEntity order, String action) {
         try {
             // 1. Build Payload dùng Class (Giống style phần tạo đơn của bạn)
@@ -284,45 +320,46 @@ public class OrderServiceImpl implements OrderService {
         OrderEntity order = orderRepository.findById(UUID.fromString(id)).orElseThrow(
                 () -> new BusinessException(VALIDATE_FAIL)
         );
-        return  OrderDetailDTO.builder()
-                        .id(order.getId())
-                        .orderNumber(order.getOrderNumber())
-                        .finalAmount(order.getFinalAmount())
-                        .userId(order.getUserId())
-                        .paymentStatus(order.getPaymentStatus())
-                        .note(order.getNote())
-                        .createdAt(order.getCreatedAt())
-                        .status(order.getStatus())
-                        .orderAddress(
-                                OrderAddressDTO.builder()
-                                        .id(order.getShippingAddress().getId())
-                                        .addressDetail(order.getShippingAddress().getAddressDetail())
-                                        .ward(order.getShippingAddress().getWard())
-                                        .district(order.getShippingAddress().getDistrict())
-                                        .city(order.getShippingAddress().getProvince())
-                                        .contactName(order.getShippingAddress().getContactName())
-                                        .phone(order.getShippingAddress().getPhone())
-                                        .build()
-                        )
-                        .orderItems(order.getOrderItems().stream().map(
-                                o -> OrderItemDTO.builder()
-                                        .id(o.getId())
-                                        .productId(o.getProductId())
-                                        .quantity(o.getQuantity())
-                                        .unitPrice(o.getUnitPrice())
-                                        .skuCode(o.getSkuCode())
-                                        .productName(o.getProductName())
-                                        .productThumbnail(o.getProductThumbnail())
-                                        .variantName(o.getVariantName())
-                                        .subTotal(o.getSubTotal())
-                                        .build()
-                        ).toList())
-                        .paymentMethod(order.getPaymentMethod())
-                        .updatedAt(order.getUpdatedAt())
-                        .discountAmount(order.getDiscountAmount())
-                        .subTotalAmount(order.getSubTotalAmount())
-                        .build();
+        return OrderDetailDTO.builder()
+                .id(order.getId())
+                .orderNumber(order.getOrderNumber())
+                .finalAmount(order.getFinalAmount())
+                .userId(order.getUserId())
+                .paymentStatus(order.getPaymentStatus())
+                .note(order.getNote())
+                .createdAt(order.getCreatedAt())
+                .status(order.getStatus())
+                .orderAddress(
+                        OrderAddressDTO.builder()
+                                .id(order.getShippingAddress().getId())
+                                .addressDetail(order.getShippingAddress().getAddressDetail())
+                                .ward(order.getShippingAddress().getWard())
+                                .district(order.getShippingAddress().getDistrict())
+                                .city(order.getShippingAddress().getProvince())
+                                .contactName(order.getShippingAddress().getContactName())
+                                .phone(order.getShippingAddress().getPhone())
+                                .build()
+                )
+                .orderItems(order.getOrderItems().stream().map(
+                        o -> OrderItemDTO.builder()
+                                .id(o.getId())
+                                .productId(o.getProductId())
+                                .quantity(o.getQuantity())
+                                .unitPrice(o.getUnitPrice())
+                                .skuCode(o.getSkuCode())
+                                .productName(o.getProductName())
+                                .productThumbnail(o.getProductThumbnail())
+                                .variantName(o.getVariantName())
+                                .subTotal(o.getSubTotal())
+                                .build()
+                ).toList())
+                .paymentMethod(order.getPaymentMethod())
+                .updatedAt(order.getUpdatedAt())
+                .discountAmount(order.getDiscountAmount())
+                .subTotalAmount(order.getSubTotalAmount())
+                .build();
     }
+
     @Override
     @Transactional(readOnly = true)
     public OrderDetailsResponse getOrderByNumber(String orderNumber) {
@@ -371,6 +408,7 @@ public class OrderServiceImpl implements OrderService {
 
         return orders.map(this::mapToOrderResponse);
     }
+
     private OrderCustomerResponse mapToOrderResponse(OrderEntity entity) {
         List<OrderItemResponse> itemDtos = entity.getOrderItems().stream()
                 .map(item -> OrderItemResponse.builder()
@@ -394,8 +432,9 @@ public class OrderServiceImpl implements OrderService {
                 .totalItemsCount(itemDtos.size())
                 .build();
     }
+
     @Override
-    public OrderResponse createOrder(OrderCreateForm form) {
+    public OrderResponse createOrder(HttpServletRequest req,  OrderCreateForm form) {
         String userId = AuthenticationUtils.getUserId();
         CartEntity cart = cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new BusinessException(CART_INVALID));
@@ -405,13 +444,6 @@ public class OrderServiceImpl implements OrderService {
         List<String> skuIds = cart.getItems().stream().map(CartItem::getSkuId).toList();
         List<SkuCartDTO> skusInfo = catalogFeignClient.getSkuDetailsBatch(skuIds);
         Map<String, SkuCartDTO> skusInfoMap = skusInfo.stream().collect(Collectors.toMap(SkuCartDTO::getId, sku -> sku));
-        List<OrderItemCheckForm> inventoryChecks = cart.getItems().stream()
-                .map(item -> new OrderItemCheckForm(skusInfoMap.get(item.getSkuId()).getSkuCode(), item.getQuantity()))
-                .toList();
-        boolean isActive = inventoryFeignClient.checkAvailability(inventoryChecks);
-        if (!isActive) {
-            throw new BusinessException(PRODUCT_ERROR);
-        }
         String orderNumber = "ORD-" + System.currentTimeMillis();
         BigDecimal subTotal = cart.getItems().stream()
                 .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
@@ -429,18 +461,23 @@ public class OrderServiceImpl implements OrderService {
                 .district(addressDTO.getDistrictName())
                 .ward(addressDTO.getWardName())
                 .build();
+
         OrderEntity order = OrderEntity.builder()
                 .orderNumber(orderNumber)
                 .userId(cart.getUserId())
                 .subTotalAmount(subTotal)
                 .shippingFee(shippingFee)
+                .clientIp(req.getRemoteAddr())
                 .finalAmount(finalAmount)
                 .shippingAddress(orderAddressEntity)
                 .paymentMethod(form.getPaymentMethod())
-                .status(PENDING)
-                .paymentStatus(PaymentStatus.UNPAID)
+                .status(CREATED)
+                .paymentStatus(PaymentStatus.INIT)
                 .note(form.getNote())
                 .build();
+        if (!form.getPaymentMethod().equals(PaymentMethod.COD)) {
+            order.setExpiresAt(LocalDateTime.now().plusMinutes(15));
+        }
         orderAddressEntity.setOrder(order);
         List<OrderItemEntity> orderItems = cart.getItems().stream().map(cartItem ->
                 {
@@ -465,84 +502,98 @@ public class OrderServiceImpl implements OrderService {
                 }
         ).toList();
         order.setOrderItems(orderItems);
-        OrderEntity savedOrder =  orderRepository.save(order);
+        OrderEntity savedOrder = orderRepository.save(order);
+
+        // 1. Chuẩn bị Payload
+        OrderEventPayload payload = OrderEventPayload.builder()
+                .orderId(savedOrder.getId().toString())
+                .orderNumber(savedOrder.getOrderNumber())
+                .finalAmount(savedOrder.getFinalAmount())
+                .expiresAt(savedOrder.getExpiresAt())
+                .userId(savedOrder.getUserId())
+                .paymentMethod(savedOrder.getPaymentMethod())
+                .items(savedOrder.getOrderItems().stream()
+                        .map(item -> new OrderEventPayload.OrderItemPayload(item.getSkuCode(), item.getQuantity()))
+                        .toList())
+                .build();
+        String payloadJson;
         try {
-            // 1. Chuẩn bị Payload
-            OrderEventPayload payload = OrderEventPayload.builder()
-                    .orderId(savedOrder.getId().toString()) // Hoặc orderNumber tùy bạn
-                    .userId(savedOrder.getUserId())
-                    .paymentMethod(savedOrder.getPaymentMethod())
-                    .items(savedOrder.getOrderItems().stream()
-                            .map(item -> new OrderEventPayload.OrderItemPayload(item.getSkuCode(), item.getQuantity()))
-                            .toList())
-                    .build();
-
             // 2. Chuyển Payload thành chuỗi JSON
-            String payloadJson = objectMapper.writeValueAsString(payload);
-
-            // 3. Tạo Entity Outbox (Khớp với cấu hình Debezium đã làm)
-            OutboxEvent outbox = OutboxEvent.builder()
-                    .id(UUID.randomUUID().toString())
-                    .aggregateType("order") // Để Debezium map vào topic order-service.order.events
-                    .aggregateId(savedOrder.getId().toString())
-                    .type("ORDER_CREATED")
-                    .payload(payloadJson)
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            // 4. Lưu vào bảng t_outbox_events
-            outboxRepository.save(outbox);
-            String paymentUrl = null;
-            if (PaymentMethod.VNPAY.equals(savedOrder.getPaymentMethod())) {
-                ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-                String clientId = requestAttributes.getRequest().getRemoteAddr();
-                PaymentResponse response = paymentFeignClient.getVnpayUrl(
-                        savedOrder.getFinalAmount().longValue(),
-                        null,
-                        "ORDER",
-                        savedOrder.getOrderNumber(),
-                        clientId
-                );
-                paymentUrl = response.getUrl();
-            }
-            if (PaymentMethod.BANK.equals(savedOrder.getPaymentMethod())) {
-                SePayResponsive response = paymentFeignClient.getSepayUrl(
-                        savedOrder.getFinalAmount().longValue(),
-                        "ORDER",
-                        savedOrder.getOrderNumber()
-                );
-                log.info("sepay url: {}", response);
-                paymentUrl = response.getData();
-            }
-            if (PaymentMethod.WALLET.equals(savedOrder.getPaymentMethod())) {
-                InternalPaymentForm internalPaymentForm = InternalPaymentForm.builder()
-                        .amount(savedOrder.getFinalAmount().longValue())
-                        .orderNumber(savedOrder.getOrderNumber())
-                        .build();
-                WalletResponse response = paymentFeignClient.payInternalOrder(internalPaymentForm);
-            }
-            if (PaymentMethod.COD.equals(savedOrder.getPaymentMethod())) {
-                orderStatisticsService.updateStatsOnNewOrder(order);
-            }
-            return OrderResponse.builder()
-                    .orderNumber(orderNumber)
-                    .paymentUrl(paymentUrl)
-                    .paymentMethod(savedOrder.getPaymentMethod())
-                    .build();
+            payloadJson = objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException e) {
             throw new BusinessException(ORDER_EVENT_FAIL);
         }
+        OutboxEvent outbox = OutboxEvent.builder()
+                .id(UUID.randomUUID().toString())
+                .aggregateType("order")
+                .aggregateId(savedOrder.getId().toString())
+                .type("Order.Create")
+                .payload(payloadJson)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        // 4. Lưu vào bảng t_outbox_events
+        outboxRepository.save(outbox);
+
+        return OrderResponse.builder()
+                .orderNumber(orderNumber)
+                .orderStatus(savedOrder.getStatus())
+                .paymentMethod(savedOrder.getPaymentMethod())
+                .build();
+
     }
 
-    private boolean isValidTransition(OrderStatus form, OrderStatus to) {
-        if (form == null || to == null) return false;
-        return switch (form) {
-            case PENDING -> to == CONFIRMED || to == OrderStatus.CANCELLED;
-            case CONFIRMED -> to == SHIPPING || to == OrderStatus.CANCELLED;
-            case PAID -> to == OrderStatus.SHIPPING || to == OrderStatus.CANCELLED;
-            case SHIPPING -> to == OrderStatus.DELIVERED || to == OrderStatus.CANCELLED;
-            case DELIVERED, CANCELLED -> false;
-            case RETURNED -> false;
+    private boolean isValidTransitionForAdmin(OrderStatus from, OrderStatus to) {
+        if (from == null || to == null) return false;
+        if (from == to) return true;
+
+        // Final states: admin không được đổi (tránh phá audit)
+        if (from == OrderStatus.COMPLETED) return false;
+
+        // Không cho đi lùi (tránh “time travel”)
+        if (to.ordinal() < from.ordinal()) {
+            // ngoại lệ: admin được cancel/expire trước khi ship
+            boolean allowCancel = to == OrderStatus.CANCELLED
+                    && from != OrderStatus.SHIPPING
+                    && from != OrderStatus.DELIVERED
+                    && from != OrderStatus.RETURNED;
+
+            boolean allowExpire = to == OrderStatus.EXPIRED
+                    && (from == OrderStatus.CREATED
+                    || from == OrderStatus.RESERVED
+                    || from == OrderStatus.AWAITING_PAYMENT);
+
+            return allowCancel || allowExpire;
+        }
+
+        // Forward transitions (cho phép rộng hơn system)
+        return switch (from) {
+            case CREATED -> to == OrderStatus.RESERVED
+                    || to == OrderStatus.AWAITING_PAYMENT
+                    || to == OrderStatus.CANCELLED
+                    || to == OrderStatus.EXPIRED;
+
+            case RESERVED, AWAITING_PAYMENT -> to == OrderStatus.PAID
+                    || to == OrderStatus.CANCELLED
+                    || to == OrderStatus.EXPIRED;
+
+            case PAID -> to == OrderStatus.CONFIRMED
+                    || to == OrderStatus.SHIPPING   // admin “bypass” confirm nếu cần
+                    || to == OrderStatus.CANCELLED; // requires refund policy
+
+            case CONFIRMED -> to == OrderStatus.SHIPPING
+                    || to == OrderStatus.CANCELLED; // policy-dependent
+
+            case SHIPPING -> to == OrderStatus.DELIVERED; // thường không cancel sau ship
+
+            case DELIVERED -> to == OrderStatus.COMPLETED
+                    || to == OrderStatus.RETURNED;
+
+            case RETURNED -> to == OrderStatus.COMPLETED;
+
+            case CANCELLED, EXPIRED, COMPLETED -> false;
         };
     }
+
+
 }

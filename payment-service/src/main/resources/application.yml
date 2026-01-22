@@ -20,6 +20,19 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: http://localhost:8085
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: payment-group
+
+      # 2. BẮT BUỘC CÓ DÒNG NÀY (để nó đọc lại tin nhắn từ Offset 0)
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+    listener:
+      ack-mode: manual
 server:
   port: 8090
   forward-headers-strategy: FRAMEWORK

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -19,6 +20,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
 import org.springframework.security.oauth2.client.*;
+import org.springframework.security.oauth2.client.oidc.web.server.logout.OidcClientInitiatedServerLogoutSuccessHandler;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizedClientManager;
@@ -31,7 +33,9 @@ import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoders;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.authentication.logout.ServerLogoutSuccessHandler;
 import org.springframework.security.web.server.context.NoOpServerSecurityContextRepository;
+import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
 import org.springframework.web.cors.reactive.CorsWebFilter;
@@ -54,7 +58,7 @@ public class WebConfig {
     private OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
 
     @Bean
-    public SecurityWebFilterChain securityFilterChain(ServerHttpSecurity http) throws Exception {
+    public SecurityWebFilterChain securityFilterChain(ServerHttpSecurity http, ReactiveClientRegistrationRepository repository) throws Exception {
         http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -62,6 +66,10 @@ public class WebConfig {
                         .pathMatchers("/favicon.ico").permitAll()
                         .anyExchange().authenticated())
                 .cors(Customizer.withDefaults())
+                .logout(logout -> logout
+                        .requiresLogout(ServerWebExchangeMatchers.pathMatchers(HttpMethod.GET, "/logout")) // Cho phép GET
+                        .logoutSuccessHandler(oidcLogoutSuccessHandler(repository))
+                )
 //                .formLogin(AbstractHttpConfigurer::disable)
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
 //                .addFilterAfter(customRoleHeaderFilter, BearerTokenAuthenticationFilter.class)
@@ -83,6 +91,17 @@ public class WebConfig {
 //                .securityContextRepository(NoOpServerSecurityContextRepository.getInstance());
 //                .oauth2Client(Customizer.withDefaults());
         return http.build();
+    }
+    private ServerLogoutSuccessHandler oidcLogoutSuccessHandler(ReactiveClientRegistrationRepository repository) {
+        // Handler này sẽ tạo link redirect sang IDP kèm theo id_token_hint và post_logout_redirect_uri
+        OidcClientInitiatedServerLogoutSuccessHandler oidcHandler =
+                new OidcClientInitiatedServerLogoutSuccessHandler(repository);
+
+        // ĐÂY LÀ NƠI IDP SẼ TRẢ NGƯỜI DÙNG VỀ (Phải trùng khớp cấu hình tại IDP)
+        // Bạn có thể để trang chủ React của bạn
+        oidcHandler.setPostLogoutRedirectUri("http://localhost:5174/");
+
+        return oidcHandler;
     }
     @Bean
     public ServerOAuth2AuthorizedClientRepository authorizedClientRepository() {

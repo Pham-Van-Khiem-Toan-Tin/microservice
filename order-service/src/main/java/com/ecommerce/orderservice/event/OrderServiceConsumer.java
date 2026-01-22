@@ -7,6 +7,7 @@ import com.ecommerce.orderservice.dto.exception.BusinessException;
 import com.ecommerce.orderservice.entity.CartEntity;
 import com.ecommerce.orderservice.entity.OrderEntity;
 import com.ecommerce.orderservice.entity.OrderStatus;
+import com.ecommerce.orderservice.entity.PaymentMethod;
 import com.ecommerce.orderservice.repository.CartItemRepository;
 import com.ecommerce.orderservice.repository.CartRepository;
 import com.ecommerce.orderservice.repository.OrderItemRepository;
@@ -88,12 +89,21 @@ public class OrderServiceConsumer {
             // 3. Tìm đơn hàng cần xử lý
             OrderEntity order = orderRepository.findById(UUID.fromString(event.getOrderId()))
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng: " + event.getOrderId()));
-
+            if (order.getStatus() == OrderStatus.CANCELLED
+                    || order.getStatus() == OrderStatus.EXPIRED
+                    || order.getStatus() == OrderStatus.COMPLETED) {
+                acknowledgment.acknowledge();
+                return;
+            }
             // 4. Cập nhật trạng thái dựa trên kết quả từ kho
             if ("SUCCESS".equals(event.getStatus())) {
                 log.info("Kho xác nhận thành công đơn hàng: {}", event.getOrderId());
                 // Chuyển sang CONFIRMED (Chờ thanh toán hoặc Chờ giao hàng)
-                order.setStatus(OrderStatus.CONFIRMED);
+                if (!order.getPaymentMethod().equals(PaymentMethod.COD)) {
+                    order.setStatus(OrderStatus.RESERVED);
+                } else {
+                    order.setStatus(OrderStatus.CONFIRMED);
+                }
             } else {
                 log.warn("Kho xác nhận thất bại đơn hàng: {}. Lý do: {}", event.getOrderId(), event.getReason());
                 // Thực hiện ROLLBACK trạng thái đơn hàng

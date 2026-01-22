@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -14,6 +16,9 @@ public class OrderEventPayload {
     private List<OrderItemPayload> items;
     private String userId;
     private PaymentMethod paymentMethod;
+    private String orderNumber;
+    private BigDecimal finalAmount;
+    private LocalDateTime expiresAt;
     @Data
     @AllArgsConstructor
     public static class OrderItemPayload {

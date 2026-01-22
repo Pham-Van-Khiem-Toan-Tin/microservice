@@ -24,6 +24,13 @@ public class BffGatewayRoutes {
                 .route("search-service", r -> r.path("/api/search/**")
                         .filters(f -> f.stripPrefix(2))
                         .uri("lb://search-service"))
+                .route("order-service", r -> r.path("/api/orders/customer-order/sse/**")
+                        .filters(f -> f.stripPrefix(2).tokenRelay())
+                        .metadata("response-timeout", -1)
+                        .metadata("connect-timeout", -1)
+                        .uri("lb://order-service")
+
+                )
                 .route("order-service", r -> r.path("/api/orders/**")
                         .filters(f -> f.stripPrefix(2).tokenRelay())
                         .uri("lb://order-service"))
