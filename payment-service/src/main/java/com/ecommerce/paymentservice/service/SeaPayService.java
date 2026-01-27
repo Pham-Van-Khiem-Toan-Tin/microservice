@@ -15,6 +15,7 @@ import com.ecommerce.paymentservice.utils.AuthenticationUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -47,73 +48,118 @@ public class SeaPayService {
     private OutboxRepository outboxRepository;
     @Autowired
     private ObjectMapper objectMapper;
+
     @Transactional
     public String generatePaymentQr(long amount, String referenceId, PaymentType type) {
-        String userId = AuthenticationUtils.getUserId();
-        // Tạo nội dung chuyển khoản: TZNAP 101
-        String prefix = sepayContent + " " +
-                ((type == PaymentType.ORDER) ? "TZORD:" : "TZNAP:");
-        String effectiveReferenceId = referenceId;
-        if (type == PaymentType.DEPOSIT) {
-            effectiveReferenceId = userId;
+        try {
+            MDC.put("orderNo", referenceId);
+            MDC.put("sagaStep", "PAYMENT_SEPAY_QR_INIT");
+            MDC.put("status", "STARTED");
+
+            log.info("Khởi tạo QR SePay. Type={}, Amount={}", type, amount);
+            String userId = AuthenticationUtils.getUserId();
+            // Tạo nội dung chuyển khoản: TZNAP 101
+            String prefix = sepayContent + " " +
+                    ((type == PaymentType.ORDER) ? "TZORD:" : "TZNAP:");
+            String effectiveReferenceId = referenceId;
+            if (type == PaymentType.DEPOSIT) {
+                effectiveReferenceId = userId;
+            }
+            String content = prefix + " " + effectiveReferenceId;
+            PaymentTransactionEntity tx = PaymentTransactionEntity
+                    .builder()
+                    .userId(userId)
+                    .amount(BigDecimal.valueOf(amount))
+                    .gateway("SEPAY")
+                    .referenceId(referenceId)
+                    .type(type)
+                    .status("PENDING")
+                    .originalContent(content)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            paymentTransactionRepository.save(tx);
+            // Encode nội dung để tránh lỗi ký tự đặc biệt trên URL
+            String encodedContent = URLEncoder.encode(content, StandardCharsets.UTF_8);
+            String SEPAY_URL_BASE = "https://qr.sepay.vn/img";
+            // Ghép chuỗi theo công thức SePay
+            // https://qr.sepay.vn/img?acc=...&bank=...&amount=...&des=...
+            log.info("Nội dung chuyển khoản dự kiến: [{}]", content);
+
+            MDC.put("status", "SUCCESS");
+            log.info("Đã tạo link QR SePay thành công.");
+            return String.format("%s?acc=%s&bank=%s&amount=%d&des=%s",
+                    SEPAY_URL_BASE,
+                    bankNumber,
+                    bankName,
+                    amount,
+                    encodedContent
+            );
+        } catch (Exception e) {
+            MDC.put("status", "FAILED");
+            log.error("Lỗi tạo QR SePay: {}", e.getMessage());
+            throw e;
+        } finally {
+            MDC.clear();
         }
-        String content = prefix + " " + effectiveReferenceId;
-        PaymentTransactionEntity tx = PaymentTransactionEntity
-                .builder()
-                .userId(userId)
-                .amount(BigDecimal.valueOf(amount))
-                .gateway("SEPAY")
-                .referenceId(referenceId)
-                .type(type)
-                .status("PENDING")
-                .originalContent(content)
-                .createdAt(LocalDateTime.now())
-                .build();
-        paymentTransactionRepository.save(tx);
-        // Encode nội dung để tránh lỗi ký tự đặc biệt trên URL
-        String encodedContent = URLEncoder.encode(content, StandardCharsets.UTF_8);
-        String SEPAY_URL_BASE = "https://qr.sepay.vn/img";
-        // Ghép chuỗi theo công thức SePay
-        // https://qr.sepay.vn/img?acc=...&bank=...&amount=...&des=...
-        return String.format("%s?acc=%s&bank=%s&amount=%d&des=%s",
-                SEPAY_URL_BASE,
-                bankNumber,
-                bankName,
-                amount,
-                encodedContent
-        );
+
     }
+
     @Transactional(rollbackFor = Exception.class)
     public String processWebhook(SePayWebhookDto data) {
+        MDC.put("externalTransId", String.valueOf(data.getId()));
+        MDC.put("sagaStep", "PAYMENT_SEPAY_WEBHOOK");
+        MDC.put("status", "PROCESSING");
 
+        log.info("Nhận Webhook từ SePay: Content=[{}], Amount={}, Type={}",
+                data.getContent(), data.getTransferAmount(), data.getTransferType());
         // 1. LỌC: Chỉ nhận tiền vào ("in")
-        if (!"in".equalsIgnoreCase(data.getTransferType())) {
-            return "Ignored: Money Out";
+        try {
+            if (!"in".equalsIgnoreCase(data.getTransferType())) {
+                log.info("Bỏ qua: Giao dịch không phải tiền vào (TransferType={})", data.getTransferType());
+                return "Ignored: Money Out";
+            }
+
+            // 2. CHỐNG TRÙNG: Check ID SePay
+            if (paymentTransactionRepository.existsByExternalTransId(String.valueOf(data.getId()))) {
+                log.warn("Bỏ qua: Giao dịch trùng lặp (ID SePay đã tồn tại)");
+                return "Ignored: Duplicate Transaction";
+            }
+            String content = data.getContent().toUpperCase();
+            if (content.contains("TZORD")) {
+                return processOrderPayment(data);
+            } else if (content.contains("TZNAP")) {
+                return processWalletDeposit(data);
+            }
+            log.warn("Bỏ qua: Nội dung chuyển khoản không khớp định dạng TZORD/TZNAP");
+            return "Ignored: Invalid Content Format";
+        } catch (Exception e) {
+            MDC.put("status", "ERROR");
+            log.error("Lỗi hệ thống khi xử lý Webhook SePay: {}", e.getMessage());
+            throw e;
+        } finally {
+            MDC.clear();
         }
 
-        // 2. CHỐNG TRÙNG: Check ID SePay
-        if (paymentTransactionRepository.existsByExternalTransId(String.valueOf(data.getId()))) {
-            return "Ignored: Duplicate Transaction";
-        }
-        String content = data.getContent().toUpperCase();
-        if (content.contains("TZORD")) {
-            return processOrderPayment(data);
-        } else if (content.contains("TZNAP")) {
-            return processWalletDeposit(data);
-        }
-        return "Ignored: Invalid Content Format";
     }
 
     private String processOrderPayment(SePayWebhookDto data) {
         // Tách lấy mã đơn hàng (Ví dụ: TZORD ORD123 -> ORD123)
         String orderNumber = parseReferenceId(data.getContent(), "TZORD");
-        if (orderNumber == null) return "Error: Cannot parse Order Number";
+        MDC.put("orderNo", orderNumber);
+        log.info("Bắt đầu xử lý thanh toán đơn hàng từ SePay.");
+        if (orderNumber == null) {
+            log.error("Không thể parse được OrderNumber từ nội dung: {}", data.getContent());
+            return "Error: Cannot parse Order Number";
+        }
 
         // Tìm giao dịch PENDING trong hệ thống của mình
         PaymentTransactionEntity tx = paymentTransactionRepository
                 .findByNormalizedReferenceId(orderNumber)
-                .orElseThrow(() -> new RuntimeException("Transaction not found for order: " + orderNumber));
-
+                .orElse(null);
+        if (tx == null) {
+            log.error("KHÔNG TÌM THẤY giao dịch PENDING trong DB cho đơn hàng này!");
+            return "Error: Transaction not found";
+        }
         // Cập nhật trạng thái giao dịch
         tx.setStatus("SUCCESS");
         tx.setExternalTransId(String.valueOf(data.getId()));
@@ -139,7 +185,7 @@ public class SeaPayService {
                     .build();
 
             outboxRepository.save(outbox);
-
+            log.info("Thanh toán đơn hàng qua SePay THÀNH CÔNG. Đã lưu Outbox Event.");
             return "Order Processed & Event Saved to Outbox: " + orderNumber;
 
         } catch (JsonProcessingException e) {
@@ -147,8 +193,10 @@ public class SeaPayService {
             throw new RuntimeException("Error processing payment event");
         }
     }
+
     private String processWalletDeposit(SePayWebhookDto data) {
         String rawUserId = parseReferenceId(data.getContent(), "TZNAP");
+        log.info("Bắt đầu xử lý nạp tiền ví từ SePay cho User ID (raw): {}", rawUserId);
         if (rawUserId == null) return "Error: Cannot parse User ID";
 
         // CHỈ ép kiểu UUID tại đây
@@ -185,9 +233,11 @@ public class SeaPayService {
                 .referenceCode(String.valueOf(data.getId()))
                 .build();
         walletTransactionRepository.save(walletTx);
+        log.info("Nạp tiền ví thành công. Số dư cũ: {} | Số dư mới: {}", oldBalance, newBalance);
         // Lưu lịch sử ví...
         return "Wallet Deposit Processed for User: " + formattedUserId;
     }
+
     private String parseReferenceId(String content, String prefix) {
         if (content == null) return null;
 
@@ -203,6 +253,7 @@ public class SeaPayService {
         }
         return null;
     }
+
     private String formatToUuidString(String rawId) {
         // Nếu chuỗi đã có dấu gạch ngang rồi thì trả về luôn (đề phòng ngân hàng đổi nết)
         if (rawId.contains("-")) {

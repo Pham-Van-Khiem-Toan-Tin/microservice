@@ -11,12 +11,16 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.oauth2.client.oidc.web.server.logout.OidcClientInitiatedServerLogoutSuccessHandler;
+import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizedClientRepository;
 import org.springframework.security.oauth2.client.web.server.WebSessionServerOAuth2AuthorizedClientRepository;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.authentication.logout.ServerLogoutSuccessHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.util.List;
@@ -26,18 +30,29 @@ import java.util.List;
 @EnableReactiveMethodSecurity
 @Slf4j
 public class WebConfig {
-
-
+    private static final String IDP_LOGOUT_URL = "http://localhost:8085/logout";
+    // App URL sau khi logout xong ở IdP quay lại
+    private static final String POST_LOGOUT_REDIRECT = "http://localhost:5174";
+    @Autowired
+    private ReactiveClientRegistrationRepository clientRegistrationRepository;
     @Autowired
     private OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+    private ServerLogoutSuccessHandler oidcLogoutSuccessHandler() {
+        OidcClientInitiatedServerLogoutSuccessHandler oidcLogoutSuccessHandler =
+                new OidcClientInitiatedServerLogoutSuccessHandler(this.clientRegistrationRepository);
 
+        oidcLogoutSuccessHandler.setPostLogoutRedirectUri(POST_LOGOUT_REDIRECT);
+
+        return oidcLogoutSuccessHandler;
+    }
     @Bean
-    public SecurityWebFilterChain securityFilterChain(ServerHttpSecurity http) throws Exception {
+    public SecurityWebFilterChain securityFilterChain(ServerHttpSecurity http, ReactiveClientRegistrationRepository repository) throws Exception {
         http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
                 .authorizeExchange(auth -> auth
-                        .pathMatchers("/favicon.ico", "/api/public/**", "/api/search/**").permitAll()
+                        .pathMatchers("/favicon.ico", "/api/public/**", "/api/search/**", "/logout").permitAll()
                         .anyExchange().authenticated())
                 .cors(Customizer.withDefaults())
 //                .formLogin(AbstractHttpConfigurer::disable)
@@ -57,9 +72,10 @@ public class WebConfig {
                             response.setStatusCode(HttpStatus.FOUND);
                             response.getHeaders().setLocation(URI.create("http://localhost:5174/login?error=" + exception.getMessage()));
                             return response.setComplete();
-                        }));
-//                .securityContextRepository(NoOpServerSecurityContextRepository.getInstance());
-//                .oauth2Client(Customizer.withDefaults());
+                        }))
+                .logout(logout -> logout.logoutUrl("/logout")
+                        .logoutSuccessHandler(oidcLogoutSuccessHandler()))
+                .oidcLogout(logout -> logout.backChannel(Customizer.withDefaults()));
         return http.build();
     }
     @Bean

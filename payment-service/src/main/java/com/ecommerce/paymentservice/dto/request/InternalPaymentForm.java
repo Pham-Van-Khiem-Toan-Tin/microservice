@@ -8,5 +8,4 @@ import lombok.Data;
 public class InternalPaymentForm {
     private long amount;
     private String orderNumber;
-    private String userId;
 }

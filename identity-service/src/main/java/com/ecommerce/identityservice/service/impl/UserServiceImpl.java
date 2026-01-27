@@ -50,6 +50,7 @@ public  class UserServiceImpl implements UserService {
     @Autowired
     private RoleRepository roleRepository;
     @Override
+    @Transactional
     public List<RoleEntity> getAllRoles() {
         return roleRepository.findAll();
     }

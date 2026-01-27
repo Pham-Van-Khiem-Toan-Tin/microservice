@@ -37,8 +37,7 @@ public class InventoryHistoryEntity {
     @Enumerated(EnumType.STRING)
     private InventoryType type;
 
-    private UUID referenceId; // Order ID hoặc Import Ticket ID
-
+    private String referenceId; // Order ID hoặc Import Ticket ID
     @Column(name = "created_at")
     private Instant createdAt;
 

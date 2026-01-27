@@ -29,7 +29,6 @@ public class BffGatewayRoutes {
                         .metadata("response-timeout", -1)
                         .metadata("connect-timeout", -1)
                         .uri("lb://order-service")
-
                 )
                 .route("order-service", r -> r.path("/api/orders/**")
                         .filters(f -> f.stripPrefix(2).tokenRelay())

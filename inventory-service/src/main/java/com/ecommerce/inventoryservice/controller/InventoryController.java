@@ -1,10 +1,12 @@
 package com.ecommerce.inventoryservice.controller;
 
+import com.ecommerce.inventoryservice.dto.event.ReReserveRequest;
 import com.ecommerce.inventoryservice.dto.request.InventoryAdjustRequest;
-import com.ecommerce.inventoryservice.dto.request.OrderItemCheckForm;
+import com.ecommerce.inventoryservice.dto.request.order.OrderCreateInventoryForm;
 import com.ecommerce.inventoryservice.dto.response.InventoryAdjustResponse;
 import com.ecommerce.inventoryservice.dto.response.InventoryDTO;
 import com.ecommerce.inventoryservice.dto.response.cart.InventoryCartDto;
+import com.ecommerce.inventoryservice.dto.response.order.InventoryAvailableDto;
 import com.ecommerce.inventoryservice.service.InventoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -40,8 +42,12 @@ public class InventoryController {
         return inventoryService.getStockOfSkus(skuCodes);
     }
     @PostMapping("/check-availability")
-    public boolean checkAvailability(@RequestBody List<OrderItemCheckForm> items) {
-        return inventoryService.checkAvailability(items);
+    public List<InventoryAvailableDto> checkAvailability(@RequestBody OrderCreateInventoryForm form) {
+        return inventoryService.checkAvailability(form);
+    }
+    @PostMapping("/re-reserve")
+    public List<InventoryAvailableDto> reReserve(@RequestBody ReReserveRequest form) {
+        return inventoryService.reReserve(form);
     }
 }
 

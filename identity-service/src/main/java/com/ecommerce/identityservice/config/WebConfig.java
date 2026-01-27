@@ -92,7 +92,7 @@ public class WebConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
-                        .requestMatchers("/register", "/terms", "/privacy", "/login","/locations/**", "/verify-email", "forgot-password", "new-password", "/role/**","/favicon.ico",
+                        .requestMatchers("/register", "/terms", "/privacy", "/logout","/login","/locations/**", "/verify-email", "forgot-password", "new-password", "/role/**","/favicon.ico",
                                 "/css/**", "/js/**", "/images/**", "/fontawesome/**", "/error", "/webjars/**", "/favicon.ico", "/.well-known/appspecific/com.chrome.devtools.json")
                         .permitAll()
                         .anyRequest().authenticated())
@@ -101,6 +101,8 @@ public class WebConfig {
                     login.loginPage("/login")
                             .successHandler(idpLoginSuccessHandler);
                 })
+                .logout(logout -> logout.deleteCookies("IDP_SESSION")
+                        .logoutUrl("/logout"))
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
                 );

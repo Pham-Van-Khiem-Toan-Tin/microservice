@@ -1,0 +1,12 @@
+filebeat.inputs:
+  - type: filestream
+    enabled: true
+    paths:
+      - /var/log/apps/*.log # Đường dẫn trong container Filebeat
+    parsers:
+      - ndjson:
+          target: ""
+          overwrite_keys: true
+
+output.logstash:
+  hosts: ["logstash:5044"]

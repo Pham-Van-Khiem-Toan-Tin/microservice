@@ -19,6 +19,8 @@ import com.ecommerce.paymentservice.service.WalletService;
 import com.ecommerce.paymentservice.utils.AuthenticationUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -33,6 +35,7 @@ import java.util.UUID;
 import static com.ecommerce.paymentservice.constants.Constants.WALLET_INVALID;
 
 @Service
+@Slf4j
 public class WalletServiceImpl implements WalletService {
     @Autowired
     private WalletRepository walletRepository;
@@ -65,80 +68,89 @@ public class WalletServiceImpl implements WalletService {
 
     @Transactional
     @Override
-    public String processWalletPayment(InternalPaymentForm form) throws JsonProcessingException {
-        String userId = form.getUserId();
-        WalletEntity wallet = walletRepository.findByUserIdWithLock(userId)
-                .orElseThrow(() -> new BusinessException(WALLET_INVALID));
-        BigDecimal amount = BigDecimal.valueOf(form.getAmount());
-        BigDecimal oldBalance = wallet.getBalance();
-        boolean isAvaiable = oldBalance.compareTo(amount) > 0;
-        TransactionStatus txs = null;
-        BigDecimal newBalance = null;
-        if (!isAvaiable) {
-            txs = TransactionStatus.FAILED;
-            newBalance = oldBalance;
-        } else {
-            txs = TransactionStatus.SUCCESS;
-            newBalance = oldBalance.subtract(amount);
-        }
-        wallet.setBalance(newBalance);
-        walletRepository.save(wallet);
-        WalletTransactionEntity wtx = transactionRepository.save(WalletTransactionEntity.builder()
-                .wallet(wallet)
-                .amount(amount.negate()) // Số âm cho chi tiêu
-                .balanceBefore(oldBalance)
-                .balanceAfter(newBalance)
-                .type(TransactionType.PAYMENT)
-                .status(txs)
-                .description("Thanh toán đơn hàng: " + form.getOrderNumber())
-                .createdAt(LocalDateTime.now())
-                .build());
-        PaymentTransactionEntity tx = PaymentTransactionEntity.builder()
-                .userId(userId)
-                .amount(amount)
-                .referenceId(form.getOrderNumber())
-                .gateway("WALLET")
-                .status(isAvaiable ? "SUCCESS" : "FAIL") // Thành công ngay lập tức
-                .type(PaymentType.ORDER)
-                .createdAt(LocalDateTime.now())
-                .build();
-        paymentTransactionRepository.save(tx);
-        OutboxEvent outboxEvent = null;
-        if (isAvaiable) {
-            outboxEvent = OutboxEvent.builder()
-                    .id(UUID.randomUUID().toString())
-                    .aggregateType("payment") // Sẽ sinh ra topic: payment-service.payment.events
-                    .aggregateId("WTX-" + wtx.getId())
-                    .type("Payment.Succeeded")
-                    .payload(objectMapper.writeValueAsString(PaymentSuccessResult.builder()
-                            .orderNumber(form.getOrderNumber())
-                            .amount(tx.getAmount())
-                            .providerRef("WTX-" + wtx.getId())
-                            .paidAt(LocalDateTime.now())
-                            .method(PaymentMethod.WALLET)
-                            .build()))
-                    .createdAt(LocalDateTime.now())
-                    .build();
-        } else {
-            outboxEvent = OutboxEvent.builder()
-                    .id(UUID.randomUUID().toString())
-                    .aggregateType("payment") // Sẽ sinh ra topic: payment-service.payment.events
-                    .aggregateId("WTX-" + wtx.getId())
-                    .type("Payment.Failed")
-                    .payload(objectMapper.writeValueAsString(PaymentFailedResult.builder()
-                            .orderNumber(form.getOrderNumber())
-                            .amount(tx.getAmount())
-                            .failedAt(LocalDateTime.now())
-                            .method(PaymentMethod.WALLET)
-                            .reason("Ví không đủ số dư")
-                            .build()))
-                    .createdAt(LocalDateTime.now())
-                    .build();
-        }
-        // 6. Bắn Outbox Event để Order Service cập nhật trạng thái PAID
+    public String processWalletPayment(InternalPaymentForm form) {
+        // 1. Gắn nhãn MDC để theo dõi xuyên suốt
+        MDC.put("orderNo", form.getOrderNumber());
+        MDC.put("sagaStep", "PAYMENT_WALLET_INTERNAL_EXEC");
+        MDC.put("status", "STARTED");
 
-        outboxRepository.save(outboxEvent);
-        return "WTX-" + wtx.getId();
+        log.info("Bắt đầu thực hiện trừ tiền ví cho đơn hàng: {}. Số tiền: {}",
+                form.getOrderNumber(), form.getAmount());
+
+        try {
+            String userId = AuthenticationUtils.getUserId();
+
+            // 2. Lock ví (Pessimistic Lock) để tránh tranh chấp số dư (Race Condition)
+            log.info("Đang lock ví của User: {} để xử lý giao dịch...", userId);
+            WalletEntity wallet = walletRepository.findByUserIdWithLock(userId)
+                    .orElseThrow(() -> new BusinessException(WALLET_INVALID));
+
+            BigDecimal amount = BigDecimal.valueOf(form.getAmount());
+            BigDecimal oldBalance = wallet.getBalance();
+
+            // Kiểm tra khả dụng (Sửa lỗi chính tả isAvaiable -> isAvailable)
+            boolean isAvailable = oldBalance.compareTo(amount) >= 0;
+            TransactionStatus txs;
+            BigDecimal newBalance;
+
+            if (!isAvailable) {
+                MDC.put("status", "FAILED");
+                MDC.put("failureReason", "INSUFFICIENT_BALANCE");
+                log.warn("Thanh toán thất bại: Ví không đủ số dư. Hiện có: {}, Cần: {}", oldBalance, amount);
+
+                txs = TransactionStatus.FAILED;
+                newBalance = oldBalance;
+            } else {
+                MDC.put("status", "PROCESSING");
+                log.info("Số dư hợp lệ. Thực hiện trừ tiền: {} -> {}", oldBalance, oldBalance.subtract(amount));
+
+                txs = TransactionStatus.SUCCESS;
+                newBalance = oldBalance.subtract(amount);
+            }
+
+            // 3. Cập nhật Ví & Lưu lịch sử ví
+            wallet.setBalance(newBalance);
+            walletRepository.save(wallet);
+
+            WalletTransactionEntity wtx = transactionRepository.save(WalletTransactionEntity.builder()
+                    .wallet(wallet)
+                    .amount(amount.negate())
+                    .balanceBefore(oldBalance)
+                    .balanceAfter(newBalance)
+                    .type(TransactionType.PAYMENT)
+                    .status(txs)
+                    .description("Thanh toán đơn hàng: " + form.getOrderNumber())
+                    .createdAt(LocalDateTime.now())
+                    .build());
+
+            String internalTxId = "WTX-" + wtx.getId();
+            MDC.put("internalTxId", internalTxId);
+
+            // 4. Lưu giao dịch Payment (Lớp trừu tượng cho Gateway)
+            PaymentTransactionEntity tx = paymentTransactionRepository.save(PaymentTransactionEntity.builder()
+                    .userId(userId)
+                    .amount(amount)
+                    .referenceId(form.getOrderNumber())
+                    .gateway("WALLET")
+                    .status(isAvailable ? "SUCCESS" : "FAIL")
+                    .type(PaymentType.ORDER)
+                    .createdAt(LocalDateTime.now())
+                    .build());
+
+            // 5. Chuẩn bị Outbox Event
+            MDC.put("sagaStep", "PAYMENT_OUTBOX_GENERATE");
+            MDC.put("status", isAvailable ? "SUCCESS" : "FAILED_BUSINESS");
+            log.info("Kết thúc xử lý thanh toán ví. Kết quả: {}", txs);
+
+            return internalTxId;
+
+        } catch (Exception e) {
+            MDC.put("status", "ERROR");
+            log.error("Lỗi thảm họa khi trừ tiền ví: {}", e.getMessage());
+            throw e; // Rollback transaction
+        } finally {
+            MDC.clear();
+        }
     }
 
     private WalletEntity getOrCreateWallet() {

@@ -1,15 +1,11 @@
 package com.ecommerce.orderservice.service.impl;
 
-import com.ecommerce.orderservice.constants.Constants;
-import com.ecommerce.orderservice.dto.event.OrderEventPayload;
 import com.ecommerce.orderservice.dto.event.StockUpdatePayload;
 import com.ecommerce.orderservice.dto.exception.BusinessException;
-import com.ecommerce.orderservice.dto.request.InternalPaymentForm;
-import com.ecommerce.orderservice.dto.request.OrderCreateForm;
-import com.ecommerce.orderservice.dto.request.OrderItemCheckForm;
-import com.ecommerce.orderservice.dto.request.UpdateOrderRequest;
+import com.ecommerce.orderservice.dto.request.*;
 import com.ecommerce.orderservice.dto.response.*;
 import com.ecommerce.orderservice.dto.response.cart.SkuCartDTO;
+import com.ecommerce.orderservice.dto.response.inventory.InventoryAvailableDto;
 import com.ecommerce.orderservice.dto.response.order.*;
 import com.ecommerce.orderservice.dto.response.payment.PaymentResponse;
 import com.ecommerce.orderservice.dto.response.payment.SePayResponsive;
@@ -26,10 +22,11 @@ import com.ecommerce.orderservice.service.OrderService;
 import com.ecommerce.orderservice.service.OrderStatisticsService;
 import com.ecommerce.orderservice.specs.OrderSpecification;
 import com.ecommerce.orderservice.utils.AuthenticationUtils;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import feign.FeignException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -39,8 +36,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -174,34 +169,26 @@ public class OrderServiceImpl implements OrderService {
 
         // Apply status
         order.setStatus(to);
-
-        // --- Payment rules with new statuses ---
-        // Admin should NOT arbitrarily mark paid for online methods.
-        // For COD: if delivered, you MAY mark payment succeeded (if your business says cash is collected at door).
         if (to == OrderStatus.DELIVERED) {
             if (order.getPaymentMethod() == PaymentMethod.COD
                     && order.getPaymentStatus() != PaymentStatus.SUCCEEDED) {
                 order.setPaymentStatus(PaymentStatus.SUCCEEDED);
+                emitStockEvent(order, "Inventory.CommitRequested");
 
-                // optional: emit payment event if Payment service is not doing this
-                // emitPaymentOutbox(order, "Payment.Succeeded");
+
             }
         }
 
-        // If admin sets PAID, enforce payment status consistency
+
         if (to == OrderStatus.PAID) {
-            // Only allow if payment already succeeded, or admin explicitly passes override flag
             if (order.getPaymentStatus() != PaymentStatus.SUCCEEDED) {
                 throw new BusinessException(VALIDATE_FAIL);
             }
         }
 
-        // --- Inventory/Stock events using new eventType ---
         if (to == OrderStatus.CANCELLED) {
             order.setCancelReason(req.getReason());
 
-            // Release reservation / restore stock depending on what stage it is.
-            // Best: single event and Inventory decides idempotently.
             emitStockEvent(order, "Inventory.ReleaseRequested");
         }
 
@@ -434,164 +421,251 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public OrderResponse createOrder(HttpServletRequest req,  OrderCreateForm form) {
-        String userId = AuthenticationUtils.getUserId();
-        CartEntity cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new BusinessException(CART_INVALID));
-        if (cart.getItems().isEmpty()) {
-            throw new BusinessException(CART_IS_EMPTY);
-        }
-        List<String> skuIds = cart.getItems().stream().map(CartItem::getSkuId).toList();
-        List<SkuCartDTO> skusInfo = catalogFeignClient.getSkuDetailsBatch(skuIds);
-        Map<String, SkuCartDTO> skusInfoMap = skusInfo.stream().collect(Collectors.toMap(SkuCartDTO::getId, sku -> sku));
+    public OrderResponse createOrder(HttpServletRequest req, OrderCreateForm form) {
         String orderNumber = "ORD-" + System.currentTimeMillis();
-        BigDecimal subTotal = cart.getItems().stream()
-                .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal shippingFee = BigDecimal.ZERO; // Ví dụ: freeship
-        BigDecimal tax = subTotal.multiply(new BigDecimal("0.08")); // Thuế 8%
-        BigDecimal finalAmount = subTotal.add(tax).add(shippingFee);
-        AddressDTO addressDTO = identityFeignClient.getAddressById(form.getAddressId());
-        OrderAddressEntity orderAddressEntity = OrderAddressEntity.builder()
-                .contactName(addressDTO.getReceiverName())
-                .phone(addressDTO.getPhone())
-                .addressDetail(addressDTO.getDetailAddress())
-                .province(addressDTO.getProvinceName())
-                .district(addressDTO.getDistrictName())
-                .ward(addressDTO.getWardName())
-                .build();
-
-        OrderEntity order = OrderEntity.builder()
-                .orderNumber(orderNumber)
-                .userId(cart.getUserId())
-                .subTotalAmount(subTotal)
-                .shippingFee(shippingFee)
-                .clientIp(req.getRemoteAddr())
-                .finalAmount(finalAmount)
-                .shippingAddress(orderAddressEntity)
-                .paymentMethod(form.getPaymentMethod())
-                .status(CREATED)
-                .paymentStatus(PaymentStatus.INIT)
-                .note(form.getNote())
-                .build();
-        if (!form.getPaymentMethod().equals(PaymentMethod.COD)) {
-            order.setExpiresAt(LocalDateTime.now().plusMinutes(15));
-        }
-        orderAddressEntity.setOrder(order);
-        List<OrderItemEntity> orderItems = cart.getItems().stream().map(cartItem ->
-                {
-                    BigDecimal itemSubTotal = cartItem.getPrice().multiply(BigDecimal.valueOf(cartItem.getQuantity()));
-                    String formattedVariant = Optional.ofNullable(skusInfoMap.get(cartItem.getSkuId()))
-                            .map(info -> info.getSelections().stream()
-                                    .map(o -> o.getGroupName() + ": " + o.getLabel())
-                                    .collect(Collectors.joining(" - ")))
-                            .orElse("Phiên bản tiêu chuẩn");
-                    return OrderItemEntity.builder()
-                            .order(order) // Gán quan hệ 2 chiều
-                            .skuCode(skusInfoMap.get(cartItem.getSkuId()).getSkuCode())
-                            .productThumbnail(skusInfoMap.get(cartItem.getSkuId()).getThumbnail())
-                            .variantName(formattedVariant)
-                            .skuId(cartItem.getSkuId())
-                            .quantity(cartItem.getQuantity())
-                            .unitPrice(cartItem.getPrice())
-                            .productId(skusInfoMap.get(cartItem.getSkuId()).getSpuId())
-                            .productName(skusInfoMap.get(cartItem.getSkuId()).getSpuName())
-                            .subTotal(itemSubTotal)
-                            .build();
-                }
-        ).toList();
-        order.setOrderItems(orderItems);
-        OrderEntity savedOrder = orderRepository.save(order);
-
-        // 1. Chuẩn bị Payload
-        OrderEventPayload payload = OrderEventPayload.builder()
-                .orderId(savedOrder.getId().toString())
-                .orderNumber(savedOrder.getOrderNumber())
-                .finalAmount(savedOrder.getFinalAmount())
-                .expiresAt(savedOrder.getExpiresAt())
-                .userId(savedOrder.getUserId())
-                .paymentMethod(savedOrder.getPaymentMethod())
-                .items(savedOrder.getOrderItems().stream()
-                        .map(item -> new OrderEventPayload.OrderItemPayload(item.getSkuCode(), item.getQuantity()))
-                        .toList())
-                .build();
-        String payloadJson;
         try {
-            // 2. Chuyển Payload thành chuỗi JSON
-            payloadJson = objectMapper.writeValueAsString(payload);
-        } catch (JsonProcessingException e) {
-            throw new BusinessException(ORDER_EVENT_FAIL);
+            MDC.put("orderNo", orderNumber);
+            MDC.put("sagaStep", "ORDER_CREATE_INIT");
+            MDC.put("status", "STARTED");
+            log.info("Bắt đầu khởi tạo đơn hàng cho người dùng");
+            String userId = AuthenticationUtils.getUserId();
+            CartEntity cart = cartRepository.findByUserId(userId)
+                    .orElseThrow(() -> new BusinessException(CART_INVALID));
+            if (cart.getItems().isEmpty()) {
+                throw new BusinessException(CART_IS_EMPTY);
+            }
+            List<String> skuIds = cart.getItems().stream().map(CartItem::getSkuId).toList();
+            MDC.put("sagaStep", "FETCH_EXTERNAL_DATA");
+            log.info("Đang lấy thông tin sản phẩm và địa chỉ từ Catalog/Identity Service");
+            List<SkuCartDTO> skusInfo = catalogFeignClient.getSkuDetailsBatch(skuIds);
+            Map<String, SkuCartDTO> skusInfoMap = skusInfo.stream().collect(Collectors.toMap(SkuCartDTO::getId, sku -> sku));
+
+            BigDecimal subTotal = cart.getItems().stream()
+                    .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            BigDecimal shippingFee = BigDecimal.ZERO; // Ví dụ: freeship
+            BigDecimal tax = subTotal.multiply(new BigDecimal("0.08")); // Thuế 8%
+            BigDecimal finalAmount = subTotal.add(tax).add(shippingFee);
+            AddressDTO addressDTO = identityFeignClient.getAddressById(form.getAddressId());
+            OrderAddressEntity orderAddressEntity = OrderAddressEntity.builder()
+                    .contactName(addressDTO.getReceiverName())
+                    .phone(addressDTO.getPhone())
+                    .addressDetail(addressDTO.getDetailAddress())
+                    .province(addressDTO.getProvinceName())
+                    .district(addressDTO.getDistrictName())
+                    .ward(addressDTO.getWardName())
+                    .build();
+
+            OrderEntity order = OrderEntity.builder()
+                    .orderNumber(orderNumber)
+                    .userId(cart.getUserId())
+                    .subTotalAmount(subTotal)
+                    .shippingFee(shippingFee)
+                    .clientIp(req.getRemoteAddr())
+                    .finalAmount(finalAmount)
+                    .shippingAddress(orderAddressEntity)
+                    .paymentMethod(form.getPaymentMethod())
+                    .status(CREATED)
+                    .paymentStatus(PaymentStatus.INIT)
+                    .note(form.getNote())
+                    .build();
+            if (!form.getPaymentMethod().equals(PaymentMethod.COD)) {
+                order.setExpiresAt(LocalDateTime.now().plusMinutes(15));
+            }
+            orderAddressEntity.setOrder(order);
+            List<OrderItemEntity> orderItems = cart.getItems().stream().map(cartItem ->
+                    {
+                        BigDecimal itemSubTotal = cartItem.getPrice().multiply(BigDecimal.valueOf(cartItem.getQuantity()));
+                        String formattedVariant = Optional.ofNullable(skusInfoMap.get(cartItem.getSkuId()))
+                                .map(info -> info.getSelections().stream()
+                                        .map(o -> o.getGroupName() + ": " + o.getLabel())
+                                        .collect(Collectors.joining(" - ")))
+                                .orElse("Phiên bản tiêu chuẩn");
+                        return OrderItemEntity.builder()
+                                .order(order) // Gán quan hệ 2 chiều
+                                .skuCode(skusInfoMap.get(cartItem.getSkuId()).getSkuCode())
+                                .productThumbnail(skusInfoMap.get(cartItem.getSkuId()).getThumbnail())
+                                .variantName(formattedVariant)
+                                .skuId(cartItem.getSkuId())
+                                .quantity(cartItem.getQuantity())
+                                .unitPrice(cartItem.getPrice())
+                                .productId(skusInfoMap.get(cartItem.getSkuId()).getSpuId())
+                                .productName(skusInfoMap.get(cartItem.getSkuId()).getSpuName())
+                                .subTotal(itemSubTotal)
+                                .build();
+                    }
+            ).collect(Collectors.toCollection(ArrayList::new));
+            order.setOrderItems(orderItems);
+            OrderEntity newOrder = orderRepository.save(order);
+            List<OrderItemCheckForm> checkFormList = cart.getItems().stream()
+                    .map(it -> OrderItemCheckForm
+                            .builder()
+                            .orderId(newOrder.getId().toString())
+                            .skuCode(skusInfoMap.get(it.getSkuId()).getSkuCode())
+                            .quantity(it.getQuantity())
+                            .build())
+                    .toList();
+            MDC.put("sagaStep", "INVENTORY_RESERVE");
+            log.info("Đang gọi Inventory Service để giữ hàng và nhặt số Serial");
+            try {
+                List<InventoryAvailableDto> inventoryResponses = inventoryFeignClient
+                        .checkAvailability(OrderCreateInventoryForm.builder()
+                                .items(checkFormList)
+                                .orderId(order.getId().toString())
+                                .orderNumber(orderNumber)
+                                .build());
+                for (InventoryAvailableDto invDto : inventoryResponses) {
+                    OrderItemEntity item = order.getOrderItems().stream()
+                            .filter(i -> i.getSkuCode().equals(invDto.getSkuCode()))
+                            .findFirst()
+                            .orElseThrow();
+
+                    // Lưu danh sách Serial vào Item
+                    for (String sn : invDto.getSerialNumbers()) {
+                        OrderItemSerialEntity serialEntity = new OrderItemSerialEntity();
+                        serialEntity.setSerialNumber(sn);
+                        serialEntity.setOrderItem(item);
+                        item.getSerials().add(serialEntity);
+                    }
+                }
+
+                // 4. Thành công: Chuyển trạng thái
+                newOrder.setStatus(form.getPaymentMethod().equals(PaymentMethod.COD) ? CONFIRMED : RESERVED);
+                log.info("Giữ hàng thành công, nhận được {} mã Serial", inventoryResponses.size());
+            } catch (FeignException.BadRequest e) {
+                // Hết hàng
+                MDC.put("status", "FAILED");
+                log.error("Hết hàng khi đang giữ chỗ: {}", e.getMessage());
+                orderRepository.updateStatus(order.getId(), OUT_OF_STOCK);
+                throw new BusinessException(INVENTORY_QUANTITY_FAIL);
+            } catch (Exception e) {
+                // Lỗi hệ thống khác
+                MDC.put("status", "FAILED");
+                log.error("Lỗi hệ thống khi gọi Inventory: {}", e.getMessage());
+                orderRepository.updateStatus(order.getId(), CANCELLED);
+                throw new BusinessException(INVENTORY_QUANTITY_FAIL);
+            }
+            OrderEntity initialOrder = orderRepository.save(order);
+            String paymentUrl = null;
+            switch (form.getPaymentMethod()) {
+                case COD:
+                    cart.getItems().clear();
+                    cartRepository.save(cart);
+                    orderStatisticsService.updateStatsOnNewOrder(initialOrder);
+                    break;
+                case VNPAY:
+                    MDC.put("sagaStep", "PAYMENT_INITIATION");
+                    MDC.put("paymentMethod", form.getPaymentMethod().name());
+                    log.info("Đang khởi tạo cổng thanh toán: {}", form.getPaymentMethod());
+                    PaymentResponse paymentVnpay = paymentFeignClient
+                            .getVnpayUrl(initialOrder.getFinalAmount().longValue(), null, "ORDER", initialOrder.getOrderNumber(), req.getRemoteAddr());
+                    paymentUrl = paymentVnpay.getUrl();
+                    initialOrder.setPaymentUrl(paymentUrl);
+                    initialOrder.setExpiresAt(LocalDateTime.now().plusMinutes(17));
+                    initialOrder.setStatus(AWAITING_PAYMENT);
+                    break;
+                case BANK:
+                    MDC.put("sagaStep", "PAYMENT_INITIATION");
+                    MDC.put("paymentMethod", form.getPaymentMethod().name());
+                    log.info("Đang khởi tạo cổng thanh toán: {}", form.getPaymentMethod());
+                    SePayResponsive paymentSepay = paymentFeignClient
+                            .getSepayUrl(initialOrder.getFinalAmount().longValue(), "ORDER", initialOrder.getOrderNumber());
+                    paymentUrl = paymentSepay.getData();
+                    initialOrder.setPaymentUrl(paymentUrl);
+                    initialOrder.setExpiresAt(LocalDateTime.now().plusMinutes(17));
+                    initialOrder.setStatus(AWAITING_PAYMENT);
+                    break;
+                case WALLET:
+                    MDC.put("sagaStep", "PAYMENT_WALLET_EXECUTION");
+                    MDC.put("paymentMethod", "WALLET");
+                    log.info("Bắt đầu thực hiện thanh toán bằng ví nội bộ cho đơn hàng: {}", initialOrder.getOrderNumber());
+                    InternalPaymentForm internalPaymentForm = InternalPaymentForm.builder()
+                            .amount(initialOrder.getFinalAmount().longValue())
+                            .orderNumber(initialOrder.getOrderNumber())
+                            .build();
+                    try {
+                        log.info("Đang gửi yêu cầu trừ tiền sang Payment Service...");
+                        WalletResponse walletResponse = paymentFeignClient.payInternalOrder(internalPaymentForm);
+                        MDC.put("status", "SUCCESS");
+                        log.info("Thanh toán ví thành công. Message từ ví: {}", walletResponse.getMessage());
+                        initialOrder.setPaymentStatus(PaymentStatus.SUCCEEDED);
+                        initialOrder.setStatus(CONFIRMED);
+                        initialOrder.setNote(walletResponse.getMessage());
+                        log.info("Đang dọn dẹp giỏ hàng và cập nhật thống kê...");
+                        cart.getItems().clear();
+                        cartRepository.save(cart);
+                        orderStatisticsService.updateStatsOnNewOrder(initialOrder);
+                    } catch (Exception e) {
+                        MDC.put("status", "FAILED");
+                        MDC.put("errorType", e.getClass().getSimpleName());
+                        log.error("Thanh toán ví thất bại! Lý do: {}", e.getMessage());
+                        throw new BusinessException(PAYMENT_ERROR);
+                    }
+                default:
+                    break;
+            }
+            OrderEntity savedOrder = orderRepository.save(initialOrder);
+            MDC.put("status", "SUCCESS");
+            log.info("Đơn hàng được tạo thành công với trạng thái: {}", newOrder.getStatus());
+            return OrderResponse.builder()
+                    .orderNumber(orderNumber)
+                    .orderStatus(savedOrder.getStatus())
+                    .paymentMethod(savedOrder.getPaymentMethod())
+                    .paymentUrl(paymentUrl)
+                    .build();
+        } catch (Exception e) {
+            MDC.put("status", "ERROR");
+            log.error("Lỗi khi tạo đơn hàng: {}", e.getMessage());
+            throw e;
+        } finally {
+            MDC.clear();
         }
-        OutboxEvent outbox = OutboxEvent.builder()
-                .id(UUID.randomUUID().toString())
-                .aggregateType("order")
-                .aggregateId(savedOrder.getId().toString())
-                .type("Order.Create")
-                .payload(payloadJson)
-                .createdAt(LocalDateTime.now())
-                .build();
-
-        // 4. Lưu vào bảng t_outbox_events
-        outboxRepository.save(outbox);
-
-        return OrderResponse.builder()
-                .orderNumber(orderNumber)
-                .orderStatus(savedOrder.getStatus())
-                .paymentMethod(savedOrder.getPaymentMethod())
-                .build();
-
     }
+
 
     private boolean isValidTransitionForAdmin(OrderStatus from, OrderStatus to) {
         if (from == null || to == null) return false;
         if (from == to) return true;
 
-        // Final states: admin không được đổi (tránh phá audit)
-        if (from == OrderStatus.COMPLETED) return false;
-
-        // Không cho đi lùi (tránh “time travel”)
-        if (to.ordinal() < from.ordinal()) {
-            // ngoại lệ: admin được cancel/expire trước khi ship
-            boolean allowCancel = to == OrderStatus.CANCELLED
-                    && from != OrderStatus.SHIPPING
-                    && from != OrderStatus.DELIVERED
-                    && from != OrderStatus.RETURNED;
-
-            boolean allowExpire = to == OrderStatus.EXPIRED
-                    && (from == OrderStatus.CREATED
-                    || from == OrderStatus.RESERVED
-                    || from == OrderStatus.AWAITING_PAYMENT);
-
-            return allowCancel || allowExpire;
+        // 1. Trạng thái cuối (Terminal States) - Không thể chuyển đi đâu nữa
+        if (from == OrderStatus.COMPLETED || from == OrderStatus.CANCELLED ||
+                from == OrderStatus.EXPIRED || from == OrderStatus.OUT_OF_STOCK) {
+            return false;
         }
 
-        // Forward transitions (cho phép rộng hơn system)
+        // 2. Định nghĩa các luồng đi hợp lệ (White-listing)
         return switch (from) {
-            case CREATED -> to == OrderStatus.RESERVED
-                    || to == OrderStatus.AWAITING_PAYMENT
-                    || to == OrderStatus.CANCELLED
-                    || to == OrderStatus.EXPIRED;
+            case CREATED -> to == OrderStatus.RESERVED ||       // Hệ thống giữ được hàng
+                    to == OrderStatus.OUT_OF_STOCK ||  // API Kho báo hết
+                    to == OrderStatus.CANCELLED ||
+                    to == OrderStatus.EXPIRED;
 
-            case RESERVED, AWAITING_PAYMENT -> to == OrderStatus.PAID
-                    || to == OrderStatus.CANCELLED
-                    || to == OrderStatus.EXPIRED;
+            case RESERVED -> to == OrderStatus.AWAITING_PAYMENT ||
+                    to == OrderStatus.CANCELLED ||
+                    to == OrderStatus.EXPIRED;
 
-            case PAID -> to == OrderStatus.CONFIRMED
-                    || to == OrderStatus.SHIPPING   // admin “bypass” confirm nếu cần
-                    || to == OrderStatus.CANCELLED; // requires refund policy
+            case AWAITING_PAYMENT -> to == OrderStatus.PAID ||
+                    to == OrderStatus.CANCELLED ||
+                    to == OrderStatus.EXPIRED;
 
-            case CONFIRMED -> to == OrderStatus.SHIPPING
-                    || to == OrderStatus.CANCELLED; // policy-dependent
+            case PAID -> to == OrderStatus.CONFIRMED ||
+                    to == OrderStatus.SHIPPING ||
+                    to == OrderStatus.CANCELLED; // Cần logic Refund đi kèm
 
-            case SHIPPING -> to == OrderStatus.DELIVERED; // thường không cancel sau ship
+            case CONFIRMED -> to == OrderStatus.SHIPPING ||
+                    to == OrderStatus.CANCELLED;
 
-            case DELIVERED -> to == OrderStatus.COMPLETED
-                    || to == OrderStatus.RETURNED;
+            case SHIPPING -> to == OrderStatus.DELIVERED ||
+                    to == OrderStatus.RETURNED; // Trường hợp shipper báo khách không nhận/quay đầu
 
-            case RETURNED -> to == OrderStatus.COMPLETED;
+            case DELIVERED -> to == OrderStatus.COMPLETED ||
+                    to == OrderStatus.RETURNED;
 
-            case CANCELLED, EXPIRED, COMPLETED -> false;
+            case RETURNED -> to == OrderStatus.COMPLETED ||
+                    to == OrderStatus.CANCELLED;
+
+            default -> false;
         };
     }
 

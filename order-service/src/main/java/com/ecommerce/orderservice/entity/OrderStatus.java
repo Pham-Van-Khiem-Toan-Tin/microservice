@@ -11,5 +11,6 @@ public enum OrderStatus {
     COMPLETED,          // Hoàn tất nghiệp vụ (hết thời gian đổi trả)
     CANCELLED,          // Hủy trước khi ship
     EXPIRED,            // Hết hạn thanh toán/giữ hàng
-    RETURNED            // Trả hàng
+    RETURNED,            // Trả hàng
+    OUT_OF_STOCK
 }

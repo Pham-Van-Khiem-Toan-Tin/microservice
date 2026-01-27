@@ -52,4 +52,6 @@ eureka:
 logging:
   level:
     root: INFO
+  file:
+    name: ${LOG_FILE:./logs/app.log}
 

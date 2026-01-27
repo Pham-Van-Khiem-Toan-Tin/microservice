@@ -169,7 +169,39 @@ services:
       timeout: 10s
       retries: 30
       start_period: 40s
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.12.2
+    container_name: logstash
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    ports:
+      - "5044:5044"   # beats input
+      - "9600:9600"   # logstash monitoring API
+    environment:
+      - LS_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.monitoring.enabled=false
+    volumes:
+      - ./logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+    <<: *common
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:9600 >/dev/null 2>&1 || exit 1" ]
+      interval: 20s
+      timeout: 10s
+      retries: 30
+      start_period: 40s
 
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.12.2
+    container_name: filebeat
+    user: root
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - app_logs:/var/log/apps:ro
+    command: ["--strict.perms=false"]
   mongo:
     image: mongo:7
     container_name: mongo
@@ -210,7 +242,7 @@ volumes:
   redis_data:
   es_data:
   mongo_data:
-
+  app_logs:
 networks:
   ecommerce-net:
     driver: bridge

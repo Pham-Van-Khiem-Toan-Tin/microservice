@@ -10,6 +10,7 @@ public enum Constants {
     DATA_FORMAT(400, "Dữ liệu không hợp lệ"),
     VALIDATE_FAIL(4001, "Dữ liệu không hợp lệ."),
     //stock
+    SERIAL_EXISTED(1015, "Một số Serial không khả dụng để xuất!"),
     STOCK_TOTAL_INCONSISTENT(1014, "Số lượng trong kho không đủ"),
 
     STOCK_RESERVED_INCONSISTENT(1013, "Không đủ lượng giữ hàng"),

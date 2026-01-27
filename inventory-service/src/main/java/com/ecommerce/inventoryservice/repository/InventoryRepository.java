@@ -1,10 +1,12 @@
 package com.ecommerce.inventoryservice.repository;
 
 import com.ecommerce.inventoryservice.entity.InventoryEntity;
+import jakarta.persistence.LockModeType;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -89,7 +91,8 @@ public interface InventoryRepository extends JpaRepository<InventoryEntity, UUID
 
     List<InventoryEntity> findAllBySkuCodeIn(Collection<String> skuCodes);
 
-    List<InventoryEntity> findBySkuCodeIn(Collection<String> skuCodes);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<InventoryEntity> findBySkuCodeIn(List<String> skuCodes);
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
         UPDATE inventories
@@ -114,4 +117,8 @@ public interface InventoryRepository extends JpaRepository<InventoryEntity, UUID
             nativeQuery = true
     )
     InventoryEntity findBySkuCodeForUpdate(@Param("skuCode") String skuCode);
+    @Modifying
+    @Query("UPDATE InventoryEntity i SET i.reservedStock = i.reservedStock - :qty " +
+            "WHERE i.skuCode = :skuCode AND i.reservedStock >= :qty")
+    void releaseReservedStock(@Param("skuCode") String skuCode, @Param("qty") int qty);
 }

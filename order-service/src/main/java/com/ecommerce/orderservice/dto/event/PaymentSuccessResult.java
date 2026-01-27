@@ -17,7 +17,6 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true) // Tránh lỗi nếu các service khác phiên bản DTO
 public class PaymentSuccessResult implements Serializable {
-
     private String orderNumber;     // hoặc orderId
     private BigDecimal amount;
     private String providerRef;     // vnp_TransactionNo hoặc sepay id

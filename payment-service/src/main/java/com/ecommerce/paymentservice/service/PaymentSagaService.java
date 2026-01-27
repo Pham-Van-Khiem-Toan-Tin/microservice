@@ -101,7 +101,6 @@ public class PaymentSagaService {
                 // debit ví nội bộ
                 try {
                     InternalPaymentForm f = InternalPaymentForm.builder()
-                            .userId(req.getUserId())
                             .amount(req.getAmount())
                             .orderNumber(req.getOrderNumber())
                             .build();

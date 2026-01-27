@@ -2,21 +2,28 @@ package com.ecommerce.orderservice.handler;
 
 import com.ecommerce.orderservice.dto.event.*;
 import com.ecommerce.orderservice.dto.exception.BusinessException;
-import com.ecommerce.orderservice.entity.OrderEntity;
-import com.ecommerce.orderservice.entity.OrderStatus;
-import com.ecommerce.orderservice.entity.OutboxEvent;
-import com.ecommerce.orderservice.entity.PaymentStatus;
+import com.ecommerce.orderservice.dto.request.OrderCreateInventoryForm;
+import com.ecommerce.orderservice.dto.request.OrderItemCheckForm;
+import com.ecommerce.orderservice.dto.response.inventory.InventoryAvailableDto;
+import com.ecommerce.orderservice.entity.*;
+import com.ecommerce.orderservice.integration.InventoryFeignClient;
+import com.ecommerce.orderservice.repository.CartRepository;
 import com.ecommerce.orderservice.repository.OrderRepository;
 import com.ecommerce.orderservice.repository.OutboxRepository;
+import com.ecommerce.orderservice.service.OrderStatisticsService;
 import com.ecommerce.orderservice.service.SseService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.ecommerce.orderservice.constants.Constants.VALIDATE_FAIL;
 
@@ -30,39 +37,27 @@ public class OrderPaymentHandler {
     @Autowired
     private ObjectMapper objectMapper;
     @Autowired
-    private SseService  sseService;
-    @Transactional
-    public void handleInitiated(PaymentInitiatedPayload ev) {
-        UUID orderId = UUID.fromString(ev.getOrderId());
+    private SseService sseService;
+    @Autowired
+    private OrderStatisticsService orderStatisticsService;
+    @Autowired
+    private InventoryFeignClient inventoryFeignClient;
+    @Autowired
+    private CartRepository cartRepository;
 
-        OrderEntity order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
-
-        // ✅ Idempotent: nếu đã có paymentId/url thì bỏ qua
-        if (order.getPaymentId() != null && order.getPaymentUrl() != null) {
-            return;
-        }
-
-        order.setPaymentId(ev.getPaymentId());
-        order.setPaymentUrl(ev.getPaymentUrl());
-        order.setPaymentStatus(PaymentStatus.PENDING);
-
-        // giữ orderStatus ở AWAITING_PAYMENT (đúng flow)
-        if (order.getStatus() == OrderStatus.RESERVED) {
-            order.setStatus(OrderStatus.AWAITING_PAYMENT);
-        }
-
-        orderRepository.save(order);
-        sseService.sendPaymentUrl(order.getOrderNumber(), order.getPaymentUrl(), order.getExpiresAt());
-    }
     @Transactional
     public void handlePaySucceeded(PaymentSuccessResult ev) {
-
+        MDC.put("orderNo", ev.getOrderNumber());
+        MDC.put("sagaStep", "PAYMENT_SUCCESS_HANDLER");
+        log.info("Bắt đầu xử lý logic thanh toán thành công nội bộ");
         OrderEntity order = orderRepository.findByOrderNumber(ev.getOrderNumber())
                 .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
 
         // ✅ Idempotent: đã PAID rồi thì bỏ qua
-        if (order.getPaymentStatus() == PaymentStatus.SUCCEEDED) return;
+        if (order.getPaymentStatus() == PaymentStatus.SUCCEEDED) {
+            log.warn("Sự kiện trùng lặp (Idempotent): Đơn hàng đã ở trạng thái SUCCEEDED trước đó.");
+            return;
+        }
 
         // Đánh dấu đã nhận tiền
         order.setPaymentStatus(PaymentStatus.SUCCEEDED);
@@ -75,14 +70,40 @@ public class OrderPaymentHandler {
                         || (order.getExpiresAt() != null && LocalDateTime.now().isAfter(order.getExpiresAt()));
 
         if (isLate) {
+            MDC.put("paymentType", "LATE_PAYMENT");
+            log.warn("Phát hiện thanh toán muộn cho đơn hàng #{}. Trạng thái hiện tại: {}", order.getOrderNumber(), order.getStatus());
             // ✅ Thanh toán muộn: KHÔNG commit kho
             // Giữ nguyên EXPIRED/CANCELLED để tránh “hồi sinh” đơn khi hàng đã release
-            if (order.getStatus() != OrderStatus.EXPIRED && order.getStatus() != OrderStatus.CANCELLED) {
-                order.setStatus(OrderStatus.EXPIRED);
+            List<ReReserveRequest.ReReserveItem> checkFormList = order.getOrderItems().stream()
+                    .map(it -> new ReReserveRequest.ReReserveItem(it.getSkuCode(), it.getQuantity()))
+                    .collect(Collectors.toCollection(ArrayList::new));
+            List<InventoryAvailableDto> inventoryResponses = new ArrayList<>();
+            try {
+                log.info("Đang gọi Inventory Service để 'hồi sinh' (re-reserve) hàng cho đơn thanh toán muộn...");
+                inventoryResponses = inventoryFeignClient
+                        .reReserve(ReReserveRequest.builder()
+                                .items(checkFormList)
+                                .orderId(order.getId().toString())
+                                .build());
+            } catch (Exception e) {
+                log.error("Lỗi khi gọi Inventory re-reserve: {}", e.getMessage());
+                throw new BusinessException(VALIDATE_FAIL);
             }
-
+            if (inventoryResponses.stream().allMatch(InventoryAvailableDto::isAvailable)) {
+                log.info("Hồi sinh hàng thành công! Kho đã cấp lại Serial mới.");
+                order.setPaymentStatus(PaymentStatus.SUCCEEDED);
+                CartEntity cart = cartRepository.findByUserId(order.getUserId())
+                        .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
+                cart.getItems().clear();
+                cartRepository.save(cart);
+            } else {
+                MDC.put("status", "REFUND_REQUIRED");
+                log.error("Hồi sinh thất bại do HẾT HÀNG. Đã ra lệnh hoàn tiền (Refund) cho khách.");
+                order.setPaymentStatus(PaymentStatus.REFUNDED);
+                emitWalletRefundRequested(order, ev);
+            }
+            order.setStatus(OrderStatus.PAID);
             // ✅ Hoàn ví nội bộ
-            emitWalletRefundRequested(order, ev);
 
             orderRepository.save(order);
             return;
@@ -90,31 +111,22 @@ public class OrderPaymentHandler {
 
         // ✅ Thanh toán đúng hạn
         if (order.getStatus() == OrderStatus.AWAITING_PAYMENT || order.getStatus() == OrderStatus.RESERVED) {
+            MDC.put("paymentType", "ON_TIME");
+            log.info("Thanh toán đúng hạn. Đang chốt đơn và dọn dẹp giỏ hàng...");
             order.setStatus(OrderStatus.PAID);
-            emitPayCommitRequested(order);
+            order.setPaymentStatus(PaymentStatus.SUCCEEDED);
+            CartEntity cart = cartRepository.findByUserId(order.getUserId())
+                    .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
+            cart.getItems().clear();
+            cartRepository.save(cart);
+//            emitPayCommitRequested(order);
         }
 
-        orderRepository.save(order);
+        OrderEntity saved = orderRepository.save(order);
+        orderStatisticsService.updateStatsOnNewOrder(saved);
         sseService.sendPaymentSuccess(order.getOrderNumber());
-    }
-    private void emitPayCommitRequested(OrderEntity order) {
-        try {
-            InventoryCommitRequestedPayload payload = InventoryCommitRequestedPayload.builder()
-                    .orderId(order.getId().toString())
-                    .reservationId(order.getReservationId())
-                    .build();
-
-            outboxRepository.save(OutboxEvent.builder()
-                    .id(UUID.randomUUID().toString())
-                    .aggregateType("inventory")                 // -> order-service.Inventory.events
-                    .aggregateId(order.getId().toString())
-                    .type("Inventory.CommitRequested")
-                    .payload(objectMapper.writeValueAsString(payload))
-                    .createdAt(LocalDateTime.now())
-                    .build());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        log.info("Hoàn tất xử lý thanh toán thành công. Trạng thái cuối: Order={}, Payment={}",
+                saved.getStatus(), saved.getPaymentStatus());
     }
 
     private void emitWalletRefundRequested(OrderEntity order, PaymentSuccessResult ev) {
@@ -140,26 +152,7 @@ public class OrderPaymentHandler {
             throw new RuntimeException(e);
         }
     }
-    @Transactional
-    public void handleInitialFailed(PaymentFailedPayload ev) {
-        UUID orderId = UUID.fromString(ev.getOrderId());
 
-        OrderEntity order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new BusinessException(VALIDATE_FAIL));
-
-        // Idempotent
-        if (order.getPaymentStatus() == PaymentStatus.SUCCEEDED) return;
-
-        // Chỉ ghi nhận lỗi, KHÔNG cancel
-        order.setPaymentStatus(PaymentStatus.FAILED);
-
-        // Giữ order ở AWAITING_PAYMENT để retry
-        if (order.getStatus() == OrderStatus.RESERVED) {
-            order.setStatus(OrderStatus.AWAITING_PAYMENT);
-        }
-
-        orderRepository.save(order);
-    }
     @Transactional
     public void handleFailed(PaymentFailedResult ev) {
 
@@ -183,71 +176,10 @@ public class OrderPaymentHandler {
             order.setStatus(OrderStatus.CANCELLED);
             order.setCancelReason("PAYMENT_FAILED: " + ev.getReason());
 
-            // 4️⃣ Release kho nếu đã từng reserve
-            if (order.getReservationId() != null) {
-                emitInventoryReleaseRequested(order);
-            }
         }
 
         orderRepository.save(order);
     }
-    private void emitInventoryCommitRequested(OrderEntity order) {
-        try {
-            InventoryCommitRequestedPayload payload = InventoryCommitRequestedPayload.builder()
-                    .orderId(order.getId().toString())
-                    .reservationId(order.getReservationId())
-                    .build();
 
-            outboxRepository.save(OutboxEvent.builder()
-                    .id(UUID.randomUUID().toString())
-                    .aggregateType("inventory")
-                    .aggregateId(order.getId().toString())
-                    .type("Inventory.CommitRequested")
-                    .payload(objectMapper.writeValueAsString(payload))
-                    .createdAt(LocalDateTime.now())
-                    .build());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
 
-    private void emitInventoryReleaseRequested(OrderEntity order) {
-        try {
-            InventoryReleaseRequestedPayload payload = InventoryReleaseRequestedPayload.builder()
-                    .orderId(order.getId().toString())
-                    .reservationId(order.getReservationId())
-                    .reason(order.getCancelReason())
-                    .build();
-
-            outboxRepository.save(OutboxEvent.builder()
-                    .id(UUID.randomUUID().toString())
-                    .aggregateType("inventory")
-                    .aggregateId(order.getId().toString())
-                    .type("Inventory.ReleaseRequested")
-                    .payload(objectMapper.writeValueAsString(payload))
-                    .createdAt(LocalDateTime.now())
-                    .build());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private void emitOrderEvent(OrderEntity order, String eventType) {
-        try {
-            String payloadJson = objectMapper.writeValueAsString(
-                    java.util.Map.of("orderId", order.getId().toString(), "orderNumber", order.getOrderNumber())
-            );
-
-            outboxRepository.save(OutboxEvent.builder()
-                    .id(UUID.randomUUID().toString())
-                    .aggregateType("Order")
-                    .aggregateId(order.getId().toString())
-                    .type(eventType)
-                    .payload(payloadJson)
-                    .createdAt(LocalDateTime.now())
-                    .build());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
 }

@@ -53,17 +53,26 @@ import java.util.UUID;
 @Slf4j
 public class WebConfig {
 
-
+    private static final String POST_LOGOUT_REDIRECT = "http://localhost:5173";
+    @Autowired
+    private ReactiveClientRegistrationRepository clientRegistrationRepository;
     @Autowired
     private OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+    private ServerLogoutSuccessHandler oidcLogoutSuccessHandler() {
+        OidcClientInitiatedServerLogoutSuccessHandler oidcLogoutSuccessHandler =
+                new OidcClientInitiatedServerLogoutSuccessHandler(this.clientRegistrationRepository);
 
+        oidcLogoutSuccessHandler.setPostLogoutRedirectUri(POST_LOGOUT_REDIRECT);
+
+        return oidcLogoutSuccessHandler;
+    }
     @Bean
     public SecurityWebFilterChain securityFilterChain(ServerHttpSecurity http, ReactiveClientRegistrationRepository repository) throws Exception {
         http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeExchange(auth -> auth
-                        .pathMatchers("/favicon.ico").permitAll()
+                        .pathMatchers("/favicon.ico", "/logout").permitAll()
                         .anyExchange().authenticated())
                 .cors(Customizer.withDefaults())
                 .logout(logout -> logout
@@ -87,7 +96,10 @@ public class WebConfig {
                             response.setStatusCode(HttpStatus.FOUND);
                             response.getHeaders().setLocation(URI.create("http://localhost:5173/login?error=" + exception.getMessage()));
                             return response.setComplete();
-                        }));
+                        }))
+                .logout(logout -> logout.logoutUrl("/logout")
+                        .logoutSuccessHandler(oidcLogoutSuccessHandler()))
+                .oidcLogout(logout -> logout.backChannel(Customizer.withDefaults()));;
 //                .securityContextRepository(NoOpServerSecurityContextRepository.getInstance());
 //                .oauth2Client(Customizer.withDefaults());
         return http.build();

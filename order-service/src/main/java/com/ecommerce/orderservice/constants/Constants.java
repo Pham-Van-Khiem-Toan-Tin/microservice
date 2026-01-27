@@ -14,6 +14,8 @@ public enum Constants {
     ADD_CART_SUCCESS(1020,"Thêm sản phẩm vào giỏ hàng thành công."),
     UPDATE_ORDER_SUCCESS(200, "Cập nhật đơn hàng sản phẩm thành công"),
     //order
+    PAYMENT_ERROR(2010, "Thanh toán thất bại vui lòng thử lại sau"),
+    INVENTORY_QUANTITY_FAIL(2009, "Số lượng sản phẩm không đủ để đặt hàng"),
     CANCEL_REASON_REQUIRED(2008, "Thiếu lý do hủy đơn hàng"),
     ORDER_NOT_FOUND(2007, "Không tìm thấy đơn hàng"),
     CREATE_ORDER_SUCCESS(2006, "Đặt hàng thành công"),

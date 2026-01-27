@@ -15,4 +15,5 @@ public class OrderResponse {
     private String orderNumber;
     private PaymentMethod paymentMethod;
     private OrderStatus orderStatus;
+    private String paymentUrl;
 }

@@ -2,12 +2,14 @@ package com.ecommerce.inventoryservice.service;
 
 import com.ecommerce.inventoryservice.dto.event.InventoryReserveRequestedPayload;
 import com.ecommerce.inventoryservice.dto.event.OrderCreatedPayload;
+import com.ecommerce.inventoryservice.dto.event.ReReserveRequest;
 import com.ecommerce.inventoryservice.dto.event.StockUpdatePayload;
 import com.ecommerce.inventoryservice.dto.request.InventoryAdjustRequest;
-import com.ecommerce.inventoryservice.dto.request.OrderItemCheckForm;
+import com.ecommerce.inventoryservice.dto.request.order.OrderCreateInventoryForm;
 import com.ecommerce.inventoryservice.dto.response.InventoryAdjustResponse;
 import com.ecommerce.inventoryservice.dto.response.InventoryDTO;
 import com.ecommerce.inventoryservice.dto.response.cart.InventoryCartDto;
+import com.ecommerce.inventoryservice.dto.response.order.InventoryAvailableDto;
 import com.ecommerce.inventoryservice.entity.InventoryType;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.data.domain.Page;
@@ -23,7 +25,9 @@ public interface InventoryService {
     void logHistory(String sku, int change, int stockAfter, InventoryType type, String ref);
     InventoryAdjustResponse adjustInventory(InventoryAdjustRequest req);
     List<InventoryCartDto> getStockOfSkus(List<String> skuCodes);
-    boolean checkAvailability(List<OrderItemCheckForm> items);
+    List<InventoryAvailableDto> checkAvailability(OrderCreateInventoryForm items);
     void restoreStock(List<StockUpdatePayload.StockItem> items);
     void finalizeDeduction(String orderId, List<StockUpdatePayload.StockItem> items);
+
+    List<InventoryAvailableDto> reReserve(ReReserveRequest request);
 }

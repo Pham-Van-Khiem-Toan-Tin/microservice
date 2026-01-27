@@ -7,6 +7,8 @@ import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -60,4 +62,7 @@ public class OrderItemEntity {
 
     @Column(name = "sub_total", nullable = false)
     private BigDecimal subTotal; // = quantity * unitPrice
+    @Builder.Default
+    @OneToMany(mappedBy = "orderItem", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderItemSerialEntity> serials = new ArrayList<>();
 }
